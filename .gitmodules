@@ -1,3 +1,3 @@
 [submodule "best-bash"]
 	path = best-bash
-	url = git@github.com:bryankennedy/best-bash.git
+	url = git://github.com/bryankennedy/best-bash.git
