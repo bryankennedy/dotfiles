@@ -1,3 +1,6 @@
 [submodule "best-bash"]
 	path = best-bash
 	url = git://github.com/bryankennedy/best-bash.git
+[submodule "vimrc"]
+	path = vimrc
+	url = git@github.com:bryankennedy/vimrc.git
