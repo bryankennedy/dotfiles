@@ -3,4 +3,4 @@
 	url = git://github.com/bryankennedy/best-bash.git
 [submodule "vimrc"]
 	path = vimrc
-	url = git@github.com:bryankennedy/vimrc.git
+	url = git://github.com/bryankennedy/best-bash.git
