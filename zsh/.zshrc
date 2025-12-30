@@ -28,6 +28,11 @@ autoload -Uz compinit && compinit
 # Case-insensitive completion (cd r -> Resources)
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
+# Completion Styling
+zmodload zsh/complist
+zstyle ':completion:*' menu select
+zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
+
 # Starship
 eval "$(starship init zsh)"
 
