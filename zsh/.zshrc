@@ -20,16 +20,13 @@ autoload -Uz compinit && compinit
 # Case-insensitive completion (cd r -> Resources)
 zstyle ':completion:*' matcher-list 'm:{a-z}={A-Za-z}'
 
-
 # Starship
 eval "$(starship init zsh)"
-
 
 # Modern Tools
 if command -v zoxide > /dev/null; then
   eval "$(zoxide init zsh --cmd j)"
 fi
-
 
 if command -v fnm > /dev/null; then
   eval "$(fnm env --use-on-cd)"
@@ -42,12 +39,9 @@ fi
 # sn=orange(size), sb=orange(size_unit), uu=light_gray(user), gu=light_gray(group)
 export EZA_COLORS="da=37:ur=32:uw=31:ux=34:gr=32:gw=31:gx=34:tr=32:tw=31:tx=34:sn=33:sb=33:uu=37:gu=37"
 
-
-
 # Aliases
 [ -f "$HOME/dotfiles/zsh/aliases.zsh" ] && source "$HOME/dotfiles/zsh/aliases.zsh"
 
 # User configuration
 export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
-

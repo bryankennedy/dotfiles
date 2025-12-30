@@ -43,7 +43,6 @@ alias ...='cd ../..'
 alias ....='cd ../../..'
 alias .....='cd ../../../..'
 
-
 # Compress the cd, ls -l series of commands.
 cl() {
    if [ $# = 0 ]; then
