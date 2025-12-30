@@ -1,7 +1,15 @@
-# Homebrew Setup
-if [[ -f /opt/homebrew/bin/brew ]]; then
-    eval "$(/opt/homebrew/bin/brew shellenv)"
+# Clean Profile (PATH, Environment)
+[ -f "$HOME/dotfiles/zsh/profile.zsh" ] && source "$HOME/dotfiles/zsh/profile.zsh"
+
+# Antigravity Terminal Fix
+# Prevents VS Code Shell Integration codes and interactive noise from breaking the agent.
+if [[ -n "$ANTIGRAVITY_AGENT" ]]; then
+    export PS1='$ '
+    unset PROMPT_COMMAND
+    return
 fi
+
+# Interactive Shell Configuration
 
 # Antidote
 source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
@@ -43,5 +51,4 @@ export EZA_COLORS="da=37:ur=32:uw=31:ux=34:gr=32:gw=31:gx=34:tr=32:tw=31:tx=34:s
 [ -f "$HOME/dotfiles/zsh/aliases.zsh" ] && source "$HOME/dotfiles/zsh/aliases.zsh"
 
 # User configuration
-export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
-export PATH="$HOME/go/bin:$PATH"
+
