@@ -12,7 +12,6 @@ font-size = 14
 # theme = OneHalfDark           # (Clean, balanced Atom-like theme)
 # theme = Snazzy                # (Elegant with bright colors)
 theme = crispy
-font-family = "Hack Nerd Font Mono"
 # theme = rose-pine             # (Soothing pastel palette)
 # theme = kanagawa              # (Inspired by Japanese paintings)
 # theme = monokai_pro           # (Professional, high contrast)
