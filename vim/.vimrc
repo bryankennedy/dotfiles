@@ -30,3 +30,6 @@ set smartcase                 " ...unless uppercase is used
 set nobackup
 set nowritebackup
 set noswapfile
+
+" Git Commit Wrapping
+autocmd FileType gitcommit setlocal textwidth=72 colorcolumn=73
