@@ -1,0 +1,29 @@
+# Ghostty Configuration
+
+command = /bin/zsh
+font-family = "Monaco"
+font-size = 14
+# --- Popular Themes (2024/2025 Top Picks) ---
+# theme = catppuccin-mocha      # (Current - Excellent contrast)
+# theme = Dracula               # (Classic Vampire Dark theme)
+# theme = tokyonight            # (Calm blue/purple night theme)
+# theme = Nord                  # (Arctic, cool bluish theme)
+# theme = GruvboxDark           # (Retro earthy tones)
+# theme = OneHalfDark           # (Clean, balanced Atom-like theme)
+# theme = Snazzy                # (Elegant with bright colors)
+theme = crispy
+font-family = "Hack Nerd Font Mono"
+# theme = rose-pine             # (Soothing pastel palette)
+# theme = kanagawa              # (Inspired by Japanese paintings)
+# theme = monokai_pro           # (Professional, high contrast)
+
+# --- Light Themes ---
+# theme = catppuccin-latte      # (Warm light theme)
+# theme = OneHalfLight          # (Clean light theme)
+# theme = Builtin Solarized Light
+window-padding-x = 10
+window-padding-y = 10
+macos-titlebar-style = tabs
+background-opacity = 0.96
+cursor-style = block
+shell-integration = detect
