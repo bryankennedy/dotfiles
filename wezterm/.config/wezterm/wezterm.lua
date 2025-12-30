@@ -16,10 +16,10 @@ config.freetype_render_target = "HorizontalLcd"
 
 -- Appearance
 config.window_padding = {
-  left = 10,
-  right = 10,
-  top = 10,
-  bottom = 10,
+  left = 50,
+  right = 50,
+  top = 50,
+  bottom = 50,
 }
 config.window_background_opacity = 0.96
 config.default_cursor_style = 'SteadyBlock'
