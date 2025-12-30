@@ -35,6 +35,7 @@ My personal configuration files managed with [GNU Stow](https://www.gnu.org/soft
    stow starship
    stow karabiner
    stow aerospace
+   stow wezterm
    ```
 
 ## Structure
@@ -48,3 +49,4 @@ The repository is structured so that running `stow <package>` from the root will
 - **starship/**: Starship prompt configuration.
 - **karabiner/**: Karabiner-Elements configuration.
 - **aerospace/**: Aerospace window manager configuration.
+- **wezterm/**: WezTerm terminal configuration.
