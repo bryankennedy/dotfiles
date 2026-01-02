@@ -134,6 +134,9 @@ alt-g = 'workspace G'
 # Music
 alt-m = 'workspace M'
 
+# Terminal
+alt-t = 'workspace T'
+
 # Personal
 alt-z = 'workspace Z'
 
