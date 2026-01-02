@@ -27,3 +27,6 @@ background-opacity = 0.96
 unfocused-split-opacity = 0.5
 cursor-style = block
 shell-integration = detect
+custom-shader = ./shaders/bloom.glsl
+custom-shader = ./shaders/cursor_blaze.glsl
+# notify-on-command-finish = unfocused
