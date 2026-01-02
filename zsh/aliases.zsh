@@ -1,6 +1,7 @@
 # Aliases and Functions
 
 # Shorthand
+alias a='antigravity'
 alias c='clear'
 alias g='grep'
 alias xx='exit'

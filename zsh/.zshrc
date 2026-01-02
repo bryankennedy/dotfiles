@@ -57,3 +57,10 @@ export EZA_COLORS="da=37:ur=32:uw=31:ux=34:gr=32:gw=31:gx=34:tr=32:tw=31:tx=34:s
 
 # User configuration
 
+
+# bun completions
+[ -s "/Users/bkennedy/.bun/_bun" ] && source "/Users/bkennedy/.bun/_bun"
+
+# bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
