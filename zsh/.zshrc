@@ -61,10 +61,23 @@ export EZA_COLORS="da=37:ur=32:uw=31:ux=34:gr=32:gw=31:gx=34:tr=32:tw=31:tx=34:s
 
 # User configuration
 
+# History Configuration
+HISTFILE="$HOME/.zsh_history"
+HISTSIZE=1000000000
+SAVEHIST=1000000000
+setopt EXTENDED_HISTORY      # Write the history file in the ":start:elapsed;command" format.
+setopt HIST_EXPIRE_DUPS_FIRST # Expire duplicate entries first when trimming history.
+setopt HIST_IGNORE_DUPS      # Don't record an entry that was just recorded again.
+setopt HIST_IGNORE_ALL_DUPS  # Delete old recorded entry if new entry is a duplicate.
+setopt HIST_FIND_NO_DUPS     # Do not display a line previously found.
+setopt HIST_SAVE_NO_DUPS     # Don't write duplicate entries in the history file.
 
-# bun completions
-[ -s "/Users/bkennedy/.bun/_bun" ] && source "/Users/bkennedy/.bun/_bun"
+#
+# Bun - A better JavaScript runtime
+#
+# Source bun completions
+[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
-# bun
+# Add bun to PATH
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
