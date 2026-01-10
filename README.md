@@ -36,6 +36,7 @@ My personal configuration files managed with [GNU Stow](https://www.gnu.org/soft
    stow karabiner
    stow aerospace
    stow wezterm
+   stow gemini
    ```
 
 ## Structure
@@ -50,3 +51,4 @@ The repository is structured so that running `stow <package>` from the root will
 - **karabiner/**: Karabiner-Elements configuration.
 - **aerospace/**: Aerospace window manager configuration.
 - **wezterm/**: WezTerm terminal configuration.
+- **gemini/**: Gemini AI agent global rules (`GEMINI.md`) and global workflows.
