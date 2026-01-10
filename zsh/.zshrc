@@ -11,18 +11,19 @@ fi
 
 # Interactive Shell Configuration
 
-# Antidote
+# Set up Antidote - A tool for managing zsh plugins
 source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
 
-# Initialize Antidote
-# Initialize Antidote
 # Ensure zsh-completions is loaded early
 fpath=(${ZDOTDIR:-$HOME}/.antidote/plugins/zsh-users/zsh-completions/src $fpath)
 
+# Load Antidote plugins
 if [[ ! -f ${ZDOTDIR:-$HOME}/.zsh_plugins.zsh ]]; then
   antidote bundle < ${ZDOTDIR:-$HOME}/.zsh_plugins.txt > ${ZDOTDIR:-$HOME}/.zsh_plugins.zsh
 fi
 source ${ZDOTDIR:-$HOME}/.zsh_plugins.zsh
+
+# Initialize zsh auto-completions
 autoload -Uz compinit && compinit
 
 # Case-insensitive completion (cd r -> Resources)
