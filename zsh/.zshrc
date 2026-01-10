@@ -46,6 +46,9 @@ if command -v fnm > /dev/null; then
   eval "$(fnm env --use-on-cd)"
 fi
 
+# cd without having to type 'cd'
+setopt autocd
+
 # Eza Colors (Crispy Theme)
 # da=dark_gray(timestamp), ur=green(user_read), uw=red(user_write), ux=blue(user_exec)
 # gr=green(group_read), gw=red(group_write), gx=blue(group_exec)
