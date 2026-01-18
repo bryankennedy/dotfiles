@@ -50,3 +50,12 @@ When creating Mermaid diagrams, use these following standard  colors, which refl
 ## 5. Package Management & Runtime Standards
 * **Package Manager:** Always prefer **Bun** (`bun`) over `npm` (and `bunx` over `npx`) for installing dependencies, running scripts, and managing packages in both local and remote cloud environments.
 * **Node.js Version:** Always prefer the current **LTS (Long Term Support)** version of Node.js for both local development and remote cloud environments.
+
+---
+
+## 6. Project Initialization
+* **Agent Directory:** Upon entering a new project or workspace that lacks an `.agent` directory, **always propose** initializing it.
+* **Standard Structure:** The default recommended structure for the `.agent` directory is:
+    * `.agent/workflows/` - For reusable workflow definitions.
+    * `.agent/memory/` - For project-specific context and decisions (e.g., `.agent/memory/decisions.md`).
+    * `.agent/scratchpad.md` - For ephemeral notes or current task tracking.
