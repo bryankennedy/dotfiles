@@ -48,5 +48,5 @@ When creating Mermaid diagrams, use these following standard  colors, which refl
 ---
 
 ## 5. Package Management & Runtime Standards
-* **Package Manager:** Always prefer **Bun** (`bun`) over `npm` for installing dependencies, running scripts, and managing packages in both local and remote cloud environments.
+* **Package Manager:** Always prefer **Bun** (`bun`) over `npm` (and `bunx` over `npx`) for installing dependencies, running scripts, and managing packages in both local and remote cloud environments.
 * **Node.js Version:** Always prefer the current **LTS (Long Term Support)** version of Node.js for both local development and remote cloud environments.
