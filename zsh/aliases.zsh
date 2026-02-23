@@ -135,7 +135,7 @@ alias gpl='git pull'
 alias gplm='git pull origin master'
 alias gpld='git pull origin develop'
 
-gh() {
+github() {
   local git_url=$(git remote get-url origin 2>/dev/null)
   if [ -z "$git_url" ]; then
     echo "Not a git repository or no 'origin' remote found."
