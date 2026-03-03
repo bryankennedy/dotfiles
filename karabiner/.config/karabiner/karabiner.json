@@ -53,6 +53,37 @@
                     ]
                 }
             ],
+            "complex_modifications": {
+                "rules": [
+                    {
+                        "description": "Hex: Middle Mouse Hold to Record / Double-Click to Toggle",
+                        "manipulators": [
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "pointing_button": "button3",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to_if_held_down": [
+                                    {
+                                        "key_code": "f19",
+                                        "repeat": false
+                                    }
+                                ],
+                                "to_if_alone": [
+                                    {
+                                        "key_code": "f19"
+                                    }
+                                ],
+                                "parameters": {
+                                    "basic.to_if_held_down_threshold_milliseconds": 200,
+                                    "basic.to_if_alone_timeout_milliseconds": 300
+                                }
+                            }
+                        ]
+                    }
+                ]
+            },
             "name": "Default profile",
             "selected": true,
             "simple_modifications": [
