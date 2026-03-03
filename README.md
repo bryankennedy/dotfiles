@@ -39,6 +39,20 @@ My personal configuration files managed with [GNU Stow](https://www.gnu.org/soft
    stow gemini
    ```
 
+## App Setup Scripts
+
+Some macOS applications store their configuration in `~/Library/Preferences` (via the `defaults` system) rather than dotfiles, so they can't be managed with Stow. The `scripts/` directory contains idempotent setup scripts for these apps.
+
+| Script | App | What it configures |
+|--------|-----|--------------------|
+| `scripts/hex.sh` | [Hex](https://github.com/kitlangton/Hex) | Sets global hotkey to F19 (pairs with the Karabiner middle-mouse → F19 rule) |
+
+Run a script after installing the corresponding app:
+
+```sh
+./scripts/hex.sh
+```
+
 ## Structure
 
 The repository is structured so that running `stow <package>` from the root will symlink the contents of that package to your home directory (`~`), preserving the directory structure.
