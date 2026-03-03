@@ -1,6 +1,36 @@
 {
     "profiles": [
         {
+            "complex_modifications": {
+                "rules": [
+                    {
+                        "description": "Hex: Middle Mouse to F15 (hold duration handled by Hex)",
+                        "manipulators": [
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "pointing_button": "button3",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "f15" }]
+                            }
+                        ]
+                    },
+                    {
+                        "description": "Hex: Fn key to F15 (MacBook trigger)",
+                        "manipulators": [
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "key_code": "fn",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "f15" }]
+                            }
+                        ]
+                    }
+                ]
+            },
             "devices": [
                 {
                     "identifiers": {
@@ -51,39 +81,17 @@
                             "to": [{ "key_code": "right_command" }]
                         }
                     ]
+                },
+                {
+                    "identifiers": {
+                        "is_keyboard": true,
+                        "is_pointing_device": true,
+                        "product_id": 45081,
+                        "vendor_id": 1133
+                    },
+                    "ignore": false
                 }
             ],
-            "complex_modifications": {
-                "rules": [
-                    {
-                        "description": "Hex: Middle Mouse Hold to Record / Double-Click to Toggle",
-                        "manipulators": [
-                            {
-                                "type": "basic",
-                                "from": {
-                                    "pointing_button": "button3",
-                                    "modifiers": { "optional": ["any"] }
-                                },
-                                "to_if_held_down": [
-                                    {
-                                        "key_code": "f19",
-                                        "repeat": false
-                                    }
-                                ],
-                                "to_if_alone": [
-                                    {
-                                        "key_code": "f19"
-                                    }
-                                ],
-                                "parameters": {
-                                    "basic.to_if_held_down_threshold_milliseconds": 200,
-                                    "basic.to_if_alone_timeout_milliseconds": 300
-                                }
-                            }
-                        ]
-                    }
-                ]
-            },
             "name": "Default profile",
             "selected": true,
             "simple_modifications": [

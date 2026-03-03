@@ -45,7 +45,7 @@ Some macOS applications store their configuration in `~/Library/Preferences` (vi
 
 | Script | App | What it configures |
 |--------|-----|--------------------|
-| `scripts/hex.sh` | [Hex](https://github.com/kitlangton/Hex) | Sets global hotkey to F19 (pairs with the Karabiner middle-mouse → F19 rule) |
+| `scripts/hex.sh` | [Hex](https://github.com/kitlangton/Hex) | Sets global hotkey to F15 (pairs with the Karabiner middle-mouse → F15 rule) |
 
 Run a script after installing the corresponding app:
 
@@ -62,7 +62,9 @@ The repository is structured so that running `stow <package>` from the root will
 - **vim/**: Vim configuration.
 - **git/**: Git global configuration.
 - **starship/**: Starship prompt configuration.
-- **karabiner/**: Karabiner-Elements configuration.
+- **karabiner/**: Karabiner-Elements configuration. Includes a complex modification that maps the middle mouse button (button3) to F15 for use as the [Hex](https://github.com/kitlangton/Hex) trigger.
+
+  > **Important:** Complex modifications only apply to devices explicitly enabled in Karabiner. After stowing this config, open Karabiner-Elements → **Devices** tab and enable any non-keyboard devices (e.g. your mouse) that should be processed. Without this, complex modification rules will be silently ignored for that device.
 - **aerospace/**: Aerospace window manager configuration.
 - **wezterm/**: WezTerm terminal configuration.
 - **gemini/**: Gemini AI agent global rules (`GEMINI.md`) and global workflows.
