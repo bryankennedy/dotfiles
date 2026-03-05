@@ -59,3 +59,12 @@ When creating Mermaid diagrams, use these following standard  colors, which refl
     * `.agent/workflows/` - For reusable workflow definitions.
     * `.agent/memory/` - For project-specific context and decisions (e.g., `.agent/memory/decisions.md`).
     * `.agent/scratchpad.md` - For ephemeral notes or current task tracking.
+
+---
+
+## 7. GCloud Deployment Standards
+* **Scripting Preference:** Always prefer **Node.js** (via `bun`) over shell scripts for developing `gcloud` deployment and automation scripts.
+* **Secret Management:**
+    * **Loading:** All deployment secrets must be loaded using `dotenv` from a `.env` file.
+    * **No Plaintext:** Secrets must **never** be included as plaintext in any script or command.
+    * **GCP Integration:** Secrets should be added to Google Cloud resources (Cloud Run, Cloud Functions, etc.) only by referencing them from **Google Secret Manager**.

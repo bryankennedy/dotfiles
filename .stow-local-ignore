@@ -1,0 +1,10 @@
+# Standard VCS and system ignores
+^\.git$
+^\.gitignore$
+^\.DS_Store$
+
+# Non-stow directories — shared sources and repo-level files
+^_skills$
+^_archive$
+^scripts$
+^README\.md$
