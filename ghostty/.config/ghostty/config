@@ -23,6 +23,10 @@ theme = crispy
 window-padding-x = 50
 window-padding-y = 50
 macos-titlebar-style = tabs
+
+# Use a custom icon at ~/.config/ghostty/icons/Ghostty.icns
+macos-icon = custom
+
 background-opacity = 0.96
 unfocused-split-opacity = 0.5
 cursor-style = block
