@@ -1,0 +1,33 @@
+---
+description: Proactively review BigQuery SQL files for performance anti-patterns on open
+globs: **/*.sql
+alwaysApply: false
+---
+
+# BigQuery SQL Review
+
+When a `.sql` file is opened or edited, immediately scan it and flag the following as **performance warnings** before doing anything else:
+
+## Automatic checks
+
+**SELECT * (⚠️ Cost Warning)**
+- Flag any `SELECT *` or `SELECT <alias>.*` that fans out to a full table scan.
+- Fix: replace with an explicit column list containing only what the query needs.
+
+**Missing partition filter (⚠️ Performance Warning)**
+- Flag any query against a partitioned table that has no filter on the partition column (`_PARTITIONDATE`, `_PARTITIONTIME`, or the table's custom `DATE`/`TIMESTAMP` partition field) in the `WHERE` clause.
+- Fix: add `WHERE _PARTITIONDATE BETWEEN ... AND ...` (or equivalent) to prune scanned partitions.
+
+## How to report findings
+
+If either issue is found, open your response with a warning block before any other output:
+
+```
+⚠️  Performance warnings in <filename>:
+- Line 3: SELECT * — replace with explicit column list
+- Line 7: No partition filter on `events` — add a WHERE clause on _PARTITIONDATE
+```
+
+Then proceed with the refactored SQL following the full standards in the `bigquery-architect` skill.
+
+If no issues are found, confirm with a single line: `✅ No SELECT * or missing partition filters detected.`
