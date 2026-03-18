@@ -125,9 +125,6 @@ alt-9 = 'workspace 9'
 # Code
 alt-c = 'workspace C'
 
-# Salesforce DataLoader
-alt-d = 'workspace D'
-
 # Gemini
 alt-g = 'workspace G'
 
@@ -137,8 +134,11 @@ alt-m = 'workspace M'
 # Terminal
 alt-t = 'workspace T'
 
-# Personal
+# Personal - Screen 1
 alt-z = 'workspace Z'
+
+# Personal - Screen 2
+alt-y = 'workspace Y'
 
 # See: https://nikitabobko.github.io/AeroSpace/commands#move-node-to-workspace
 alt-shift-1 = ['move-node-to-workspace 1', 'workspace 1']
