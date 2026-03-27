@@ -1,5 +1,8 @@
+# Resolve this file's real directory so dotfiles can live anywhere.
+typeset -g DOTFILES_ZSH_DIR="${${(%):-%N}:A:h}"
+
 # Clean Profile (PATH, Environment)
-[ -f "$HOME/dotfiles/zsh/profile.zsh" ] && source "$HOME/dotfiles/zsh/profile.zsh"
+[ -f "$DOTFILES_ZSH_DIR/profile.zsh" ] && source "$DOTFILES_ZSH_DIR/profile.zsh"
 
 # Antigravity Terminal Fix
 # Prevents VS Code Shell Integration codes and interactive noise from breaking the agent.
@@ -57,7 +60,7 @@ setopt autocd
 export EZA_COLORS="da=37:ur=32:uw=31:ux=34:gr=32:gw=31:gx=34:tr=32:tw=31:tx=34:sn=33:sb=33:uu=37:gu=37"
 
 # Aliases
-[ -f "$HOME/dotfiles/zsh/aliases.zsh" ] && source "$HOME/dotfiles/zsh/aliases.zsh"
+[ -f "$DOTFILES_ZSH_DIR/aliases.zsh" ] && source "$DOTFILES_ZSH_DIR/aliases.zsh"
 
 # User configuration
 

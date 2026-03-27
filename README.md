@@ -68,7 +68,12 @@ exec zsh
 ```sh
 ls -l ~/.zshrc ~/.gitconfig ~/.vimrc ~/.config/ghostty ~/.config/wezterm ~/.config/karabiner ~/.config/starship.toml
 command -v starship antidote stow rg
+source ~/.zshrc
+alias l c
 ```
+
+Notes:
+- `zsh/.zshrc` loads `profile.zsh` and `aliases.zsh` relative to the location of `~/.zshrc`, so this repo can live at `~/src/dotfiles` (or any other path) without editing hardcoded paths.
 
 ## App Setup Scripts
 
