@@ -41,9 +41,13 @@
       homebrew = {
         enable = true;
         onActivation.cleanup = "zap"; # Uninstalls anything not listed here
+        taps = [
+          "nikitabobko/tap"
+        ];
         brews = [
           "antidote"
           "eza"
+          "zoxide"
           "ripgrep"
           "starship"
           "wget"
@@ -54,6 +58,7 @@
         casks = [
           "1password"
           "1password-cli"
+          "nikitabobko/tap/aerospace"
           "cursor"
           "ghostty"
           "google-chrome"
