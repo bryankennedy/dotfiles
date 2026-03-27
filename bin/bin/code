@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+VSCODE_CODE="/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code"
+
+if [[ -x "$VSCODE_CODE" ]]; then
+  exec "$VSCODE_CODE" "$@"
+fi
+
+echo "error: VS Code CLI not found at: $VSCODE_CODE" >&2
+echo "Install VS Code, or update this wrapper script." >&2
+exit 127

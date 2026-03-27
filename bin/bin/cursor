@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+CURSOR_BIN="/Applications/Cursor.app/Contents/Resources/app/bin/cursor"
+
+if [[ -x "$CURSOR_BIN" ]]; then
+  exec "$CURSOR_BIN" "$@"
+fi
+
+echo "error: Cursor CLI not found at: $CURSOR_BIN" >&2
+echo "Install Cursor, or update this wrapper script." >&2
+exit 127
+
