@@ -62,7 +62,6 @@
           "cursor"
           "ghostty"
           "google-chrome"
-          "visual-studio-code"
         ];
       };
       # --- HOMEBREW CONFIGURATION END ---
