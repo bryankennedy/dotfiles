@@ -90,6 +90,9 @@ extract() {
 # -------------------------------------------------------------------
 
 if [[ $(uname) == "Darwin" ]]; then
+  # Rebuild nix-darwin from this dotfiles repo.
+  alias drs='cd ~/src/dotfiles/nix-darwin && sudo darwin-rebuild switch --flake .#simple'
+
   # Replicate the tree function on macOS if not installed
   if ! command -v tree &> /dev/null; then
     alias tree="find . -print | sed -e 's;[^/]*/;|____;g;s;____|; |;g'"

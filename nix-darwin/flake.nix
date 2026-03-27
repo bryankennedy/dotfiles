@@ -43,6 +43,7 @@
         onActivation.cleanup = "zap"; # Uninstalls anything not listed here
         brews = [
           "antidote"
+          "eza"
           "ripgrep"
           "starship"
           "wget"
@@ -63,11 +64,20 @@
       # Necessary for using flakes on this system.
       nix.settings.experimental-features = "nix-command flakes";
 
+      # Allow Touch ID for sudo authentication prompts.
+      security.pam.services.sudo_local.touchIdAuth = true;
+
       # macOS system configs
       system.defaults = {
         dock.autohide = true;
         finder.AppleShowAllExtensions = true;
       };
+
+      # Accessibility: hold Control and scroll to zoom.
+      system.activationScripts.postActivation.text = ''
+        /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
+        /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelModifiersInt -int 262144
+      '';
 
       # Set Git commit hash for darwin-version.
       system.configurationRevision = self.rev or self.dirtyRev or null;
