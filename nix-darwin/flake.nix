@@ -20,9 +20,9 @@
       networking.computerName = "Aleph";
       networking.hostName = "aleph";
       networking.localHostName = "aleph";
-      
+
       # List packages installed in system profile.
-      environment.systemPackages = [ 
+      environment.systemPackages = [
         pkgs.vim
       ];
 
@@ -32,7 +32,7 @@
         enable = true;
         # User owning the Homebrew prefix
         user = "bk"; # TODO: Change this to your macOS username!
-        
+
         # Automatically migrate existing Homebrew installations
         autoMigrate = true;
       };
@@ -60,8 +60,12 @@
           "1password-cli"
           "nikitabobko/tap/aerospace"
           "cursor"
+          "visual-studio-code"
           "ghostty"
           "google-chrome"
+          "shottr"
+          "lastfm"
+          "obsidian"
         ];
       };
       # --- HOMEBREW CONFIGURATION END ---
