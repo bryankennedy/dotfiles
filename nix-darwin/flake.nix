@@ -88,11 +88,11 @@
       };
 
       # Accessibility: hold Control and scroll to zoom.
-      # Spotlight: Option+Space; Alfred: Cmd+Space (see script header).
+      # Spotlight: Cmd+Space → Option+Space (see scripts/spotlight-option-space-hotkey.sh).
       system.activationScripts.postActivation.text = ''
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelModifiersInt -int 262144
-        ${pkgs.bash}/bin/bash ${./scripts/alfred-spotlight-hotkeys.sh}
+        ${pkgs.bash}/bin/bash ${./scripts/spotlight-option-space-hotkey.sh}
       '';
 
       # Set Git commit hash for darwin-version.
