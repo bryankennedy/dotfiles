@@ -58,6 +58,8 @@
         casks = [
           "1password"
           "1password-cli"
+          "alfred"
+          "kitlangton-hex"
           "nikitabobko/tap/aerospace"
           "cursor"
           "visual-studio-code"
@@ -86,9 +88,11 @@
       };
 
       # Accessibility: hold Control and scroll to zoom.
+      # Spotlight: Option+Space; Alfred: Cmd+Space (see script header).
       system.activationScripts.postActivation.text = ''
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelModifiersInt -int 262144
+        ${pkgs.bash}/bin/bash ${./scripts/alfred-spotlight-hotkeys.sh}
       '';
 
       # Set Git commit hash for darwin-version.
