@@ -78,7 +78,10 @@
 
       # macOS system configs
       system.defaults = {
-        dock.autohide = true;
+        dock = {
+          autohide = true;
+          persistent-apps = [ ];
+        };
         finder.AppleShowAllExtensions = true;
       };
 
@@ -103,8 +106,8 @@
     # $ darwin-rebuild build --flake .#simple
     darwinConfigurations."simple" = nix-darwin.lib.darwinSystem {
       # We must include the nix-homebrew module here
-      modules = [ 
-        configuration 
+      modules = [
+        configuration
         nix-homebrew.darwinModules.nix-homebrew
       ];
     };
