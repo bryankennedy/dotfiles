@@ -1,0 +1,93 @@
+{
+  description = "Example nix-darwin system flake";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
+    nix-darwin.url = "github:LnL7/nix-darwin";
+    nix-darwin.inputs.nixpkgs.follows = "nixpkgs";
+
+    # Added nix-homebrew input
+    nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
+  };
+
+  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew }:
+  let
+    configuration = { pkgs, config, ... }: {
+      nix.enable = false;
+      system.primaryUser = "bk";
+
+      # Computer name
+      networking.computerName = "Aleph";
+      networking.hostName = "aleph";
+      networking.localHostName = "aleph";
+      
+      # List packages installed in system profile.
+      environment.systemPackages = [ 
+        pkgs.vim
+      ];
+
+      # --- HOMEBREW CONFIGURATION START ---
+      # This part installs/manages Homebrew itself
+      nix-homebrew = {
+        enable = true;
+        # User owning the Homebrew prefix
+        user = "bk"; # TODO: Change this to your macOS username!
+        
+        # Automatically migrate existing Homebrew installations
+        autoMigrate = true;
+      };
+
+      # This part manages the apps installed via Homebrew
+      homebrew = {
+        enable = true;
+        onActivation.cleanup = "zap"; # Uninstalls anything not listed here
+        brews = [
+          "antidote"
+          "ripgrep"
+          "starship"
+          "wget"
+          "htop"
+          "jq"
+          "stow"
+        ];
+        casks = [
+          "1password"
+          "1password-cli"
+          "cursor"
+          "ghostty"
+          "google-chrome"
+        ];
+      };
+      # --- HOMEBREW CONFIGURATION END ---
+
+      # Necessary for using flakes on this system.
+      nix.settings.experimental-features = "nix-command flakes";
+
+      # macOS system configs
+      system.defaults = {
+        dock.autohide = true;
+        finder.AppleShowAllExtensions = true;
+      };
+
+      # Set Git commit hash for darwin-version.
+      system.configurationRevision = self.rev or self.dirtyRev or null;
+
+      # Used for backwards compatibility.
+      system.stateVersion = 6;
+
+      # The platform the configuration will be used on.
+      nixpkgs.hostPlatform = "aarch64-darwin";
+    };
+  in
+  {
+    # Build darwin flake using:
+    # $ darwin-rebuild build --flake .#simple
+    darwinConfigurations."simple" = nix-darwin.lib.darwinSystem {
+      # We must include the nix-homebrew module here
+      modules = [ 
+        configuration 
+        nix-homebrew.darwinModules.nix-homebrew
+      ];
+    };
+  };
+}

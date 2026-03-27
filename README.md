@@ -5,40 +5,70 @@ My personal configuration files managed with [GNU Stow](https://www.gnu.org/soft
 ## Prerequisites
 
 - **Git**
-- **GNU Stow**:
-  ```sh
-  brew install stow
-  ```
+- **Homebrew** (for bootstrap tools)
+- **GNU Stow** (installed either via nix-darwin Homebrew config below, or manually with `brew install stow`)
 
-## Installation
+## Installation (fresh machine)
 
-1. **Clone the repository:**
-   ```sh
-   git clone https://github.com/yourusername/dotfiles.git ~/dotfiles
-   cd ~/dotfiles
-   ```
+### 1) Clone the repository
 
-2. **Apply configurations:**
-   Use `stow` to symlink the configurations to your home directory.
+```sh
+git clone https://github.com/yourusername/dotfiles.git ~/src/dotfiles
+cd ~/src/dotfiles
+```
 
-   **Apply all configurations:**
-   ```sh
-   stow .
-   ```
+### 2) Apply nix-darwin system config (recommended)
 
-   **Apply individual configurations:**
-   ```sh
-   stow ghostty
-   stow zsh
-   stow vim
-   stow git
-   stow starship
-   stow karabiner
-   stow aerospace
-   stow wezterm
-   stow gemini
-   stow cursor
-   ```
+This repo includes a `nix-darwin/flake.nix` that manages Homebrew formulas and casks.
+
+```sh
+cd ~/src/dotfiles
+git add nix-darwin/flake.nix nix-darwin/flake.lock
+cd nix-darwin
+sudo darwin-rebuild switch --flake .#simple
+```
+
+Notes:
+- `darwin-rebuild switch` must be run as root on recent nix-darwin versions.
+- Flakes only see Git-tracked files; stage `flake.nix`/`flake.lock` before rebuilding.
+
+### 3) Stow dotfiles into `$HOME`
+
+Run stow from the repo root and pass explicit packages:
+
+```sh
+cd ~/src/dotfiles
+stow -v -t "$HOME" ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor
+```
+
+Why this command shape matters:
+- Several packages include `.config/*`.
+- Stowing these packages together lets Stow link into existing `~/.config/<app>` paths instead of trying to replace all of `~/.config`.
+
+### 4) Regenerate Antidote plugin bundle (required on a new machine)
+
+The checked-in `~/.zsh_plugins.zsh` can reference stale cache paths from another machine. Rebuild it locally:
+
+```sh
+rm -f ~/.zsh_plugins.zsh
+antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
+exec zsh
+```
+
+If plugin download paths are still missing:
+
+```sh
+antidote update
+antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
+exec zsh
+```
+
+### 5) Optional verification
+
+```sh
+ls -l ~/.zshrc ~/.gitconfig ~/.vimrc ~/.config/ghostty ~/.config/wezterm ~/.config/karabiner ~/.config/starship.toml
+command -v starship antidote stow rg
+```
 
 ## App Setup Scripts
 
