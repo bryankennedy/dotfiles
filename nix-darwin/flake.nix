@@ -66,7 +66,6 @@
           "ghostty"
           "google-chrome"
           "shottr"
-          "lastfm"
           "obsidian"
         ];
       };
