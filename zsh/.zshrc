@@ -37,8 +37,10 @@ zmodload zsh/complist
 zstyle ':completion:*' menu select
 zstyle ':completion:*' list-colors "${(s.:.)LS_COLORS}"
 
-# Starship
-eval "$(starship init zsh)"
+# Starship (guard: PATH may not include Homebrew until profile has run reliably)
+if command -v starship > /dev/null; then
+  eval "$(starship init zsh)"
+fi
 
 # Modern Tools
 if command -v zoxide > /dev/null; then
