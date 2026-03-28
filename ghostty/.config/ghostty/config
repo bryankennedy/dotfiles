@@ -24,8 +24,11 @@ window-padding-x = 50
 window-padding-y = 50
 macos-titlebar-style = tabs
 
-# Use a custom icon at ~/.config/ghostty/icons/Ghostty.icns
+# Dock / app switcher icon: ICNS from this repo at ghostty/.config/ghostty/Ghostty.icns (stow → ~/.config/ghostty/).
 macos-icon = custom
+macos-custom-icon = ~/.config/ghostty/Ghostty.icns
+# I like this option but don't want to use it right now.
+# macos-icon = holographic
 
 background-opacity = 0.96
 unfocused-split-opacity = 0.5
