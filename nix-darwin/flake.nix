@@ -47,6 +47,7 @@
         ];
         brews = [
           "antidote"
+          "duckdb"
           "eza"
           "htop"
           "jq"
