@@ -24,6 +24,7 @@
       # List packages installed in system profile.
       environment.systemPackages = [
         pkgs.vim
+        pkgs.bun
       ];
 
       # --- HOMEBREW CONFIGURATION START ---
