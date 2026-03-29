@@ -48,26 +48,26 @@
         brews = [
           "antidote"
           "eza"
-          "zoxide"
-          "ripgrep"
-          "starship"
-          "wget"
           "htop"
           "jq"
+          "ripgrep"
+          "starship"
           "stow"
+          "wget"
+          "zoxide"
         ];
         casks = [
           "1password"
           "1password-cli"
           "alfred"
-          "kitlangton-hex"
-          "nikitabobko/tap/aerospace"
           "cursor"
-          "visual-studio-code"
           "ghostty"
           "google-chrome"
-          "shottr"
+          "kitlangton-hex"
+          "nikitabobko/tap/aerospace"
           "obsidian"
+          "shottr"
+          "visual-studio-code"
         ];
       };
       # --- HOMEBREW CONFIGURATION END ---
