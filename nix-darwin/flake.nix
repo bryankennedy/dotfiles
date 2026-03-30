@@ -83,6 +83,7 @@
       system.defaults = {
         dock = {
           autohide = true;
+          mineffect = "scale";
           persistent-apps = [ ];
         };
         finder.AppleShowAllExtensions = true;
