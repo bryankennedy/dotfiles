@@ -122,6 +122,9 @@ alt-7 = 'workspace 7'
 alt-8 = 'workspace 8'
 alt-9 = 'workspace 9'
 
+# Personal Work Workspace
+alt-b = 'workspace B'
+
 # Code
 alt-c = 'workspace C'
 
