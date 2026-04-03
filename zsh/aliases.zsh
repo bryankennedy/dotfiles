@@ -102,6 +102,7 @@ if [[ $(uname) == "Darwin" ]]; then
   alias topp='top -ocpu -R -F -s 2 -n30'
 
   # Display images in the terminal
+  # I remember the name imgcat from my iTerm config, so I'm keeping it.
   alias imgcat='chafa'
 
   # Copy current directory to clipboard

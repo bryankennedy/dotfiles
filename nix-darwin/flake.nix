@@ -59,6 +59,7 @@
           "bat"
           # Images in the terminal - Aliases to imgcat
           "chafa"
+          "csvlens"
           "duckdb"
           "eza"
           "htop"
