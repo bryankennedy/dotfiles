@@ -46,9 +46,14 @@
         enable = true;
         onActivation.cleanup = "zap"; # Uninstalls anything not listed here
         taps = [
+          "drawthingsai/draw-things"
           "nikitabobko/tap"
         ];
         brews = [
+          {
+            name = "drawthingsai/draw-things/draw-things-cli";
+            args = [ "HEAD" ];
+          }
           "antidote"
           "duckdb"
           "eza"
