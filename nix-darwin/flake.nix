@@ -55,9 +55,15 @@
             args = [ "HEAD" ];
           }
           "antidote"
+          # Better cat
+          "bat"
+          # Images in the terminal - Aliases to imgcat
+          "chafa"
           "duckdb"
           "eza"
           "htop"
+          # Git TUI - Makes single like add/commits easy
+          "lazygit"
           # JSON data utility
           "jq"
           "ripgrep"
@@ -65,6 +71,10 @@
           "starship"
           # Link items in this repo into the home dir
           "stow"
+          # Puthon to Python
+          "thefuck"
+          # Show files in a directory in a tree
+          "tree"
           # Download stuff
           "wget"
           # Jump around directories

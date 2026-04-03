@@ -101,6 +101,9 @@ if [[ $(uname) == "Darwin" ]]; then
   # Quicker smaller top
   alias topp='top -ocpu -R -F -s 2 -n30'
 
+  # Display images in the terminal
+  alias imgcat='chafa'
+
   # Copy current directory to clipboard
   alias cpwd='pwd|xargs echo -n|pbcopy'
 
