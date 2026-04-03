@@ -25,6 +25,7 @@
       environment.systemPackages = [
         pkgs.vim
         pkgs.bun
+        pkgs.nodePackages."@google/clasp"
       ];
 
       # --- HOMEBREW CONFIGURATION START ---
