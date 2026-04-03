@@ -23,11 +23,11 @@
 
       # List packages installed in system profile.
       environment.systemPackages = [
-        pkgs.vim
         pkgs.bun
         pkgs.google-cloud-sdk
         pkgs.imagemagick
         pkgs.nodePackages."@google/clasp"
+        pkgs.vim
       ];
 
       # --- HOMEBREW CONFIGURATION START ---
