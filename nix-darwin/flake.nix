@@ -25,6 +25,7 @@
       environment.systemPackages = [
         pkgs.vim
         pkgs.bun
+        pkgs.google-cloud-sdk
         pkgs.nodePackages."@google/clasp"
       ];
 
