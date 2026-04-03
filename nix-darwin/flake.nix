@@ -51,11 +51,16 @@
           "duckdb"
           "eza"
           "htop"
+          # JSON data utility
           "jq"
           "ripgrep"
+          # Simple terminal
           "starship"
+          # Link items in this repo into the home dir
           "stow"
+          # Download stuff
           "wget"
+          # Jump around directories
           "zoxide"
         ];
         casks = [
