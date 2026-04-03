@@ -26,6 +26,7 @@
         pkgs.vim
         pkgs.bun
         pkgs.google-cloud-sdk
+        pkgs.imagemagick
         pkgs.nodePackages."@google/clasp"
       ];
 
