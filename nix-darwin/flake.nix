@@ -63,6 +63,7 @@
           "duckdb"
           "eza"
           "htop"
+          "go"
           # Git TUI - Makes single like add/commits easy
           "lazygit"
           # JSON data utility
