@@ -3,3 +3,6 @@
 
 # Karabiner
 karabiner/.config/karabiner/automatic_backups/
+
+# Claude Code session-specific permissions (auto-generated, not version controlled)
+.claude/settings.local.json
