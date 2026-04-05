@@ -35,7 +35,7 @@
       nix-homebrew = {
         enable = true;
         # User owning the Homebrew prefix
-        user = "bk"; # TODO: Change this to your macOS username!
+        user = "bk";
 
         # Automatically migrate existing Homebrew installations
         autoMigrate = true;
