@@ -1,1 +1,1 @@
-../../../../_skills/announce-completion.md
+../../../../_agent/skills/announce-completion.md

@@ -1,1 +1,1 @@
-../../../../_skills/smart_commit.md
+../../../../_agent/skills/smart_commit.md

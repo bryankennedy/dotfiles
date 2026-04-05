@@ -1,1 +1,1 @@
-../../../../_skills/test-with-browser.md
+../../../../_agent/skills/test-with-browser.md
