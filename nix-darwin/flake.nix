@@ -26,6 +26,7 @@
         pkgs.bun
         pkgs.google-cloud-sdk
         pkgs.imagemagick
+        pkgs.mermaid-cli
         pkgs.nodePackages."@google/clasp"
         pkgs.vim
       ];
