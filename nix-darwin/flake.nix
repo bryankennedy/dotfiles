@@ -24,6 +24,7 @@
       # List packages installed in system profile.
       environment.systemPackages = [
         pkgs.bun
+        pkgs.claude-code
         pkgs.google-cloud-sdk
         pkgs.imagemagick
         pkgs.mermaid-cli
@@ -131,6 +132,9 @@
 
       # The platform the configuration will be used on.
       nixpkgs.hostPlatform = "aarch64-darwin";
+      nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (pkgs.lib.getName pkg) [
+        "claude-code"
+      ];
     };
   in
   {
