@@ -94,6 +94,7 @@
           "kitlangton-hex"
           "nikitabobko/tap/aerospace"
           "obsidian"
+          "claude"
           "shottr"
           "visual-studio-code"
         ];
