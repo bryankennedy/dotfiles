@@ -115,6 +115,7 @@
           persistent-apps = [ ];
         };
         finder.AppleShowAllExtensions = true;
+        NSGlobalDomain.ApplePressAndHoldEnabled = false;
       };
 
       # Accessibility: hold Control and scroll to zoom.
