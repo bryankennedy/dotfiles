@@ -50,6 +50,7 @@
         onActivation.cleanup = "zap"; # Uninstalls anything not listed here
         taps = [
           "drawthingsai/draw-things"
+          "FelixKratz/formulae"
           "nikitabobko/tap"
         ];
         brews = [
@@ -58,6 +59,8 @@
             args = [ "HEAD" ];
           }
           "antidote"
+          # Window border highlights for active/inactive windows
+          "FelixKratz/formulae/borders"
           # Better cat
           "bat"
           # Images in the terminal - Aliases to imgcat
