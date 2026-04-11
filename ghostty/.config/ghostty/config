@@ -1,6 +1,6 @@
 # Ghostty Configuration
 
-command = /bin/zsh
+command = /opt/homebrew/bin/tmux new-session -A -s main
 font-family = "Monaco"
 font-size = 14
 # --- Popular Themes (2024/2025 Top Picks) ---
@@ -11,8 +11,8 @@ font-size = 14
 # theme = GruvboxDark           # (Retro earthy tones)
 # theme = OneHalfDark           # (Clean, balanced Atom-like theme)
 # theme = Snazzy                # (Elegant with bright colors)
-theme = crispy
-# theme = rose-pine             # (Soothing pastel palette)
+# theme = crispy
+theme = rose-pine             # (Soothing pastel palette)
 # theme = kanagawa              # (Inspired by Japanese paintings)
 # theme = monokai_pro           # (Professional, high contrast)
 
@@ -40,4 +40,14 @@ shell-integration = detect
 
 # Red tracer path for cursor jumps
 custom-shader = ./shaders/cursor_blaze.glsl
-# notify-on-command-finish = unfocused
+# Notify only when the window is not in focus
+notify-on-command-finish = unfocused
+
+# Enable desktop notifications (and optionally the system bell)
+notify-on-command-finish-action = notify,bell
+
+# How long a command must run before it triggers a notification
+notify-on-command-finish-after = 10s
+
+# Flash on bell
+bell-features = attention
