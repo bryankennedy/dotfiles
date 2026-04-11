@@ -29,6 +29,7 @@ description: Review uncommitted changes, break them into logical chunks, and cre
         - **Subject**: Concise summary in imperative mood, no capitalization (unless proper noun), no period at end (e.g., "fix: resolve race condition in user loader").
         - **Body**: Explain the context (why was this change needed?), the solution (what did you do?), and any side effects.
      c. **Commit**: Run `git commit -m "Subject" -m "Body"`.
+        - **No attribution**: Do NOT add any `Co-Authored-By` trailers or Claude/AI attribution of any kind to commit messages.
 
 5. **Verify**
    - Run `git status` to ensure all intended changes are committed.
