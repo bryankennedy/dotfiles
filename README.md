@@ -38,7 +38,7 @@ Run stow from the repo root and pass explicit packages:
 
 ```sh
 cd ~/src/dotfiles
-stow -v -t "$HOME" ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor
+stow -v -t "$HOME" ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux
 ```
 
 Why this command shape matters:
@@ -107,6 +107,7 @@ The repository is structured so that running `stow <package>` from the root will
 - **wezterm/**: WezTerm terminal configuration.
 - **gemini/**: Gemini AI agent global rules (`GEMINI.md`) and global workflows. The workflow files in `global_workflows/` are symlinks into `_skills/`.
 - **cursor/**: Cursor AI agent skills. Each `SKILL.md` is a symlink into `_skills/`.
+- **tmux/**: tmux configuration (`~/.tmux.conf`). Uses `Ctrl-a` as prefix, vim-style pane navigation, mouse support, and a minimalist status bar.
 
 ### Shared sources (not stow packages)
 
