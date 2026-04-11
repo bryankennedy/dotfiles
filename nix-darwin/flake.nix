@@ -28,6 +28,7 @@
         pkgs.google-cloud-sdk
         pkgs.imagemagick
         pkgs.mermaid-cli
+        pkgs.neovim
         pkgs.nodePackages."@google/clasp"
         pkgs.vim
       ];
@@ -65,6 +66,9 @@
           "duckdb"
           "eza"
           "htop"
+          # Go based disk space lookup tool - Fast (installed as `gdu-go` to avoid coreutils conflict)
+          "gdu"
+          "gh"
           "go"
           # Git TUI - Makes single like add/commits easy
           "lazygit"
@@ -77,6 +81,7 @@
           "stow"
           # Puthon to Python
           "thefuck"
+          "tmux"
           # Show files in a directory in a tree
           "tree"
           # Download stuff
@@ -91,8 +96,10 @@
           "cursor"
           "ghostty"
           "google-chrome"
+          "keycastr"
           "kitlangton-hex"
           "nikitabobko/tap/aerospace"
+          "neovide-app"
           "obsidian"
           "claude"
           "shottr"
@@ -121,9 +128,20 @@
       # Accessibility: hold Control and scroll to zoom.
       # Spotlight: Cmd+Space → Option+Space (see scripts/spotlight-option-space-hotkey.sh).
       system.activationScripts.postActivation.text = ''
+        ln -sf ${pkgs.neovim}/bin/nvim /usr/local/bin/nvim
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelModifiersInt -int 262144
         ${pkgs.bash}/bin/bash ${./scripts/spotlight-option-space-hotkey.sh}
+        /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun -e "
+          const { readFileSync, writeFileSync, mkdirSync } = require('fs');
+          const dir = process.env.HOME + '/.claude';
+          const file = dir + '/settings.json';
+          let cfg = {};
+          try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch(_) {}
+          cfg.preferredNotifChannel = 'terminal_bell';
+          mkdirSync(dir, { recursive: true });
+          writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
+        "
       '';
 
       # Set Git commit hash for darwin-version.

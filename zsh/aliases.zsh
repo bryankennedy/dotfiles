@@ -101,6 +101,9 @@ if [[ $(uname) == "Darwin" ]]; then
   # Quicker smaller top
   alias topp='top -ocpu -R -F -s 2 -n30'
 
+  # gdu is installed as gdu-go to avoid coreutils conflict
+  alias gdu='gdu-go'
+
   # Display images in the terminal
   # I remember the name imgcat from my iTerm config, so I'm keeping it.
   alias imgcat='chafa'
