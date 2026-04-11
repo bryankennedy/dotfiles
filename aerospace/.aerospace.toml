@@ -234,6 +234,11 @@ run = ['layout tiling', 'move-node-to-workspace M']
 if.app-name-regex-substring = 'SWT'
 run = ['layout floating', 'move-node-to-workspace D']
 
+# Color Slurp - color picker utility, always floating
+[[on-window-detected]]
+if.app-id = 'com.IdeaPunch.ColorSlurp'
+run = 'layout floating'
+
 # [[on-window-detected]]
 # if.app-id = 'md.obsidian'
 # run = ['layout floating', 'move-node-to-workspace O']
