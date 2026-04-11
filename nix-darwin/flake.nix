@@ -100,6 +100,8 @@
           "ghostty"
           "google-chrome"
           "keycastr"
+          # Finder alternative
+          "marta"
           "kitlangton-hex"
           "nikitabobko/tap/aerospace"
           "neovide-app"
