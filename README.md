@@ -117,3 +117,7 @@ The repository is structured so that running `stow <package>` from the root will
   1. Create the workflow file in `_skills/` with `name:` and `description:` frontmatter.
   2. Symlink it into the Gemini package: `ln -s ../../../../_skills/<file>.md gemini/.gemini/antigravity/global_workflows/<file>.md`
   3. Create a Cursor skill dir and symlink: `mkdir cursor/.cursor/skills/<name> && ln -s ../../../../_skills/<file>.md cursor/.cursor/skills/<name>/SKILL.md`
+
+# Considered and rejected tools
+* Zellij - Too heavy for my simple tmux usage. Don't need floating panes.
+* Oh my zsh - Too heavy. Used to use, but the terminal started slowing down after a few years.
