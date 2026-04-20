@@ -73,6 +73,8 @@
           "gdu"
           "gh"
           "go"
+          # Gmail export utility
+          "gyb"
           # Git TUI - Makes single like add/commits easy
           "lazygit"
           # JSON data utility
