@@ -98,6 +98,7 @@
           "1password"
           "1password-cli"
           "alfred"
+          "audacity"
           "cursor"
           "ghostty"
           "google-chrome"
