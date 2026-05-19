@@ -29,7 +29,7 @@
         pkgs.imagemagick
         pkgs.mermaid-cli
         pkgs.neovim
-        pkgs.nodePackages."@google/clasp"
+        pkgs.google-clasp
         pkgs.vim
       ];
 
