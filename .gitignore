@@ -6,3 +6,15 @@ karabiner/.config/karabiner/automatic_backups/
 
 # Claude Code session-specific permissions (auto-generated, not version controlled)
 .claude/settings.local.json
+
+# Antigravity CLI — runtime and machine-specific data (not portable across machines)
+# Keep settings.json and keybindings.json (user config); ignore everything else
+gemini/.gemini/antigravity-cli/*
+!gemini/.gemini/antigravity-cli/settings.json
+!gemini/.gemini/antigravity-cli/keybindings.json
+
+# Antigravity CLI — project session data (UUID-named, auto-generated per session)
+gemini/.gemini/config/projects/
+
+# Antigravity CLI — migration marker (auto-generated one-time flag)
+gemini/.gemini/config/.migrated
