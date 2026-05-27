@@ -5,6 +5,10 @@ set nocompatible              " Use Vim defaults instead of Vi
 set encoding=utf-8
 set mouse=a                   " Enable mouse support
 
+" Color Theme (matches 'crispy' Ghostty terminal palette — Tomorrow Night)
+set background=dark
+colorscheme Tomorrow-Night
+
 " UI Config
 syntax on                     " Enable syntax highlighting
 set number                    " Show line numbers

@@ -86,3 +86,7 @@ setopt HIST_SAVE_NO_DUPS     # Don't write duplicate entries in the history file
 # Add bun to PATH
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+
+# Added by Antigravity CLI installer
+export PATH="/Users/bk/.local/bin:$PATH"
