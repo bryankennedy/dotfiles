@@ -150,6 +150,7 @@
           mkdirSync(dir, { recursive: true });
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "
+        /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
       '';
 
       # Set Git commit hash for darwin-version.
