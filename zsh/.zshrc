@@ -64,6 +64,9 @@ export EZA_COLORS="da=37:ur=32:uw=31:ux=34:gr=32:gw=31:gx=34:tr=32:tw=31:tx=34:s
 # Aliases
 [ -f "$DOTFILES_ZSH_DIR/aliases.zsh" ] && source "$DOTFILES_ZSH_DIR/aliases.zsh"
 
+# Functions
+[ -f "$DOTFILES_ZSH_DIR/functions.zsh" ] && source "$DOTFILES_ZSH_DIR/functions.zsh"
+
 # User configuration
 
 # History Configuration
