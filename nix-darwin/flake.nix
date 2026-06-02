@@ -29,6 +29,7 @@
         pkgs.imagemagick
         pkgs.mermaid-cli
         pkgs.neovim
+        pkgs.nodejs
         pkgs.google-clasp
         pkgs.vim
       ];
@@ -99,17 +100,18 @@
           "1password-cli"
           "alfred"
           "audacity"
+          "claude"
           "cursor"
           "ghostty"
           "google-chrome"
           "keycastr"
+          "kitlangton-hex"
           # Finder alternative
           "marta"
-          "kitlangton-hex"
-          "nikitabobko/tap/aerospace"
           "neovide-app"
+          "nikitabobko/tap/aerospace"
           "obsidian"
-          "claude"
+          "ollama-app"
           "shottr"
           "visual-studio-code"
         ];
