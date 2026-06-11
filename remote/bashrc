@@ -35,6 +35,11 @@ __git_branch() {
 }
 export PS1='\[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;34m\]\w\[\033[0;33m\]$(__git_branch)\[\033[0m\]\$ '
 
+# --- Zoxide (j to jump, matching macOS zsh config) -----------------------
+if command -v zoxide &> /dev/null; then
+  eval "$(zoxide init bash --cmd j)"
+fi
+
 # --- Core aliases (shared with macOS zsh) ---------------------------------
 if [ -f "$DOTFILES_DIR/zsh/aliases-core.zsh" ]; then
   source "$DOTFILES_DIR/zsh/aliases-core.zsh"

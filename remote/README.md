@@ -23,8 +23,8 @@ git config --global user.email "you@example.com"
 
 | File | Purpose |
 |------|--------|
-| `install.sh` | Installer — clones repo, symlinks configs, generates gitconfig. Safe to re-run. |
-| `bashrc` | Bash config — PATH, prompt, history, sources `zsh/aliases-core.zsh`. Symlinked to `~/.bashrc`. |
+| `install.sh` | Installer — clones repo, symlinks configs, generates gitconfig, installs zoxide. Safe to re-run. |
+| `bashrc` | Bash config — PATH, prompt, history, zoxide (`j`), sources `zsh/aliases-core.zsh`. Symlinked to `~/.bashrc`. |
 
 ## What lives where
 
