@@ -5,7 +5,7 @@
 #   git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/remote/install.sh
 #
 # Or one-liner:
-#   bash <(curl -sL https://raw.githubusercontent.com/bryankennedy/dotfiles/master/remote/install.sh)
+#   bash <(curl -sL https://raw.githubusercontent.com/bryankennedy/dotfiles/main/remote/install.sh)
 #
 # What it does:
 #   1. Clones the repo (if not already present)

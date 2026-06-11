@@ -97,10 +97,10 @@ alias gco='git checkout'
 alias gl='git log --oneline --decorate --color=always | less -R'
 alias gd='git diff'
 alias gps='git push'
-alias gpsm='git push origin master'
+alias gpsm='git push origin main'
 alias gpsd='git push origin develop'
 alias gpl='git pull'
-alias gplm='git pull origin master'
+alias gplm='git pull origin main'
 alias gpld='git pull origin develop'
 
 # Open the current repo on GitHub (works on macOS and Linux)
