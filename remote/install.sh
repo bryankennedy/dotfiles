@@ -90,6 +90,16 @@ if [ ! -f "$HOME/.bash_profile" ] || ! grep -q '.bashrc' "$HOME/.bash_profile" 2
   dim "  added .bashrc source to .bash_profile"
 fi
 
+# --- Zoxide ---------------------------------------------------------------
+green "\nZoxide"
+if command -v zoxide &> /dev/null; then
+  dim "  zoxide already installed"
+else
+  green "  installing zoxide..."
+  curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh 2>&1
+  green "  installed zoxide"
+fi
+
 # --- Summary --------------------------------------------------------------
 echo ""
 green "Done! Restart your shell or run: source ~/.bashrc"

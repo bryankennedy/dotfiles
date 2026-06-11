@@ -145,6 +145,8 @@ git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/re
 
 Core aliases from `zsh/aliases-core.zsh` are sourced by the bashrc.
 
+The installer also installs [zoxide](https://github.com/ajeetdsouza/zoxide) for fast directory jumping. Use `j` to jump, matching the macOS zsh config.
+
 ### Post-install: set your git identity
 
 ```sh
