@@ -90,6 +90,28 @@ if [ ! -f "$HOME/.bash_profile" ] || ! grep -q '.bashrc' "$HOME/.bash_profile" 2
   dim "  added .bashrc source to .bash_profile"
 fi
 
+# --- Claude Code ----------------------------------------------------------
+# Symlink global rules and commands into ~/.claude/ so Claude Code picks
+# them up. Uses the same _agent/ source files as the macOS stow setup.
+green "\nClaude Code"
+mkdir -p "$HOME/.claude/commands"
+
+# Global rules (CLAUDE.md)
+# Only link if there isn't already a non-dotfiles CLAUDE.md (e.g. from Shelley)
+if [ -L "$HOME/.claude/CLAUDE.md" ] || [ ! -e "$HOME/.claude/CLAUDE.md" ]; then
+  ln -sf "$DOTFILES_DIR/_agent/rules/global.md" "$HOME/.claude/CLAUDE.md"
+  green "  linked CLAUDE.md"
+else
+  dim "  skipped CLAUDE.md (existing non-symlink file)"
+fi
+
+# Commands (symlink each skill)
+for skill in "$DOTFILES_DIR"/_agent/skills/*.md; do
+  name=$(basename "$skill")
+  ln -sf "$skill" "$HOME/.claude/commands/$name"
+  green "  linked command: $name"
+done
+
 # --- Zoxide ---------------------------------------------------------------
 green "\nZoxide"
 if command -v zoxide &> /dev/null; then
