@@ -1,0 +1,44 @@
+# ~/.bashrc — Remote VM shell config (lightweight bash)
+# Installed by dotfiles/remote/install.sh
+
+DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
+
+# --- Non-interactive guard ------------------------------------------------
+[[ $- != *i* ]] && return
+
+# --- PATH -----------------------------------------------------------------
+export PATH="$HOME/bin:$HOME/.local/bin:$HOME/go/bin:$PATH"
+
+# --- Editor ---------------------------------------------------------------
+export EDITOR="vim"
+export VISUAL="vim"
+export GIT_EDITOR="vim"
+
+# --- History --------------------------------------------------------------
+export HISTFILE="$HOME/.bash_history"
+export HISTSIZE=100000
+export HISTFILESIZE=100000
+export HISTCONTROL=ignoredups:erasedups
+shopt -s histappend
+
+# --- Shell options --------------------------------------------------------
+shopt -s autocd 2>/dev/null   # cd by typing directory name
+shopt -s cdspell              # fix minor cd typos
+shopt -s checkwinsize         # update LINES/COLUMNS after each command
+
+# --- Prompt ---------------------------------------------------------------
+# Lightweight git-aware prompt (no starship dependency)
+__git_branch() {
+  local branch
+  branch=$(git symbolic-ref --short HEAD 2>/dev/null || git describe --tags --exact-match 2>/dev/null)
+  [ -n "$branch" ] && printf ' (%s)' "$branch"
+}
+export PS1='\[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;34m\]\w\[\033[0;33m\]$(__git_branch)\[\033[0m\]\$ '
+
+# --- Core aliases (shared with macOS zsh) ---------------------------------
+if [ -f "$DOTFILES_DIR/zsh/aliases-core.zsh" ]; then
+  source "$DOTFILES_DIR/zsh/aliases-core.zsh"
+fi
+
+# --- Local overrides (not checked in) -------------------------------------
+[ -f "$HOME/.bashrc.local" ] && source "$HOME/.bashrc.local"

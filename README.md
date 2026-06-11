@@ -118,6 +118,50 @@ The repository is structured so that running `stow <package>` from the root will
   2. Symlink it into the Gemini package: `ln -s ../../../../_skills/<file>.md gemini/.gemini/antigravity/global_workflows/<file>.md`
   3. Create a Cursor skill dir and symlink: `mkdir cursor/.cursor/skills/<name> && ln -s ../../../../_skills/<file>.md cursor/.cursor/skills/<name>/SKILL.md`
 
+## Remote VM Setup (exe.dev, cloud VMs, etc.)
+
+A lightweight bash-based config for headless Linux VMs. Includes vim, tmux, git, and your core aliases — no macOS dependencies, no personal identity leaked.
+
+### Quick install
+
+```sh
+git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/remote/install.sh
+```
+
+### What gets installed
+
+| File | Source | Notes |
+|------|--------|-------|
+| `~/.bashrc` | `remote/bashrc` | Lightweight bash config, git-aware prompt |
+| `~/.vimrc` | `vim/.vimrc` | Symlinked (shared with mac) |
+| `~/.tmux.conf` | `tmux/.tmux.conf` | Symlinked (shared with mac) |
+| `~/.gitconfig` | `remote/gitconfig` | Copied — no personal email, uses `[include]` for local overrides |
+| `~/.gitignore_global` | `git/.gitignore_global` | Symlinked (shared with mac) |
+
+Core aliases from `zsh/aliases-core.zsh` are sourced by the bashrc.
+
+Set your git identity per-VM:
+
+```sh
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+Or put it in `~/.gitconfig.local` (git-ignored, included automatically).
+
+Local bash overrides go in `~/.bashrc.local`.
+
+### Alias architecture
+
+Aliases are split into two files:
+
+- **`zsh/aliases-core.zsh`** — Portable aliases (navigation, git, listing, extraction). Sourced by both the macOS zsh config and the remote bash config.
+- **`zsh/aliases-macos.zsh`** — macOS-only aliases (Antigravity, pbcopy, mvim, nix-darwin, etc.). Only loaded on Darwin.
+
+The existing `zsh/aliases.zsh` is now a thin loader that sources both files.
+
+---
+
 # Considered and rejected tools
 * Zellij - Too heavy for my simple tmux usage. Don't need floating panes.
 * Oh my zsh - Too heavy. Used to use, but the terminal started slowing down after a few years.
