@@ -22,9 +22,12 @@
       networking.localHostName = "aleph";
 
       # List packages installed in system profile.
+      # Note: claude-code is intentionally NOT installed via nix — it's
+      # installed globally via `bun install -g @anthropic-ai/claude-code`
+      # in the activation script below so we always get the latest release
+      # from npm rather than waiting for the nixpkgs version bump.
       environment.systemPackages = [
         pkgs.bun
-        pkgs.claude-code
         pkgs.google-cloud-sdk
         pkgs.imagemagick
         pkgs.mermaid-cli
@@ -153,6 +156,7 @@
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
+        /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun install -g @anthropic-ai/claude-code || true
       '';
 
       # Set Git commit hash for darwin-version.
@@ -163,9 +167,6 @@
 
       # The platform the configuration will be used on.
       nixpkgs.hostPlatform = "aarch64-darwin";
-      nixpkgs.config.allowUnfreePredicate = pkg: builtins.elem (pkgs.lib.getName pkg) [
-        "claude-code"
-      ];
     };
   in
   {
