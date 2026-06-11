@@ -109,6 +109,10 @@ The repository is structured so that running `stow <package>` from the root will
 - **cursor/**: Cursor AI agent skills. Each `SKILL.md` is a symlink into `_skills/`.
 - **tmux/**: tmux configuration (`~/.tmux.conf`). Uses `Ctrl-a` as prefix, vim-style pane navigation, mouse support, and a minimalist status bar.
 
+### Remote VM config (not a stow package)
+
+- **`remote/`**: Lightweight bash-based dotfiles for headless Linux VMs. Has its own installer (`install.sh`) that symlinks shared configs (vim, tmux) and generates a safe gitconfig. See [Remote VM Setup](#remote-vm-setup-exedev-cloud-vms-etc) above.
+
 ### Shared sources (not stow packages)
 
 - **`_skills/`**: Single source of truth for all AI agent workflows/skills. Both the `gemini` and `cursor` packages symlink into here — edit a file once, it updates everywhere.
@@ -117,6 +121,76 @@ The repository is structured so that running `stow <package>` from the root will
   1. Create the workflow file in `_skills/` with `name:` and `description:` frontmatter.
   2. Symlink it into the Gemini package: `ln -s ../../../../_skills/<file>.md gemini/.gemini/antigravity/global_workflows/<file>.md`
   3. Create a Cursor skill dir and symlink: `mkdir cursor/.cursor/skills/<name> && ln -s ../../../../_skills/<file>.md cursor/.cursor/skills/<name>/SKILL.md`
+
+## Remote VM Setup (exe.dev, cloud VMs, etc.)
+
+A lightweight bash-based config for headless Linux VMs. Includes vim, tmux, git, and your core aliases — no macOS dependencies, no personal identity leaked.
+
+### Quick install
+
+```sh
+git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/remote/install.sh
+```
+
+### What gets installed
+
+| File | Source | Method |
+|------|--------|--------|
+| `~/.bashrc` | `remote/bashrc` | Symlinked — lightweight bash config, git-aware prompt |
+| `~/.vimrc` | `vim/.vimrc` | Symlinked (shared with mac) |
+| `~/.vim/colors/` | `vim/.vim/colors/` | Symlinked (Tomorrow-Night color scheme) |
+| `~/.tmux.conf` | `tmux/.tmux.conf` | Symlinked (shared with mac) |
+| `~/.gitconfig` | `git/.gitconfig` | **Generated** — strips `[user]` block, adds `[include]` for local overrides |
+| `~/.gitignore_global` | `git/.gitignore_global` | Symlinked (shared with mac) |
+
+Core aliases from `zsh/aliases-core.zsh` are sourced by the bashrc.
+
+### Post-install: set your git identity
+
+```sh
+git config --global user.name "Your Name"
+git config --global user.email "you@example.com"
+```
+
+Or create `~/.gitconfig.local` (included automatically via `[include]`).
+
+### Updating
+
+Most configs are symlinked, so pulling new changes applies them immediately:
+
+```sh
+cd ~/.dotfiles && git pull
+```
+
+The one exception is `~/.gitconfig` — it’s generated (not symlinked) to avoid leaking your mac identity. Re-run the installer to regenerate it after changing `git/.gitconfig`:
+
+```sh
+~/.dotfiles/remote/install.sh
+```
+
+The installer is safe to re-run. It backs up any existing files to `~/.dotfiles-backup/<timestamp>/` before overwriting.
+
+### Per-VM customization
+
+These files are never checked in and are sourced automatically:
+
+| File | Purpose |
+|------|--------|
+| `~/.bashrc.local` | Extra bash config, aliases, PATH additions |
+| `~/.gitconfig.local` | Git identity, per-VM git settings |
+
+### Alias architecture
+
+Aliases are split into two files:
+
+- **`zsh/aliases-core.zsh`** — Portable aliases (navigation, git, listing, extraction). Sourced by both the macOS zsh config and the remote bash config.
+- **`zsh/aliases-macos.zsh`** — macOS-only aliases (Antigravity, pbcopy, mvim, nix-darwin, etc.). Only loaded on Darwin.
+
+The existing `zsh/aliases.zsh` is now a thin loader that sources both files.
+
+To add a new alias, put it in `aliases-core.zsh` if it’s portable, or `aliases-macos.zsh` if it needs macOS tools. Both mac and VM environments pick up core changes automatically.
+
+---
 
 # Considered and rejected tools
 * Zellij - Too heavy for my simple tmux usage. Don't need floating panes.
