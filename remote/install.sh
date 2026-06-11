@@ -11,7 +11,8 @@
 #   1. Clones the repo (if not already present)
 #   2. Symlinks vim, tmux, and bash configs into ~
 #   3. Installs a lightweight .bashrc that sources core aliases
-#   4. Installs a .gitconfig without personal identity (uses git defaults)
+#   4. Generates a .gitconfig from the shared git/.gitconfig, stripping
+#      personal identity and adding [include] for local overrides
 #
 # Safe to re-run — backs up existing files before overwriting.
 
@@ -46,15 +47,16 @@ backup_and_link() {
   green "  linked $(basename "$dst")"
 }
 
-backup_and_copy() {
-  local src="$1" dst="$2"
+backup_and_write() {
+  local dst="$1"
   if [ -e "$dst" ] || [ -L "$dst" ]; then
     mkdir -p "$BACKUP_DIR"
     mv "$dst" "$BACKUP_DIR/$(basename "$dst")"
     dim "  backed up $(basename "$dst") -> $BACKUP_DIR/"
   fi
-  cp "$src" "$dst"
-  green "  copied $(basename "$dst")"
+  # Content comes from stdin
+  cat > "$dst"
+  green "  generated $(basename "$dst")"
 }
 
 # --- Vim ------------------------------------------------------------------
@@ -69,8 +71,13 @@ green "\nTmux"
 backup_and_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
 
 # --- Git ------------------------------------------------------------------
+# Generate .gitconfig from the shared git/.gitconfig, stripping the [user]
+# block (contains personal identity) and appending [include] for local overrides.
 green "\nGit"
-backup_and_copy "$DOTFILES_DIR/remote/gitconfig" "$HOME/.gitconfig"
+{
+  sed '/^\[user\]/,/^\[/{ /^\[user\]/d; /^\[/!d; }' "$DOTFILES_DIR/git/.gitconfig"
+  printf '\n[include]\n\tpath = ~/.gitconfig.local\n'
+} | backup_and_write "$HOME/.gitconfig"
 backup_and_link "$DOTFILES_DIR/git/.gitignore_global" "$HOME/.gitignore_global"
 
 # --- Bash -----------------------------------------------------------------

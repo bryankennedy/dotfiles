@@ -135,7 +135,7 @@ git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/re
 | `~/.bashrc` | `remote/bashrc` | Lightweight bash config, git-aware prompt |
 | `~/.vimrc` | `vim/.vimrc` | Symlinked (shared with mac) |
 | `~/.tmux.conf` | `tmux/.tmux.conf` | Symlinked (shared with mac) |
-| `~/.gitconfig` | `remote/gitconfig` | Copied — no personal email, uses `[include]` for local overrides |
+| `~/.gitconfig` | `git/.gitconfig` | Generated at install time — strips `[user]` block, adds `[include]` for local overrides |
 | `~/.gitignore_global` | `git/.gitignore_global` | Symlinked (shared with mac) |
 
 Core aliases from `zsh/aliases-core.zsh` are sourced by the bashrc.
