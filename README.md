@@ -142,10 +142,14 @@ git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/re
 | `~/.tmux.conf` | `tmux/.tmux.conf` | Symlinked (shared with mac) |
 | `~/.gitconfig` | `git/.gitconfig` | **Generated** — strips `[user]` block, adds `[include]` for local overrides |
 | `~/.gitignore_global` | `git/.gitignore_global` | Symlinked (shared with mac) |
+| `~/.claude/CLAUDE.md` | `_agent/rules/global.md` | Symlinked (shared with mac) |
+| `~/.claude/commands/*.md` | `_agent/skills/*.md` | Symlinked (shared with mac) |
 
 Core aliases from `zsh/aliases-core.zsh` are sourced by the bashrc.
 
-The installer also installs [zoxide](https://github.com/ajeetdsouza/zoxide) for fast directory jumping. Use `j` to jump, matching the macOS zsh config.
+The installer also:
+- Installs [zoxide](https://github.com/ajeetdsouza/zoxide) for fast directory jumping (`j`, matching macOS)
+- Symlinks Claude Code global rules (`~/.claude/CLAUDE.md`) and commands (`~/.claude/commands/`) from `_agent/` — the same source files used by the macOS stow setup
 
 ### Post-install: set your git identity
 
