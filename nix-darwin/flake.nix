@@ -157,6 +157,7 @@
         "
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun install -g @anthropic-ai/claude-code || true
+        /usr/bin/sudo -Hu bk sh -c 'test -d /Users/bk/.tmux/plugins/tpm || ${pkgs.git}/bin/git clone https://github.com/tmux-plugins/tpm /Users/bk/.tmux/plugins/tpm' || true
       '';
 
       # Set Git commit hash for darwin-version.
