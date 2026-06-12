@@ -152,6 +152,8 @@
           let cfg = {};
           try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch(_) {}
           cfg.preferredNotifChannel = 'terminal_bell';
+          cfg.permissions = cfg.permissions || {};
+          cfg.permissions.defaultMode = 'auto';
           mkdirSync(dir, { recursive: true });
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "
