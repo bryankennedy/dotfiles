@@ -7,7 +7,8 @@ DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 [[ $- != *i* ]] && return
 
 # --- PATH -----------------------------------------------------------------
-export PATH="$HOME/bin:$HOME/.local/bin:$HOME/go/bin:$PATH"
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$HOME/bin:$HOME/.local/bin:$HOME/go/bin:$BUN_INSTALL/bin:$PATH"
 
 # --- Editor ---------------------------------------------------------------
 export EDITOR="vim"

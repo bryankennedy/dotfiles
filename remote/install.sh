@@ -122,6 +122,23 @@ else
   green "  installed zoxide"
 fi
 
+# --- Bun ------------------------------------------------------------------
+green "\nBun"
+if command -v bun &> /dev/null || [ -x "$HOME/.bun/bin/bun" ]; then
+  dim "  bun already installed"
+elif ! command -v unzip &> /dev/null; then
+  # The bun installer needs unzip to unpack the binary
+  red "  skipped bun: 'unzip' not found (install it, then re-run)"
+else
+  green "  installing bun..."
+  # Pre-export so the installer sees its bin dir on PATH and skips
+  # appending exports to ~/.bashrc (a symlink into this repo)
+  export BUN_INSTALL="$HOME/.bun"
+  export PATH="$BUN_INSTALL/bin:$PATH"
+  curl -fsSL https://bun.sh/install | bash 2>&1 | tail -n 3
+  green "  installed bun"
+fi
+
 # --- Summary --------------------------------------------------------------
 echo ""
 green "Done! Restart your shell or run: source ~/.bashrc"
