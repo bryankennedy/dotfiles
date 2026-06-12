@@ -83,12 +83,12 @@ setopt HIST_SAVE_NO_DUPS     # Don't write duplicate entries in the history file
 #
 # Bun - A better JavaScript runtime
 #
-# Source bun completions
-[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
-
 # Add bun to PATH
 export BUN_INSTALL="$HOME/.bun"
 export PATH="$BUN_INSTALL/bin:$PATH"
+
+# Source bun completions
+[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
 
 
 # Added by Antigravity CLI installer
