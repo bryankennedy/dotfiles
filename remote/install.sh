@@ -10,8 +10,9 @@
 # What it does:
 #   1. Clones the repo (if not already present)
 #   2. Symlinks vim, tmux, and bash configs into ~
-#   3. Installs a lightweight .bashrc that sources core aliases
-#   4. Generates a .gitconfig from the shared git/.gitconfig, stripping
+#   3. Ensures the tmux-256color terminfo entry exists (ncurses-term)
+#   4. Installs a lightweight .bashrc that sources core aliases
+#   5. Generates a .gitconfig from the shared git/.gitconfig, stripping
 #      personal identity and adding [include] for local overrides
 #
 # Safe to re-run — backs up existing files before overwriting.
@@ -69,6 +70,29 @@ dim "  linked color scheme"
 # --- Tmux -----------------------------------------------------------------
 green "\nTmux"
 backup_and_link "$DOTFILES_DIR/tmux/.tmux.conf" "$HOME/.tmux.conf"
+
+# --- Terminfo -------------------------------------------------------------
+# tmux sets default-terminal to tmux-256color, which propagates as TERM into
+# this VM over SSH. If the entry is missing, programs error with "unknown
+# terminal". It ships in ncurses-term; install via whatever package manager
+# is available (best-effort — non-fatal if we can't).
+green "\nTerminfo"
+if infocmp tmux-256color >/dev/null 2>&1; then
+  dim "  tmux-256color already present"
+else
+  green "  installing tmux-256color (ncurses-term)..."
+  if   command -v apt-get &>/dev/null; then sudo apt-get update -qq && sudo apt-get install -y ncurses-term
+  elif command -v dnf     &>/dev/null; then sudo dnf install -y ncurses-term
+  elif command -v yum     &>/dev/null; then sudo yum install -y ncurses-term
+  elif command -v apk     &>/dev/null; then sudo apk add ncurses-terminfo
+  elif command -v zypper  &>/dev/null; then sudo zypper install -y ncurses-term
+  else red "  no known package manager found — install ncurses-term manually"; fi
+  if infocmp tmux-256color >/dev/null 2>&1; then
+    green "  tmux-256color installed"
+  else
+    red "  tmux-256color still missing — apps may report 'unknown terminal'"
+  fi
+fi
 
 # --- Git ------------------------------------------------------------------
 # Generate .gitconfig from the shared git/.gitconfig, stripping the [user]
