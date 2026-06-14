@@ -36,6 +36,17 @@ __git_branch() {
 }
 export PS1='\[\033[1;32m\]\u@\h\[\033[0m\]:\[\033[1;34m\]\w\[\033[0;33m\]$(__git_branch)\[\033[0m\]\$ '
 
+# --- Self-heal terminal input modes --------------------------------------
+# A TUI (vim, etc.) can exit without disabling mouse tracking (1000/1002/1003/
+# 1006) or color-scheme reporting (2031), leaving them on at the prompt — then
+# trackpad taps print as "0;58;7M" etc. Reset them before each prompt.
+__reset_terminal_input_modes() { printf '\033[?1000l\033[?1002l\033[?1003l\033[?1006l\033[?2031l'; }
+case "$PROMPT_COMMAND" in
+  *__reset_terminal_input_modes*) ;;
+  "") PROMPT_COMMAND='__reset_terminal_input_modes' ;;
+  *)  PROMPT_COMMAND='__reset_terminal_input_modes; '"$PROMPT_COMMAND" ;;
+esac
+
 # --- Zoxide (j to jump, matching macOS zsh config) -----------------------
 if command -v zoxide &> /dev/null; then
   eval "$(zoxide init bash --cmd j)"

@@ -31,3 +31,14 @@ clip-last() {
 
   printf '%s' "$output" | pbcopy && echo "Copied to clipboard."
 }
+
+# Self-heal terminal modes at every prompt.
+# A full-screen program (nvim's default mouse=nvi, remote TUIs) can exit without
+# disabling mouse tracking (1000/1002/1003/1006) or color-scheme reporting (2031),
+# leaving them on at the shell — trackpad taps then print as "0;58;7M" etc.
+# Sending the "off" sequences each time control returns to the prompt resets that.
+autoload -Uz add-zsh-hook
+_reset_terminal_input_modes() {
+  printf '\e[?1000l\e[?1002l\e[?1003l\e[?1006l\e[?2031l'
+}
+add-zsh-hook precmd _reset_terminal_input_modes
