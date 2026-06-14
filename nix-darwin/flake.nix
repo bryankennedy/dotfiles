@@ -83,6 +83,9 @@
           "lazygit"
           # JSON data utility
           "jq"
+          # Run a command across multiple ssh sessions
+          "pdsh"
+          # Recursive search
           "ripgrep"
           # Simple terminal
           "starship"
