@@ -62,6 +62,9 @@
             name = "drawthingsai/draw-things/draw-things-cli";
             args = [ "HEAD" ];
           }
+          # Manage remote and local VMs
+          "ansible"
+          # Zsh plugin manager
           "antidote"
           # Window border highlights for active/inactive windows
           "FelixKratz/formulae/borders"
