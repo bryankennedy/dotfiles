@@ -43,15 +43,7 @@ Bootstrapping a fresh macOS machine (clone, nix-darwin rebuild, Antidote bundle,
 
 ## Remote VM Setup (exe.dev, cloud VMs, etc.)
 
-I use a curated selection of these configs in my remote headless Linux VMs. This lightweight bash-based config includes these configs: vim, tmux, git, core aliases — no macOS dependencies.
-
-Quick install from the remote machine:
-
-```sh
-git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/remote/install.sh
-```
-
-Full details — what gets installed, updating, per-VM customization, and alias architecture — live in **[docs/REMOTE.md](docs/REMOTE.md)**.
+I use a curated selection of these configs on my remote headless Linux VMs. It bundles vim, tmux, git, and core aliases — no macOS dependencies. See **[docs/REMOTE.md](docs/REMOTE.md)** for the one-line install plus what gets installed, updating, per-VM customization, and alias architecture.
 
 ## App Setup Scripts
 
@@ -70,7 +62,6 @@ Run a script after installing the corresponding app:
 ## Structure
 
 Repository layout — the full list of stow packages and what each one configures, shared sources, and manual-stow instructions — lives in **[docs/STRUCTURE.md](docs/STRUCTURE.md)**. Note that this repo is a first pass, not a complete mirror of `$HOME`: some manually-installed apps keep their own configs that aren't tracked here.
-
 
 ---
 

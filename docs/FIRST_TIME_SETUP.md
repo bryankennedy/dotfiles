@@ -5,7 +5,7 @@ These steps bootstrap the dotfiles on a fresh macOS machine. Once they're done, 
 ## 1) Clone the repository
 
 ```sh
-git clone https://github.com/yourusername/dotfiles.git ~/src/dotfiles
+git clone https://github.com/bryankennedy/dotfiles.git ~/src/dotfiles
 ```
 
 ## 2) Apply nix-darwin system config
