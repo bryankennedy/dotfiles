@@ -25,21 +25,18 @@ sudo darwin-rebuild switch --flake .#simple
 Notes:
 - `darwin-rebuild switch` must be run as root on recent nix-darwin versions.
 - Flakes only see Git-tracked files; stage `flake.nix`/`flake.lock` before rebuilding.
+- The activation script stows every dotfile package (`ghostty`, `wezterm`, `karabiner`, `zsh`, `vim`, `git`, `starship`, `aerospace`, `gemini`, `cursor`, `tmux`) into `$HOME` for you — no separate Stow step is needed.
 
-### 3) Stow dotfiles into `$HOME`
+> **Manual Stow (optional):** If you want to (re)link packages by hand — e.g. after adding a new package — run from the repo root:
+>
+> ```sh
+> cd ~/src/dotfiles
+> stow -v -t "$HOME" ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux
+> ```
+>
+> Stowing these packages together lets Stow link into existing `~/.config/<app>` paths instead of trying to replace all of `~/.config`.
 
-Run stow from the repo root and pass explicit packages:
-
-```sh
-cd ~/src/dotfiles
-stow -v -t "$HOME" ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux
-```
-
-Why this command shape matters:
-- Several packages include `.config/*`.
-- Stowing these packages together lets Stow link into existing `~/.config/<app>` paths instead of trying to replace all of `~/.config`.
-
-### 4) Regenerate Antidote plugin bundle (required on a new machine)
+### 3) Regenerate Antidote plugin bundle (required on a new machine)
 
 The checked-in `~/.zsh_plugins.zsh` can reference stale cache paths from another machine. Rebuild it locally:
 
@@ -57,7 +54,7 @@ antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
 exec zsh
 ```
 
-### 5) Optional verification
+### 4) Optional verification
 
 ```sh
 ls -l ~/.zshrc ~/.gitconfig ~/.vimrc ~/.config/ghostty ~/.config/wezterm ~/.config/karabiner ~/.config/starship.toml
