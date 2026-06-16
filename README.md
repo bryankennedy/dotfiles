@@ -1,25 +1,19 @@
 # Dotfiles
 
-My personal configuration files managed with [GNU Stow](https://www.gnu.org/software/stow/).
+Personal system config files for my local (macOS) development environment and remote virtual machines.
 
-## Prerequisites
+* This repo uses nix-darwin (`nix-darwin/flake.nix`) to manage [Homebrew](https://brew.sh/) and other OS-level system config.
+* The nix config links config from this repo into `$HOME` using [GNU Stow](https://www.gnu.org/software/stow/).
 
-- **Git**
-- **Homebrew** (for bootstrap tools)
-- **GNU Stow** (installed either via nix-darwin Homebrew config below, or manually with `brew install stow`)
-
-## Installation (fresh machine)
+## Setup and usage - Local (macOS)
 
 ### 1) Clone the repository
 
 ```sh
 git clone https://github.com/yourusername/dotfiles.git ~/src/dotfiles
-cd ~/src/dotfiles
 ```
 
-### 2) Apply nix-darwin system config (recommended)
-
-This repo includes a `nix-darwin/flake.nix` that manages Homebrew formulas and casks.
+### 2) Apply nix-darwin system config
 
 ```sh
 cd ~/src/dotfiles
