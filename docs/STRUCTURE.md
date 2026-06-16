@@ -35,6 +35,20 @@ Stowing the packages together in one invocation lets Stow link into existing `~/
 
 - **`remote/`**: Lightweight bash-based dotfiles for headless Linux VMs. Has its own installer (`install.sh`) that symlinks shared configs (vim, tmux) and generates a safe gitconfig. See [Remote VM Setup](REMOTE.md).
 
+## App setup scripts (not a stow package)
+
+Some macOS applications store their configuration in `~/Library/Preferences` (via the `defaults` system) rather than dotfiles, so they can't be managed with Stow. The `scripts/` directory contains idempotent setup scripts for these apps.
+
+| Script | App | What it configures |
+|--------|-----|--------------------|
+| `scripts/hex.sh` | [Hex](https://github.com/kitlangton/Hex) | Sets global hotkey to F15 (pairs with the Karabiner middle-mouse → F15 rule) |
+
+Run a script after installing the corresponding app:
+
+```sh
+./scripts/hex.sh
+```
+
 ## Shared sources (not stow packages)
 
 - **`_skills/`**: Single source of truth for all AI agent workflows/skills. Both the `gemini` and `cursor` packages symlink into here — edit a file once, it updates everywhere.

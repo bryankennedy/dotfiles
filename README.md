@@ -3,7 +3,6 @@
 - [Dotfiles](#dotfiles)
   - [Setup and usage - Local (macOS)](#setup-and-usage---local-macos)
   - [Remote VM Setup (exe.dev, cloud VMs, etc.)](#remote-vm-setup-exedev-cloud-vms-etc)
-  - [App Setup Scripts](#app-setup-scripts)
   - [Structure](#structure)
 - [Considered and rejected tools](#considered-and-rejected-tools)
 
@@ -45,23 +44,9 @@ Bootstrapping a fresh macOS machine (clone, nix-darwin rebuild, Antidote bundle,
 
 I use a curated selection of these configs on my remote headless Linux VMs. It bundles vim, tmux, git, and core aliases — no macOS dependencies. See **[docs/REMOTE.md](docs/REMOTE.md)** for the one-line install plus what gets installed, updating, per-VM customization, and alias architecture.
 
-## App Setup Scripts
-
-Some macOS applications store their configuration in `~/Library/Preferences` (via the `defaults` system) rather than dotfiles, so they can't be managed with Stow. The `scripts/` directory contains idempotent setup scripts for these apps.
-
-| Script | App | What it configures |
-|--------|-----|--------------------|
-| `scripts/hex.sh` | [Hex](https://github.com/kitlangton/Hex) | Sets global hotkey to F15 (pairs with the Karabiner middle-mouse → F15 rule) |
-
-Run a script after installing the corresponding app:
-
-```sh
-./scripts/hex.sh
-```
-
 ## Structure
 
-Repository layout — the full list of stow packages and what each one configures, shared sources, and manual-stow instructions — lives in **[docs/STRUCTURE.md](docs/STRUCTURE.md)**. Note that this repo is a first pass, not a complete mirror of `$HOME`: some manually-installed apps keep their own configs that aren't tracked here.
+Repository layout — the full list of stow packages and what each one configures, app setup scripts, shared sources, and manual-stow instructions — lives in **[docs/STRUCTURE.md](docs/STRUCTURE.md)**. Note that this repo is a first pass, not a complete mirror of `$HOME`: some manually-installed apps keep their own configs that aren't tracked here.
 
 ---
 
