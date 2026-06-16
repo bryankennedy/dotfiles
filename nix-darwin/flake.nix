@@ -151,9 +151,13 @@
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelModifiersInt -int 262144
         ${pkgs.bash}/bin/bash ${./scripts/spotlight-option-space-hotkey.sh}
-        # Link this repo's dotfiles into $HOME via GNU Stow. Idempotent: re-stowing
-        # existing symlinks is a no-op. `|| true` so a pre-existing real file (a
-        # stow conflict) doesn't abort the whole activation.
+        # Link this repo's dotfiles into $HOME via GNU Stow. This package list is
+        # the canonical source of truth for what gets stowed — docs/STRUCTURE.md
+        # describes each package but does NOT re-list the tokens, to avoid drift.
+        # All packages are stowed together in one invocation so Stow links into
+        # existing ~/.config/<app> paths instead of trying to replace all of
+        # ~/.config. Idempotent: re-stowing existing symlinks is a no-op. `|| true`
+        # so a pre-existing real file (a stow conflict) doesn't abort activation.
         /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux || true
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun -e "
           const { readFileSync, writeFileSync, mkdirSync } = require('fs');

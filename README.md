@@ -1,3 +1,12 @@
+## Table of Contents
+
+- [Dotfiles](#dotfiles)
+  - [Setup and usage - Local (macOS)](#setup-and-usage---local-macos)
+  - [Remote VM Setup (exe.dev, cloud VMs, etc.)](#remote-vm-setup-exedev-cloud-vms-etc)
+  - [App Setup Scripts](#app-setup-scripts)
+  - [Structure](#structure)
+- [Considered and rejected tools](#considered-and-rejected-tools)
+
 # Dotfiles
 
 Personal system config files for my local (macOS) development environment and remote virtual machines.
@@ -7,64 +16,42 @@ Personal system config files for my local (macOS) development environment and re
 
 ## Setup and usage - Local (macOS)
 
-### 1) Clone the repository
+### Everyday usage (already installed)
+
+Once the dotfiles are installed on this machine, the day-to-day loop is just two steps:
+
+1. **Edit the config.** Make your changes — most often in `nix-darwin/flake.nix` (add a Homebrew package, tweak a macOS default, etc.), or in any of the stowed dotfile packages.
+2. **Apply it.** Run `compy` from anywhere:
+
+   ```sh
+   compy
+   ```
+
+   `compy` is an alias (defined in `zsh/aliases-macos.zsh`) for:
+
+   ```sh
+   cd ~/src/dotfiles/nix-darwin && sudo env PATH="$PATH" darwin-rebuild switch --flake .#simple
+   ```
+
+   This rebuilds the system, applies Homebrew/macOS changes, and re-stows your dotfiles into `$HOME`.
+
+> **Note:** Flakes only see Git-tracked files, so `git add` any new or changed `flake.nix`/`flake.lock` before running `compy`, or the rebuild won't see your edits.
+
+### First-time setup (new machine)
+
+Bootstrapping a fresh macOS machine (clone, nix-darwin rebuild, Antidote bundle, verification) lives in **[docs/FIRST_TIME_SETUP.md](docs/FIRST_TIME_SETUP.md)**.
+
+## Remote VM Setup (exe.dev, cloud VMs, etc.)
+
+I use a curated selection of these configs in my remote headless Linux VMs. This lightweight bash-based config includes these configs: vim, tmux, git, core aliases — no macOS dependencies.
+
+Quick install from the remote machine:
 
 ```sh
-git clone https://github.com/yourusername/dotfiles.git ~/src/dotfiles
+git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/remote/install.sh
 ```
 
-### 2) Apply nix-darwin system config
-
-```sh
-cd ~/src/dotfiles
-git add nix-darwin/flake.nix nix-darwin/flake.lock
-cd nix-darwin
-sudo darwin-rebuild switch --flake .#simple
-```
-
-Notes:
-- `darwin-rebuild switch` must be run as root on recent nix-darwin versions.
-- Flakes only see Git-tracked files; stage `flake.nix`/`flake.lock` before rebuilding.
-- The activation script stows every dotfile package (`ghostty`, `wezterm`, `karabiner`, `zsh`, `vim`, `git`, `starship`, `aerospace`, `gemini`, `cursor`, `tmux`) into `$HOME` for you — no separate Stow step is needed.
-
-> **Manual Stow (optional):** If you want to (re)link packages by hand — e.g. after adding a new package — run from the repo root:
->
-> ```sh
-> cd ~/src/dotfiles
-> stow -v -t "$HOME" ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux
-> ```
->
-> Stowing these packages together lets Stow link into existing `~/.config/<app>` paths instead of trying to replace all of `~/.config`.
-
-### 3) Regenerate Antidote plugin bundle (required on a new machine)
-
-The checked-in `~/.zsh_plugins.zsh` can reference stale cache paths from another machine. Rebuild it locally:
-
-```sh
-rm -f ~/.zsh_plugins.zsh
-antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
-exec zsh
-```
-
-If plugin download paths are still missing:
-
-```sh
-antidote update
-antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
-exec zsh
-```
-
-### 4) Optional verification
-
-```sh
-ls -l ~/.zshrc ~/.gitconfig ~/.vimrc ~/.config/ghostty ~/.config/wezterm ~/.config/karabiner ~/.config/starship.toml
-command -v starship antidote stow rg
-source ~/.zshrc
-alias l c
-```
-
-Notes:
-- `zsh/.zshrc` loads `profile.zsh` and `aliases.zsh` relative to the location of `~/.zshrc`, so this repo can live at `~/src/dotfiles` (or any other path) without editing hardcoded paths.
+Full details — what gets installed, updating, per-VM customization, and alias architecture — live in **[docs/REMOTE.md](docs/REMOTE.md)**.
 
 ## App Setup Scripts
 
@@ -82,110 +69,8 @@ Run a script after installing the corresponding app:
 
 ## Structure
 
-The repository is structured so that running `stow <package>` from the root will symlink the contents of that package to your home directory (`~`), preserving the directory structure.
+Repository layout — the full list of stow packages and what each one configures, shared sources, and manual-stow instructions — lives in **[docs/STRUCTURE.md](docs/STRUCTURE.md)**. Note that this repo is a first pass, not a complete mirror of `$HOME`: some manually-installed apps keep their own configs that aren't tracked here.
 
-### Stow packages
-
-- **ghostty/**: Ghostty terminal configuration and themes.
-- **zsh/**: Zsh shell configuration.
-- **vim/**: Vim configuration.
-- **git/**: Git global configuration.
-- **starship/**: Starship prompt configuration.
-- **karabiner/**: Karabiner-Elements configuration. Includes a complex modification that maps the middle mouse button (button3) to F15 for use as the [Hex](https://github.com/kitlangton/Hex) trigger.
-
-  > **Important:** Complex modifications only apply to devices explicitly enabled in Karabiner. After stowing this config, open Karabiner-Elements → **Devices** tab and enable any non-keyboard devices (e.g. your mouse) that should be processed. Without this, complex modification rules will be silently ignored for that device.
-- **aerospace/**: Aerospace window manager configuration.
-- **wezterm/**: WezTerm terminal configuration.
-- **gemini/**: Gemini AI agent global rules (`GEMINI.md`) and global workflows. The workflow files in `global_workflows/` are symlinks into `_skills/`.
-- **cursor/**: Cursor AI agent skills. Each `SKILL.md` is a symlink into `_skills/`.
-- **tmux/**: tmux configuration (`~/.tmux.conf`). Uses `Ctrl-a` as prefix, vim-style pane navigation, mouse support, and a minimalist status bar.
-
-### Remote VM config (not a stow package)
-
-- **`remote/`**: Lightweight bash-based dotfiles for headless Linux VMs. Has its own installer (`install.sh`) that symlinks shared configs (vim, tmux) and generates a safe gitconfig. See [Remote VM Setup](#remote-vm-setup-exedev-cloud-vms-etc) above.
-
-### Shared sources (not stow packages)
-
-- **`_skills/`**: Single source of truth for all AI agent workflows/skills. Both the `gemini` and `cursor` packages symlink into here — edit a file once, it updates everywhere.
-
-  To add a new skill:
-  1. Create the workflow file in `_skills/` with `name:` and `description:` frontmatter.
-  2. Symlink it into the Gemini package: `ln -s ../../../../_skills/<file>.md gemini/.gemini/antigravity/global_workflows/<file>.md`
-  3. Create a Cursor skill dir and symlink: `mkdir cursor/.cursor/skills/<name> && ln -s ../../../../_skills/<file>.md cursor/.cursor/skills/<name>/SKILL.md`
-
-## Remote VM Setup (exe.dev, cloud VMs, etc.)
-
-A lightweight bash-based config for headless Linux VMs. Includes vim, tmux, git, and your core aliases — no macOS dependencies, no personal identity leaked.
-
-### Quick install
-
-```sh
-git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/remote/install.sh
-```
-
-### What gets installed
-
-| File | Source | Method |
-|------|--------|--------|
-| `~/.bashrc` | `remote/bashrc` | Symlinked — lightweight bash config, git-aware prompt |
-| `~/.vimrc` | `vim/.vimrc` | Symlinked (shared with mac) |
-| `~/.vim/colors/` | `vim/.vim/colors/` | Symlinked (Tomorrow-Night color scheme) |
-| `~/.tmux.conf` | `tmux/.tmux.conf` | Symlinked (shared with mac) |
-| `~/.gitconfig` | `git/.gitconfig` | **Generated** — strips `[user]` block, adds `[include]` for local overrides |
-| `~/.gitignore_global` | `git/.gitignore_global` | Symlinked (shared with mac) |
-| `~/.claude/CLAUDE.md` | `_agent/rules/global.md` | Symlinked (shared with mac) |
-| `~/.claude/commands/*.md` | `_agent/skills/*.md` | Symlinked (shared with mac) |
-
-Core aliases from `zsh/aliases-core.zsh` are sourced by the bashrc.
-
-The installer also:
-- Installs [zoxide](https://github.com/ajeetdsouza/zoxide) for fast directory jumping (`j`, matching macOS)
-- Symlinks Claude Code global rules (`~/.claude/CLAUDE.md`) and commands (`~/.claude/commands/`) from `_agent/` — the same source files used by the macOS stow setup
-
-### Post-install: set your git identity
-
-```sh
-git config --global user.name "Your Name"
-git config --global user.email "you@example.com"
-```
-
-Or create `~/.gitconfig.local` (included automatically via `[include]`).
-
-### Updating
-
-Most configs are symlinked, so pulling new changes applies them immediately:
-
-```sh
-cd ~/.dotfiles && git pull
-```
-
-The one exception is `~/.gitconfig` — it’s generated (not symlinked) to avoid leaking your mac identity. Re-run the installer to regenerate it after changing `git/.gitconfig`:
-
-```sh
-~/.dotfiles/remote/install.sh
-```
-
-The installer is safe to re-run. It backs up any existing files to `~/.dotfiles-backup/<timestamp>/` before overwriting.
-
-### Per-VM customization
-
-These files are never checked in and are sourced automatically:
-
-| File | Purpose |
-|------|--------|
-| `~/.bashrc.local` | Extra bash config, aliases, PATH additions |
-| `~/.gitconfig.local` | Git identity, per-VM git settings |
-
-### Alias architecture
-
-Aliases are split into two files:
-
-- **`zsh/aliases-core.zsh`** — Portable aliases (navigation, git, listing, extraction). Sourced by both the macOS zsh config and the remote bash config.
-- **`zsh/aliases-macos.zsh`** — macOS-only aliases (Antigravity, pbcopy, mvim, nix-darwin, etc.). Only loaded on Darwin.
-
-The existing `zsh/aliases.zsh` is now a thin loader that sources both files.
-
-To add a new alias, put it in `aliases-core.zsh` if it’s portable, or `aliases-macos.zsh` if it needs macOS tools. Both mac and VM environments pick up core changes automatically.
 
 ---
 
