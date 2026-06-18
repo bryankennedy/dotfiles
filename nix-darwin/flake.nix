@@ -142,6 +142,19 @@
         };
         finder.AppleShowAllExtensions = true;
         NSGlobalDomain.ApplePressAndHoldEnabled = false;
+
+        # Disable the system-wide "Minimize All" shortcut (⌥⌘M). macOS app-menu
+        # key equivalents have no "unbind" value, so we reassign the menu item to
+        # an unused combo (⌃⌥⇧⌘M) to free up ⌥⌘M. NSUserKeyEquivalents maps the
+        # menu item *title* → shortcut, so the key is case-sensitive and must
+        # match exactly what macOS shows in the Window menu ("Minimize All" — the
+        # alternate item revealed when Option is held). Placed under
+        # CustomUserPreferences.NSGlobalDomain so it applies to all applications
+        # (System Settings → Keyboard → Keyboard Shortcuts → App Shortcuts, app
+        # "All Applications"). Shortcut syntax: @ Cmd, ~ Opt, ^ Ctrl, $ Shift.
+        CustomUserPreferences.NSGlobalDomain.NSUserKeyEquivalents = {
+          "Minimize All" = "^~$@m";
+        };
       };
 
       # Accessibility: hold Control and scroll to zoom.
