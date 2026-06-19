@@ -186,6 +186,13 @@
         "
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g @anthropic-ai/claude-code || true
+        # Cloudflare Workers CLI. Like claude-code, installed via bun global
+        # (not nix) so we always get the latest npm release — wrangler ships
+        # frequent updates and lags in nixpkgs.
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g wrangler || true
+        # Frontend build tool / dev server. bun global (not nix) for the latest
+        # npm release.
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g vite || true
         /usr/bin/sudo -Hu bk sh -c 'test -d /Users/bk/.tmux/plugins/tpm || ${pkgs.git}/bin/git clone https://github.com/tmux-plugins/tpm /Users/bk/.tmux/plugins/tpm' || true
       '';
 
