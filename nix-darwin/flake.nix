@@ -115,6 +115,8 @@
           "google-chrome"
           "keycastr"
           "kitlangton-hex"
+          # Open-source firewall (Objective-See)
+          "lulu"
           # Finder alternative
           "marta"
           "neovide-app"
