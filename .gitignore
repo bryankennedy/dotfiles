@@ -18,3 +18,23 @@ gemini/.gemini/config/projects/
 
 # Antigravity CLI — migration marker (auto-generated one-time flag)
 gemini/.gemini/config/.migrated
+
+# Cursor — Cloudflare plugin skills auto-installed by the app into the stowed
+# ~/.cursor/skills dir; machine-generated and re-installed/updated by Cursor, so
+# not version controlled (hand-authored skills like smart-commit stay tracked)
+cursor/.cursor/skills/agents-sdk/
+cursor/.cursor/skills/cloudflare/
+cursor/.cursor/skills/cloudflare-email-service/
+cursor/.cursor/skills/cloudflare-one/
+cursor/.cursor/skills/cloudflare-one-migrations/
+cursor/.cursor/skills/durable-objects/
+cursor/.cursor/skills/sandbox-sdk/
+cursor/.cursor/skills/turnstile-spin/
+cursor/.cursor/skills/web-perf/
+cursor/.cursor/skills/workers-best-practices/
+cursor/.cursor/skills/wrangler/
+
+# Gemini/Antigravity — skills auto-installed by the app into the stowed
+# ~/.gemini dirs; machine-generated, not portable, so not version controlled
+gemini/.gemini/skills/
+gemini/.gemini/antigravity/skills/
