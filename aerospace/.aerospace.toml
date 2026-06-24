@@ -221,6 +221,16 @@ run = 'layout floating'
 if.app-id = 'com.apple.calculator'
 run = 'layout floating'
 
+# Make 1Password float by default
+[[on-window-detected]]
+if.app-id = 'com.1password.1password'
+run = 'layout floating'
+
+# Make LuLu float by default
+[[on-window-detected]]
+if.app-id = 'com.objective-see.lulu.app'
+run = 'layout floating'
+
 # Make Apple Music float by default
 [[on-window-detected]]
 if.app-id = 'com.apple.Music'
