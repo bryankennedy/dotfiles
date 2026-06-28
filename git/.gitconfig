@@ -22,7 +22,12 @@
 [init]
 	defaultBranch = main
 [user]
-	name = bkennedy
+	name = bryan kennedy
 	email = bryan@mysteryexperience.com
 [push]
 	autoSetupRemote = true
+[filter "lfs"]
+	clean = git-lfs clean -- %f
+	smudge = git-lfs smudge -- %f
+	process = git-lfs filter-process
+	required = true
