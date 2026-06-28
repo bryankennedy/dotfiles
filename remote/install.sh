@@ -163,6 +163,35 @@ else
   green "  installed bun"
 fi
 
+# --- Claude Code plugins --------------------------------------------------
+# Enable standard plugins by merging into ~/.claude/settings.json. Runs after
+# Bun so a JS runtime is available (prefers an existing node, falls back to the
+# bun installed above). Idempotent — only sets the keys it manages.
+green "\nClaude Code plugins"
+CLAUDE_JS_RUNTIME=""
+if   command -v node &>/dev/null;        then CLAUDE_JS_RUNTIME="node"
+elif command -v bun  &>/dev/null;        then CLAUDE_JS_RUNTIME="bun"
+elif [ -x "$HOME/.bun/bin/bun" ];        then CLAUDE_JS_RUNTIME="$HOME/.bun/bin/bun"
+fi
+if [ -n "$CLAUDE_JS_RUNTIME" ]; then
+  "$CLAUDE_JS_RUNTIME" -e "
+    const { readFileSync, writeFileSync, mkdirSync } = require('fs');
+    const dir = process.env.HOME + '/.claude';
+    const file = dir + '/settings.json';
+    let cfg = {};
+    try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch (_) {}
+    cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};
+    cfg.extraKnownMarketplaces['claude-plugins-official'] = { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } };
+    cfg.enabledPlugins = cfg.enabledPlugins || {};
+    cfg.enabledPlugins['frontend-design@claude-plugins-official'] = true;
+    mkdirSync(dir, { recursive: true });
+    writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
+  "
+  green "  enabled frontend-design@claude-plugins-official"
+else
+  red "  skipped: no node/bun runtime found to update settings.json"
+fi
+
 # --- Summary --------------------------------------------------------------
 echo ""
 green "Done! Restart your shell or run: source ~/.bashrc"

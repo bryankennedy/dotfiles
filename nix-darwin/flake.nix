@@ -183,6 +183,13 @@
           cfg.preferredNotifChannel = 'terminal_bell';
           cfg.permissions = cfg.permissions || {};
           cfg.permissions.defaultMode = 'auto';
+          // Standard plugins enabled on every machine. The official marketplace
+          // is registered explicitly (mirrors the cloudflare plugin setup) so a
+          // fresh install can resolve the plugin without a prior /plugin install.
+          cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};
+          cfg.extraKnownMarketplaces['claude-plugins-official'] = { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } };
+          cfg.enabledPlugins = cfg.enabledPlugins || {};
+          cfg.enabledPlugins['frontend-design@claude-plugins-official'] = true;
           mkdirSync(dir, { recursive: true });
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "
