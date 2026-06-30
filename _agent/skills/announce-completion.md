@@ -7,7 +7,8 @@ description: Announce task completion with a humorous audio message using the 's
     *   *Constraint*: **ABSOLUTELY NO EXCLAMATION MARKS (!)** in the message. They cause shell history expansion errors.
     *   *Example*: "I have finished the task and am now awaiting your next command."
 
-2.  **Execute Command**: Run the following command in the terminal, replacing `[MESSAGE]` with your generated text.
+2.  **Execute Command**: Pass your generated text to `say` via an environment variable so shell metacharacters (`"`, `` ` ``, `$( )`, `\`) in the message can never be interpreted by the shell. Replace `[MESSAGE]` with your generated text.
     ```bash
-    say "[MESSAGE]"
+    MSG='[MESSAGE]' say -- "$MSG"
     ```
+    *   *Constraint*: Use **single quotes** around the message. If the text itself contains a single quote (`'`), write it as `'\''`.
