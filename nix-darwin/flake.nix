@@ -74,6 +74,8 @@
           "chafa"
           "csvlens"
           "duckdb"
+          # Disk usage visualization
+          "dust"
           "eza"
           "htop"
           # Go based disk space lookup tool - Fast (installed as `gdu-go` to avoid coreutils conflict)
@@ -113,6 +115,8 @@
           "audacity"
           "claude"
           "cursor"
+          # Screen capture utility
+          "flameshot"
           "ghostty"
           "google-chrome"
           "keycastr"
