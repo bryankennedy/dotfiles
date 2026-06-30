@@ -1,5 +1,5 @@
 ---
-name: smart-commit
+name: smart_commit
 description: Review uncommitted changes, break them into logical chunks, and create meaningful commits explaining the "why".
 ---
 
