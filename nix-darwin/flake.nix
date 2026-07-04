@@ -70,13 +70,20 @@
           "FelixKratz/formulae/borders"
           # Better cat
           "bat"
+          # Better top
+          "btop"
           # Images in the terminal - Aliases to imgcat
           "chafa"
           "csvlens"
           "duckdb"
           # Disk usage visualization
+          "dua-cli"
           "dust"
+          # File explorer
           "eza"
+          # Terminal file manager
+          "fzf"
+          # Terminal process manager
           "htop"
           # Go based disk space lookup tool - Fast (installed as `gdu-go` to avoid coreutils conflict)
           "gdu"
