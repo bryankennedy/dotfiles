@@ -107,6 +107,9 @@
           "stow"
           # Puthon to Python
           "thefuck"
+          # Agent multiplexer — tmux reimagined for running many AI coding
+          # agents; trialing as a persistence-friendly alternative to tmux
+          "herdr"
           "tmux"
           # Show files in a directory in a tree
           "tree"
