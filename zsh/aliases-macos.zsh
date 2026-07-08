@@ -13,7 +13,9 @@ alias a='antigravity'
 # -------------------------------------------------------------------
 
 # Rebuild nix-darwin from this dotfiles repo.
-alias compy='cd ~/src/dotfiles/nix-darwin && sudo env PATH="$PATH" darwin-rebuild switch --flake .#simple'
+# Prepend the nix-darwin bin dir so the alias works from non-login shells too
+# (login-only profile.zsh isn't guaranteed to have put it on PATH).
+alias compy='cd ~/src/dotfiles/nix-darwin && sudo env PATH="/run/current-system/sw/bin:$PATH" darwin-rebuild switch --flake .#simple'
 
 # -------------------------------------------------------------------
 # macOS CLI tools
