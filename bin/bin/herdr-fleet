@@ -1,0 +1,126 @@
+#!/usr/bin/env bun
+// herdr-fleet — materialize one local herdr workspace per VM, each attached to
+// that VM's remote herdr server via `herdr --remote <name>-herdr`.
+//
+// Source of truth: ~/.config/herdr/fleet.json, generated from the ansible
+// inventory by `ansible-playbook playbooks/herdr-fleet.yml` (repo ~/src/ansible).
+// Add a VM to the inventory, re-run that playbook, re-run this — the new VM
+// shows up as a workspace. Idempotent: workspaces that already exist are left
+// untouched, so it is safe to re-run at login or after a reboot.
+//
+// Usage:
+//   herdr-fleet               attach every reachable VM (skips unreachable + existing)
+//   herdr-fleet --force       attach even VMs that fail the SSH health check
+//   herdr-fleet --only a,b    restrict to the named VMs
+//   herdr-fleet --dry-run     print what it would do; change nothing
+
+import { readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
+
+const pexec = promisify(execFile);
+const FLEET_PATH = `${homedir()}/.config/herdr/fleet.json`;
+
+const argv = process.argv.slice(2);
+const DRY = argv.includes("--dry-run");
+const FORCE = argv.includes("--force");
+const onlyRaw =
+  argv.find((a) => a.startsWith("--only="))?.slice("--only=".length) ??
+  (argv.includes("--only") ? argv[argv.indexOf("--only") + 1] : null);
+const only = onlyRaw ? new Set(onlyRaw.split(",").map((s) => s.trim())) : null;
+
+function die(msg) {
+  console.error(`herdr-fleet: ${msg}`);
+  process.exit(1);
+}
+
+// The herdr CLI prints one JSON-RPC-ish object per call on stdout.
+async function herdr(...args) {
+  const { stdout } = await pexec("herdr", args, { maxBuffer: 8 << 20 });
+  const out = stdout.trim();
+  return out ? JSON.parse(out) : null;
+}
+
+// Warm, non-interactive reachability probe. With ControlMaster=auto this also
+// primes the shared connection, so the subsequent `herdr --remote` is instant.
+async function reachable(remote) {
+  try {
+    await pexec(
+      "ssh",
+      ["-o", "BatchMode=yes", "-o", "ConnectTimeout=5", remote, "true"],
+      { timeout: 15_000 },
+    );
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// --- load the fleet ---------------------------------------------------------
+let fleet;
+try {
+  fleet = JSON.parse(readFileSync(FLEET_PATH, "utf8"));
+} catch (e) {
+  die(
+    `cannot read ${FLEET_PATH} (${e.code || e.message}).\n` +
+      "  Generate it with: (cd ~/src/ansible && ansible-playbook playbooks/herdr-fleet.yml)",
+  );
+}
+if (!Array.isArray(fleet) || fleet.length === 0) die(`${FLEET_PATH} is empty`);
+if (only) fleet = fleet.filter((v) => only.has(v.name));
+if (fleet.length === 0) die("no VMs matched --only");
+
+// --- require a running herdr server ----------------------------------------
+let listed;
+try {
+  listed = await herdr("workspace", "list");
+} catch {
+  die("no running herdr server — start herdr first, then run this inside it.");
+}
+const existing = new Set((listed?.result?.workspaces ?? []).map((w) => w.label));
+
+// --- health-check all VMs in parallel --------------------------------------
+const checked = await Promise.all(
+  fleet.map(async (vm) => ({ vm, up: FORCE || (await reachable(vm.remote)) })),
+);
+
+// --- create a workspace per new, reachable VM ------------------------------
+let created = 0;
+let present = 0;
+let down = 0;
+for (const { vm, up } of checked) {
+  if (existing.has(vm.name)) {
+    console.log(`= ${vm.name} — workspace exists, leaving as-is`);
+    present++;
+    continue;
+  }
+  if (!up) {
+    console.warn(
+      `x ${vm.name} — unreachable (${vm.remote}); skipping. Use --force to attach anyway.`,
+    );
+    down++;
+    continue;
+  }
+  const cmd = `herdr --remote ${vm.remote} --remote-keybindings server`;
+  if (DRY) {
+    console.log(`+ ${vm.name} — would create workspace and run: ${cmd}`);
+    created++;
+    continue;
+  }
+  const res = await herdr("workspace", "create", "--label", vm.name, "--no-focus");
+  const paneId = res?.result?.root_pane?.pane_id;
+  if (!paneId) {
+    console.error(`! ${vm.name} — created workspace but no pane id returned; skipping run.`);
+    continue;
+  }
+  await herdr("pane", "run", paneId, cmd);
+  console.log(
+    `+ ${vm.name} — attached (${vm.remote}) in workspace ${res.result.workspace.workspace_id}`,
+  );
+  created++;
+}
+
+console.log(
+  `\nherdr-fleet: ${created} attached, ${present} already present, ${down} unreachable.`,
+);

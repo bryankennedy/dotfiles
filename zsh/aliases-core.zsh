@@ -126,6 +126,16 @@ github() {
 }
 
 # -------------------------------------------------------------------
+# herdr (agent multiplexer)
+# -------------------------------------------------------------------
+# Fan the local herdr client out to every VM: one workspace per host, each
+# attached to that host's remote herdr. Source of truth is the ansible
+# inventory -> ~/.config/herdr/fleet.json (see docs/herdr-fleet.md).
+alias hf='herdr-fleet'
+# Regenerate the SSH aliases + fleet.json after editing the inventory.
+alias hf-sync='(cd ~/src/ansible && ansible-playbook playbooks/herdr-fleet.yml)'
+
+# -------------------------------------------------------------------
 # Editor
 # -------------------------------------------------------------------
 alias vi='vim'
