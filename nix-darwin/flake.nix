@@ -110,7 +110,11 @@
           # Puthon to Python
           "thefuck"
           # Agent multiplexer — tmux reimagined for running many AI coding
-          # agents; trialing as a persistence-friendly alternative to tmux
+          # agents; trialing as a persistence-friendly alternative to tmux.
+          # (Tried the herdr-mx fork for its multi-remote single-sidebar view,
+          # but its only build predates the upstream cursor-flicker fixes —
+          # ogulcancelik/herdr #930/#967 — so reverted to upstream. Re-trial mx
+          # once it rebases on >=0.7.3, or when native multi-remote lands: #334.)
           "herdr"
           "tmux"
           # Show files in a directory in a tree
@@ -191,7 +195,11 @@
         # existing ~/.config/<app> paths instead of trying to replace all of
         # ~/.config. Idempotent: re-stowing existing symlinks is a no-op. `|| true`
         # so a pre-existing real file (a stow conflict) doesn't abort activation.
-        /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux || true
+        # Pre-create herdr's config dir so Stow links only config.toml into it
+        # instead of tree-folding the whole dir into a repo symlink (herdr writes
+        # runtime logs/sockets here, which must not land in the repo).
+        /usr/bin/sudo -Hu bk /bin/mkdir -p /Users/bk/.config/herdr
+        /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux herdr || true
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun -e "
           const { readFileSync, writeFileSync, mkdirSync } = require('fs');
           const dir = process.env.HOME + '/.claude';

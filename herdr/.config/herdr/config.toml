@@ -1,0 +1,59 @@
+# herdr configuration — stowed from ~/src/dotfiles/herdr/.config/herdr/config.toml
+# Reload without restart:  herdr server reload-config
+
+# Skip the first-run onboarding prompt.
+onboarding = false
+
+[theme]
+# Match Ghostty (kanagawa-lotus). Auto-switch follows the terminal's light/dark
+# appearance: dark -> kanagawa, light -> kanagawa-lotus.
+name = "kanagawa"
+auto_switch = true
+dark_name = "kanagawa"
+light_name = "kanagawa-lotus"
+
+[terminal]
+# Empty => $SHELL (zsh). "auto" uses a login shell on macOS.
+default_shell = ""
+shell_mode = "auto"
+# New panes inherit the source pane/workspace directory.
+new_cwd = "follow"
+
+[keys]
+# ctrl+b avoids colliding with tmux (ctrl+a), since Ghostty launches herdr
+# inside tmux. If you run herdr standalone, ctrl+a is fine too.
+prefix = "ctrl+b"
+
+# Run lazygit in a temporary pane.
+[[keys.command]]
+key = "prefix+alt+g"
+type = "pane"
+command = "lazygit"
+
+[ui]
+# Show which agent is in each pane on the border — useful when juggling many.
+show_agent_labels_on_pane_borders = true
+accent = "cyan"
+
+[ui.toast]
+# Surface "agent needs attention / finished" as macOS notifications so an idle
+# agent can't sit forgotten.
+delivery = "system"
+delay_seconds = 1
+
+[ui.sound]
+# Audible ping when a background agent changes state.
+enabled = true
+
+[ui.sound.agents]
+claude = "on"
+droid = "off"
+
+[session]
+# After a herdr server restart, resume agent panes back into their sessions.
+resume_agents_on_restore = true
+
+[remote]
+# Layer keepalives on top of ~/.ssh/config and reuse one authenticated
+# connection per attach — helps `herdr --remote` survive idle drops.
+manage_ssh_config = true

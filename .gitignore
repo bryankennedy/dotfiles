@@ -38,3 +38,8 @@ cursor/.cursor/skills/wrangler/
 # ~/.gemini dirs; machine-generated, not portable, so not version controlled
 gemini/.gemini/skills/
 gemini/.gemini/antigravity/skills/
+
+# herdr — runtime logs, sockets, and session state herdr writes into the stowed
+# ~/.config/herdr dir; machine-specific, not version controlled (keep config.toml)
+herdr/.config/herdr/*
+!herdr/.config/herdr/config.toml

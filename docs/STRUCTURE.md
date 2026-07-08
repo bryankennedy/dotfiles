@@ -19,6 +19,7 @@ The repository is structured so that running `stow <package>` from the root syml
 - **gemini/**: Gemini AI agent global rules (`GEMINI.md`) and global workflows. The workflow files in `global_workflows/` are symlinks into `_skills/`.
 - **cursor/**: Cursor AI agent skills. Each `SKILL.md` is a symlink into `_skills/`.
 - **tmux/**: tmux configuration (`~/.tmux.conf`). Uses `Ctrl-a` as prefix, vim-style pane navigation, mouse support, and a minimalist status bar.
+- **herdr/**: herdr agent-multiplexer config (`~/.config/herdr/config.toml`) — kanagawa theme, `Ctrl-b` prefix, macOS notifications. Only `config.toml` is stowed; herdr's runtime logs/sockets in the same dir are gitignored.
 
 ### Manual Stow (optional)
 
