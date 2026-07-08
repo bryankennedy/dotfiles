@@ -95,6 +95,8 @@
           "lazygit"
           # JSON data utility
           "jq"
+          # System information
+          "fastfetch"
           # Run a command across multiple ssh sessions
           "pdsh"
           # Sync files to/from cloud storage - used for Google Drive backups
