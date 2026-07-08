@@ -5,10 +5,23 @@ command = /opt/homebrew/bin/tmux new-session -A -s main
 
 # After lots of trial and error, I always come back to Monaco
 font-family = "Monaco"
-font-size = 14
+font-size = 16
 
-# Personal color theme
-theme = crispy
+#
+# Themes
+#
+# Active
+theme = Catppuccin Macchiato
+
+#
+# Themes - Archived
+#
+#  Personal color theme
+# theme = crispy
+#  Yellow legal pad feel
+# theme = kanagawa-lotus
+#  Catppuccin but light
+# theme = Catppuccin Latte
 
 window-padding-x = 50
 window-padding-y = 50
@@ -20,8 +33,7 @@ macos-custom-icon = ~/.config/ghostty/Ghostty.icns
 # I like this option but don't want to use it right now. Keeping it here for reference.
 # macos-icon = holographic
 
-background-opacity = 0.96
-unfocused-split-opacity = 0.5
+background-opacity = 1
 cursor-style = block
 shell-integration = detect
 
