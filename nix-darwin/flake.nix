@@ -193,13 +193,27 @@
         # describes each package but does NOT re-list the tokens, to avoid drift.
         # All packages are stowed together in one invocation so Stow links into
         # existing ~/.config/<app> paths instead of trying to replace all of
-        # ~/.config. Idempotent: re-stowing existing symlinks is a no-op. `|| true`
-        # so a pre-existing real file (a stow conflict) doesn't abort activation.
-        # Pre-create herdr's config dir so Stow links only config.toml into it
-        # instead of tree-folding the whole dir into a repo symlink (herdr writes
-        # runtime logs/sockets here, which must not land in the repo).
-        /usr/bin/sudo -Hu bk /bin/mkdir -p /Users/bk/.config/herdr
-        /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux herdr || true
+        # ~/.config. `|| true` so a pre-existing real file (a stow conflict)
+        # doesn't abort activation.
+        #
+        # --no-folding is load-bearing, not a style choice. Without it Stow links
+        # a whole directory when the target doesn't exist yet — so ~/.claude/commands,
+        # ~/.cursor/skills and ~/.gemini were single symlinks INTO this repo, and
+        # every file an app wrote there landed in the working tree of a PUBLIC
+        # repo. Only hand-maintained .gitignore rules kept them unpublished, and
+        # each new plugin needed a new rule. --no-folding creates real directories
+        # and symlinks only leaf files, so an app writing a new file writes it to
+        # $HOME, where it belongs. This supersedes the old herdr-only `mkdir -p`
+        # guard, which solved the same problem for exactly one package.
+        #
+        # -R (restow) is required to undo folds that already exist: plain
+        # --no-folding leaves an existing directory symlink alone. Restow is
+        # idempotent, so it is safe on every activation.
+        #
+        # bin, nvim and claude were stowed by hand and never declared here, which
+        # is how ~/.claude/commands became an unmanaged fold into the repo. The
+        # list is only a source of truth if it is complete.
+        /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -R --no-folding -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux herdr claude nvim bin || true
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun -e "
           const { readFileSync, writeFileSync, mkdirSync } = require('fs');
           const dir = process.env.HOME + '/.claude';
