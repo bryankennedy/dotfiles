@@ -12,7 +12,10 @@ font-size = 16
 # Themes
 #
 # Active
-theme = Catppuccin Macchiato
+theme = ghostty-tokyonight-day
+
+# Likely my new daily driver, just trying one more out.
+# theme = Catppuccin Macchiato
 
 #
 # Themes - Archived

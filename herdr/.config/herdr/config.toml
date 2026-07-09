@@ -5,10 +5,10 @@
 onboarding = false
 
 [theme]
-# Match Ghostty (kanagawa-lotus). Auto-switch follows the terminal's light/dark
-# appearance: dark -> kanagawa, light -> kanagawa-lotus.
-name = "kanagawa"
-auto_switch = true
+# Match Ghostty (ghostty-tokyonight-day). Pinned rather than auto-switching:
+# dark_name/light_name below only apply when auto_switch = true.
+name = "tokyo-night-day"
+auto_switch = false
 dark_name = "kanagawa"
 light_name = "kanagawa-lotus"
 
