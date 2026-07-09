@@ -24,6 +24,12 @@ Entries are described, not quoted, wherever quoting would restate the private va
 ### Git identity in `git/.gitconfig`
 *Accepted 2026-07-09.* Real name and email, matched because the inventory's `ansible_user` is derived from the same first name. This is the authorship identity on every public commit already; the repo cannot hide what `git log` publishes.
 
+### 21 gitleaks hits across 15 files under the vendor-installed plugin skill dirs
+*Accepted 2026-07-09, first full audit.* `gitleaks dir` walks the filesystem, not the index, so it reaches the Cloudflare plugin's reference docs that Cursor and Gemini auto-install into the stowed `cursor/.cursor/skills/` and `gemini/.gemini/antigravity/skills/` directories. All 15 files are gitignored — verified with `git check-ignore`, 15 of 15 — so `git add -A` cannot sweep them in. Reading the hits confirms they are documentation placeholders (`YOUR_API_TOKEN`) and one deliberate anti-pattern example labelled "❌ NEVER". No credential. Re-verify the ignore rules, not the file contents: the rules are what makes this safe.
+
+### The exposure pass matches its own source
+*Accepted 2026-07-09, first full audit.* `_agent/skills/security-audit.md` contains the grep patterns it runs, so passes 1b, 2c, and 2d each return hits on the skill file itself. Noise, not signal — but it does mean a real finding could hide next to a self-match. Read the file and line before dismissing.
+
 ### Tracked symlinks pointing outside their stow package
 *Accepted 2026-07-09.* All 15 tracked symlinks resolve into `_agent/`, inside the repo. This is the intended single-source-of-truth layout for agent rules and skills. The check exists to catch a symlink escaping the repo entirely, which would publish private content on the next `stow`.
 
@@ -31,4 +37,11 @@ Entries are described, not quoted, wherever quoting would restate the private va
 
 ## Open
 
-Nothing recorded yet — the first full audit has not been run. Findings observed incidentally while the skill was written are captured in `docs/decisions/DOT-1.md` rather than here, because they have not been triaged.
+The first full audit ran 2026-07-09. Its open findings are recorded in the **private** ansible repo at `docs/security-findings.md`, not here. See `docs/decisions/DOT-1.md` for why: a ranked list of a system's weaknesses does not belong in a public repo, however discoverable each item is on its own.
+
+## Known gaps in the audit itself
+
+Recorded so an unrun check never reads as a pass.
+
+- **Pass 3c checks nothing.** `osv-scanner scan source` reports "No package sources found" against this repo: it understands lockfiles, and the pins here live in `flake.lock` and Homebrew, neither of which it parses. A clean result from that command means the scanner found nothing to scan, not that nothing is vulnerable. Vulnerability data for the Nix and Homebrew surfaces has to come from elsewhere.
+- **Pass 2d's stated baseline is wrong about MCP.** The skill says "no MCP servers." No server is declared in any settings file, but enabled plugins supply them — `cloudflare@cloudflare` contributes MCP tools whose descriptions enter the model's context. Check `enabledPlugins`, not just `mcpServers`.
