@@ -43,3 +43,10 @@ gemini/.gemini/antigravity/skills/
 # ~/.config/herdr dir; machine-specific, not version controlled (keep config.toml)
 herdr/.config/herdr/*
 !herdr/.config/herdr/config.toml
+
+# zsh — antidote generates ~/.zsh_plugins.zsh from the tracked .zsh_plugins.txt
+# on first shell start (zsh/.zshrc), baking in machine-local cache paths. A
+# committed copy is stale by definition, and stow refused to link it over the
+# live file, which aborted stowing for every package. The .txt source is tracked;
+# this output is not.
+zsh/.zsh_plugins.zsh
