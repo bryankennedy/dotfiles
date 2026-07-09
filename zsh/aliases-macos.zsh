@@ -13,9 +13,15 @@ alias a='antigravity'
 # -------------------------------------------------------------------
 
 # Rebuild nix-darwin from this dotfiles repo.
-# Prepend the nix-darwin bin dir so the alias works from non-login shells too
+# Prepend the nix-darwin bin dir so this works from non-login shells too
 # (login-only profile.zsh isn't guaranteed to have put it on PATH).
-alias compy='cd ~/src/dotfiles/nix-darwin && sudo env PATH="/run/current-system/sw/bin:$PATH" darwin-rebuild switch --flake .#simple'
+# The cd runs in a subshell so it doesn't move the calling shell.
+compy() {
+  (
+    cd ~/src/dotfiles/nix-darwin &&
+      sudo env PATH="/run/current-system/sw/bin:$PATH" darwin-rebuild switch --flake .#simple
+  )
+}
 
 # -------------------------------------------------------------------
 # herdr — agent multiplexer (trial). Persistent remote agent workspaces.
