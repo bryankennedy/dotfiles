@@ -57,3 +57,12 @@ resume_agents_on_restore = true
 # Layer keepalives on top of ~/.ssh/config and reuse one authenticated
 # connection per attach — helps `herdr --remote` survive idle drops.
 manage_ssh_config = true
+
+[experimental]
+# Required by the herdr-fleet launcher (`hf`): it runs `herdr --remote <vm>`
+# inside a pane of this local herdr, which trips the nested-herdr guard
+# (herdr sees HERDR_ENV=1 and refuses). The usual reason that guard exists —
+# an inner herdr stealing the outer's prefix — doesn't apply here: the fleet
+# attaches with `--remote-keybindings server`, and the VMs are configured with
+# a distinct prefix (ctrl+g) via the ansible inventory. See docs/herdr-fleet.md.
+allow_nested = true
