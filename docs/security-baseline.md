@@ -43,5 +43,18 @@ The first full audit ran 2026-07-09. Its open findings are recorded in the **pri
 
 Recorded so an unrun check never reads as a pass.
 
-- **Pass 3c checks nothing.** `osv-scanner scan source` reports "No package sources found" against this repo: it understands lockfiles, and the pins here live in `flake.lock` and Homebrew, neither of which it parses. A clean result from that command means the scanner found nothing to scan, not that nothing is vulnerable. Vulnerability data for the Nix and Homebrew surfaces has to come from elsewhere.
-- **Pass 2d's stated baseline is wrong about MCP.** The skill says "no MCP servers." No server is declared in any settings file, but enabled plugins supply them — `cloudflare@cloudflare` contributes MCP tools whose descriptions enter the model's context. Check `enabledPlugins`, not just `mcpServers`.
+### Fixed 2026-07-09 — pass 3c scanned nothing
+
+`osv-scanner scan source ~/src/dotfiles` reported "No package sources found" and the audit read that silence as a clean dependency scan. It reads lockfiles; this repo has none.
+
+Now three surfaces, three answers. **npm** is scanned properly — `~/.bun/install/global/bun.lock` pins 141 packages and osv-scanner resolves it, printing the package count so a clean result cannot be confused with an empty one. The **nix closure** is scanned with `vulnix --system`, whose output is leads rather than findings: it matches names against NVD blind to nixpkgs' backported patches, and on its first run flagged the Rust crate `curl` against C-library CVEs. **Homebrew has no vulnerability feed at all** — no OSV ecosystem, no `brew` CVE command — so it is reported as *unscanned*, never as clean.
+
+### Fixed 2026-07-09 — pass 2d reported no MCP servers while five were live
+
+The check grepped `mcpServers` in the settings files, found none declared, and concluded there were none. Enabled plugins supply their own: `cloudflare@cloudflare` contributes five remote MCP servers whose tool descriptions enter the model's context on every session.
+
+`scripts/audit-mcp.mjs` now resolves both sources — servers declared in settings, and servers reachable via `enabledPlugins` — and prints the transport and origin of each.
+
+### The rule both failures share
+
+Each check printed exactly what a genuinely clean result prints. Before recording a check as passing, ask what it would have printed had it never run; if the answer is "the same thing," make it prove it looked — a package count, a positive control that must fail, a sample of what it saw.

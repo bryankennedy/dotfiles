@@ -184,13 +184,41 @@ Flag any input older than ~60 days as MEDIUM. `nix flake update` bumps them; reb
 brew outdated --greedy
 ```
 
-**3c. Known-vulnerable packages.** Scan the declared dependency set rather than the filesystem:
+**3c. Known-vulnerable packages.** This pass used to run `osv-scanner scan source ~/src/dotfiles` and report a clean result. That command checked **nothing**: osv-scanner reads lockfiles, and this repo has none. It printed *"No package sources found"* and the audit read the silence as a pass. Never do that again — an unrun check is not a clean one.
+
+There are three dependency surfaces here, and they need three different answers.
+
+**npm, via the global bun install.** The largest surface, and the one nobody was scanning. `~/.bun/install/global/bun.lock` pins 141 packages (claude-code, wrangler, vite and their transitive deps), and osv-scanner reads it:
 
 ```sh
-nix run nixpkgs#osv-scanner -- scan source ~/src/dotfiles
+nix run nixpkgs#osv-scanner -- scan source ~/.bun/install/global
 ```
 
-Cross-check anything it reports against whether the package is actually reachable in this setup before rating it above MEDIUM.
+Verified: it resolves the lockfile and reports per-package findings against the OSV database. Point it at `~/.bun/install/global`, never at this repo.
+
+**The nix closure.** `vulnix` matches the installed system closure against NVD:
+
+```sh
+nix run nixpkgs#vulnix -- --system --json > /tmp/vulnix.json   # exit 2 == vulns found
+```
+
+Two traps. The first run downloads the whole NVD feed (~322 MB) and takes several minutes; later runs are fast. And **vulnix exits 2 when it finds vulnerabilities** — that is a result, not a failure. A `set -e` script or a naive exit-code check treats a successful scan as a crash and, worse, treats a *clean* scan (exit 0) as identical to a scan that never ran.
+
+Read its output as **leads, not findings**. vulnix matches derivation name and version against NVD CPEs. It cannot see the patches nixpkgs backports, and it cannot distinguish packages that merely share a name: a run here flagged `curl-0.4.49` — the Rust *crate* — against CVEs for the C library `curl`, and rated ShellCheck 9.8. Confirm every hit against the real package before it goes in the report.
+
+**Homebrew — no vulnerability feed exists.** OSV has no Homebrew ecosystem, and `brew` ships no CVE command. Nothing here can tell you whether an installed formula is vulnerable. Staleness (3b) is the only available signal and upgrade cadence is the only control. Say this out loud in the report: Homebrew is *unscanned*, not *clean*. Given `onActivation.cleanup = "zap"`, the declared list in `flake.nix` is the whole surface, which at least bounds it.
+
+**One-off package queries.** When you need to check a specific package and version — something installed outside a lockfile — query OSV directly rather than guessing:
+
+```sh
+curl -sS -X POST -d '{"package":{"name":"lodash","ecosystem":"npm"},"version":"4.17.15"}' \
+  https://api.osv.dev/v1/query | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{
+    const v=JSON.parse(s).vulns||[]; console.log(v.length?v.map(x=>x.id).join("\n"):"no known vulnerabilities")})'
+```
+
+That example is a positive control: it must return several GHSA ids. If it returns nothing, your query is malformed, not the package clean — verify the control before trusting a negative.
+
+Cross-check anything reported against whether the package is actually reachable in this setup before rating it above MEDIUM.
 
 **3d. Pinned-by-hand tools.** `herdr` is tracked deliberately (an earlier `herdr-mx` trial was reverted for a cursor-flicker regression). Compare the installed version against upstream, and read the release notes for security content, not just features:
 
@@ -215,5 +243,9 @@ Then summarize to the user:
 2. **Blockers first**, each with the concrete failure: who does what, and what they get.
 3. What you checked and found clean, so the silence is legible.
 4. What you could not check, and why. Never let an unrun check read as a pass.
+
+**Clean and unscanned are different words.** Every check here can produce a silence that means "I found nothing to look at" rather than "I looked and found nothing" — and the two are indistinguishable in the output. Pass 3c reported a clean dependency scan because osv-scanner was pointed at a directory with no lockfile. Pass 2d reported no MCP servers while five were live, because it read the one file that happened not to declare them. Both printed exactly what a genuinely clean result prints.
+
+So before writing a check into the report as passing, ask what it would have printed had it never run — and if the answer is "the same thing," make it prove it looked: a count of packages scanned, a positive control that must fail, a sample of what it saw. A count of zero and a scan of zero things are not the same claim.
 
 Do not fix anything during the audit. Report, then ask. Fixes and audits do not belong in the same commit.
