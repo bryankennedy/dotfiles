@@ -26,11 +26,13 @@ Once the dotfiles are installed on this machine, the day-to-day loop is just two
    compy
    ```
 
-   `compy` is an alias (defined in `zsh/aliases-macos.zsh`) for:
+   `compy` is a shell function (defined in `zsh/aliases-macos.zsh`) that runs:
 
    ```sh
    cd ~/src/dotfiles/nix-darwin && sudo env PATH="$PATH" darwin-rebuild switch --flake .#simple
    ```
+
+   The `cd` happens in a subshell, so you stay in whatever directory you invoked `compy` from.
 
    This rebuilds the system, applies Homebrew/macOS changes, and re-stows your dotfiles into `$HOME`.
 
