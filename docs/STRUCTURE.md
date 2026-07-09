@@ -52,9 +52,12 @@ Run a script after installing the corresponding app:
 
 ## Shared sources (not stow packages)
 
-- **`_skills/`**: Single source of truth for all AI agent workflows/skills. Both the `gemini` and `cursor` packages symlink into here — edit a file once, it updates everywhere.
+- **`_agent/`**: Single source of truth for all AI agent rules and skills. `_agent/rules/global.md` is the shared rules file and `_agent/skills/*.md` are the workflows. The `claude`, `gemini`, and `cursor` packages symlink into here — edit a file once, it updates everywhere.
+
+  Because those symlinks land in `~/.claude/`, `~/.gemini/`, and `~/.cursor/` via stow (and, on the VMs, via `remote/install.sh`), everything under `_agent/` is loaded into an agent's context on every machine. Treat it as executable, and audit it with the `security-audit` skill.
 
   To add a new skill:
-  1. Create the workflow file in `_skills/` with `name:` and `description:` frontmatter.
-  2. Symlink it into the Gemini package: `ln -s ../../../../_skills/<file>.md gemini/.gemini/antigravity/global_workflows/<file>.md`
-  3. Create a Cursor skill dir and symlink: `mkdir cursor/.cursor/skills/<name> && ln -s ../../../../_skills/<file>.md cursor/.cursor/skills/<name>/SKILL.md`
+  1. Create the workflow file in `_agent/skills/` with `name:` and `description:` frontmatter.
+  2. Symlink it into the Claude package: `ln -s ../../../_agent/skills/<file>.md claude/.claude/commands/<file>.md`
+  3. Symlink it into the Gemini package: `ln -s ../../../../_agent/skills/<file>.md gemini/.gemini/antigravity/global_workflows/<file>.md`
+  4. Create a Cursor skill dir and symlink: `mkdir cursor/.cursor/skills/<name> && ln -s ../../../../_agent/skills/<file>.md cursor/.cursor/skills/<name>/SKILL.md`
