@@ -39,6 +39,28 @@ Entries are described, not quoted, wherever quoting would restate the private va
 
 The first full audit ran 2026-07-09. Its open findings are recorded in the **private** ansible repo at `docs/security-findings.md`, not here. See `docs/decisions/DOT-1.md` for why: a ranked list of a system's weaknesses does not belong in a public repo, however discoverable each item is on its own.
 
+---
+
+## Resolved
+
+Decisions, not findings. A resolved item is deleted from the private list and recorded here, described rather than quoted, so that the fix has a rationale attached to it and the private list stays short enough to read.
+
+### The deployment path from this repo to the fleet is now gated at both ends
+*Resolved 2026-07-09. Was the audit's only BLOCKER.*
+
+Content merged here becomes agent instructions and executed code on every machine in the lab, because `remote/install.sh` symlinks `_agent/` into the agent config directories and the fleet runs that script on each play. That is by design; what was missing was any gate between a merge and its execution.
+
+Two changes, one per end. **Push side:** this repo's default branch now requires a pull request and rejects direct pushes, enforced for admins — verified by attempting one and receiving `GH006`. Approvals are set to zero deliberately: a single maintainer cannot approve their own pull request, so requiring one would have locked the repo rather than protected it. The gate that matters is that the diff becomes visible before it becomes instructions.
+
+**Pull side:** the fleet pins an exact commit sha rather than tracking a branch, and the ansible role asserts that the pin is a 40-character sha, failing loudly on a branch name. Adopting new dotfiles is now a reviewed commit in the private repo, so the diff of what the fleet is about to run is the diff of that line.
+
+### Agent config directories are no longer symlinked wholesale into this repo
+*Resolved 2026-07-09. Was HIGH.*
+
+GNU Stow "folds" a directory when the target does not exist yet — it links the whole directory into the package rather than creating a real directory and linking each file. Several directories under `$HOME`, including agent skill and command directories, were folds pointing here. Anything an application wrote to them landed in the working tree of this public repo, restrained only by a hand-written `.gitignore` rule per plugin.
+
+Stow now runs with `--no-folding`, which creates real directories and links only leaf files, so an application writing a new file writes it to `$HOME`. `-R` accompanies it because `--no-folding` alone will not undo a fold that already exists. `scripts/defold.mjs` performed the one-time migration and remains as the check. The stow package list was also completed: three packages were being stowed by hand without being declared, which is how one of these folds went unmanaged for so long.
+
 ## Known gaps in the audit itself
 
 Recorded so an unrun check never reads as a pass.
