@@ -2,7 +2,9 @@
 
 The repository is structured so that running `stow <package>` from the root symlinks the contents of that package into your home directory (`~`), preserving the directory structure. On macOS the nix-darwin activation script stows these packages for you — the **canonical list of stowed packages, and the rationale for the command shape, lives in a comment next to the `stow` call in [`nix-darwin/flake.nix`](../nix-darwin/flake.nix)**. This doc describes what each package is for; it does not re-list the package tokens, to avoid drift.
 
-> **This repo is a first pass, not a full mirror of `$HOME`.** Apps installed manually often keep their own configs in `$HOME` that aren't stowed or tracked here, so expect a given machine to have extra config that this repo doesn't know about. A few directories (e.g. `bin/`, `claude/`, `nvim/`) are checked in but intentionally *not* auto-stowed — treat the repo as the tracked core, not the complete picture.
+> **This repo is a first pass, not a full mirror of `$HOME`.** Apps installed manually often keep their own configs in `$HOME` that aren't stowed or tracked here, so expect a given machine to have extra config that this repo doesn't know about — treat the repo as the tracked core, not the complete picture.
+>
+> `bin/`, `claude/` and `nvim/` were once described here as "intentionally not auto-stowed." They were stowed anyway, by hand, and that undeclared link is how `~/.claude/commands` became an unmanaged symlink into this repo. All three are now declared in `flake.nix` like every other package. A package that is stowed but undeclared is invisible to every tool that reads the list — if a package genuinely should not be stowed, it must not be stowed at all.
 
 ## Stow packages
 
