@@ -5,12 +5,16 @@
 onboarding = false
 
 [theme]
-# Match Ghostty (ghostty-tokyonight-day). Pinned rather than auto-switching:
-# dark_name/light_name below only apply when auto_switch = true.
+# Track Ghostty, which itself follows the macOS system appearance
+# (light:ghostty-tokyonight-day, dark:Catppuccin Macchiato). herdr detects light
+# vs dark by asking the terminal for its background color over OSC 11, so it
+# swaps with Ghostty rather than needing its own macOS hook. Keep these two names
+# in step with Ghostty's `theme` line. `name` is the fallback used only if
+# auto_switch is off or the terminal never answers the query.
 name = "tokyo-night-day"
-auto_switch = false
-dark_name = "kanagawa"
-light_name = "kanagawa-lotus"
+auto_switch = true
+dark_name = "catppuccin"
+light_name = "tokyo-night-day"
 
 [terminal]
 # Empty => $SHELL (zsh). "auto" uses a login shell on macOS.
