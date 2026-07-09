@@ -59,14 +59,7 @@ Subcommands are `git` and `dir` as of gitleaks 8.30. The older `detect` / `prote
 
 ```sh
 cd ~/src/dotfiles
-node -e '
-const fs=require("fs"), os=require("os");
-const y=fs.readFileSync(os.homedir()+"/src/ansible/inventory/hosts.yml","utf8");
-const t=new Set();
-for(const m of y.matchAll(/^\s*(?:ansible_host|ansible_user|herdr_user|gh_host):\s*(\S+)/gm)) t.add(m[1]);
-for(const v of [...t]) { const p=v.split("."); if(p.length>2) t.add(p.slice(-2).join(".")); }
-[...t].filter(Boolean).forEach(x=>console.log(x));
-' > /tmp/topology-terms
+node scripts/audit-topology.mjs > /tmp/topology-terms || exit 1   # exit 1 == deny-list untrustworthy
 
 while read -r term; do
   [ -z "$term" ] && continue
@@ -75,6 +68,8 @@ while read -r term; do
 done < /tmp/topology-terms
 rm -f /tmp/topology-terms
 ```
+
+**Honour that `|| exit 1`.** The deny-list is derived from inventory keys, and it once lost the fleet's real login account without saying so: `ansible_user` claimed a name that was not an account on any host, and the real one survived only because two hosts carried a `herdr_user` the herdr role never needed. Removing that as dead config would have left this pass searching for nothing, printing exactly what a clean run prints. So the inventory now declares `fleet_login_accounts`, and `scripts/audit-topology.mjs` refuses to emit a deny-list when that contract is missing, empty, or names an account the derived terms do not contain. It reports the term and host counts on stderr, so a scan of zero things is distinguishable from a scan that found zero hits.
 
 The two searches use different strictness on purpose. `git grep -Fw` is word-bounded because a short account name is frequently a substring of some longer, innocuous identifier — a GitHub org, a package name — and unbounded matching floods the report with noise that trains you to skim. The history search stays a plain substring `-S`, accepting that noise, because a missed hit there is a *published* secret you will never think to look for again. Do not "fix" it by adding `\b`: git's pickaxe uses POSIX ERE, where `\b` is not a word boundary, so the search silently returns nothing and the pass reads as clean.
 
