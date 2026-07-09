@@ -27,8 +27,21 @@ The macOS activation script stows everything for you, so you normally don't run 
 
 ```sh
 cd ~/src/dotfiles
-stow -v -t "$HOME" <packages…>
+stow -R --no-folding -v -t "$HOME" <packages…>
 ```
+
+**Always pass `--no-folding`.** Without it, Stow links a whole *directory* into `$HOME` when the target doesn't exist yet, rather than creating a real directory and symlinking each file. A folded `~/.cursor/skills` is one symlink pointing into this repo — so when Cursor auto-installs a plugin's skills, or an agent writes a command file, those files land in the working tree of a **public repo**. `.gitignore` is then the only thing standing between them and publication, and every new plugin needs a new rule.
+
+`--no-folding` creates real directories and symlinks only leaf files, so an app writing a new file writes it to `$HOME`, where it belongs. `-R` (restow) is what *undoes* a fold that already exists; `--no-folding` alone leaves one in place.
+
+If a fold ever reappears, or app-written files turn up inside a package directory:
+
+```sh
+node scripts/defold.mjs           # show the plan
+node scripts/defold.mjs --apply   # unstow, evict app-written files to $HOME, restow unfolded
+```
+
+Adding a package? Put it in the `flake.nix` list. Three packages (`bin`, `nvim`, `claude`) were once stowed by hand and never declared there, which is how `~/.claude/commands` became an unmanaged symlink into the repo. The list is only a source of truth if it is complete.
 
 Stowing the packages together in one invocation lets Stow link into existing `~/.config/<app>` paths instead of trying to replace all of `~/.config`.
 
