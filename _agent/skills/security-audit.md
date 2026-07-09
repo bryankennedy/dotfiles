@@ -144,14 +144,22 @@ git -C ~/src/ansible  grep -nE 'curl [^|]*\| *(ba)?sh' -- .
 
 Rate each MEDIUM, or HIGH if fetched over plain `http://`, from a repo you do not control, or without a checksum *and* on a path that runs as root.
 
-**2d. Hooks, permissions, and MCP.** A hook is arbitrary command execution on a tool event, and an MCP server's *tool descriptions* enter the model's context — a hostile server is a direct injection vector.
+**2d. Hooks, permissions, and MCP.** A hook is arbitrary command execution on a tool event. An MCP server's *tool descriptions* are injected into the model's context, so a hostile server is a direct injection vector — it does not need the model to call a tool, only to read one.
 
 ```sh
-cat .claude/settings.json                       # expect: permissions.defaultMode only
-git grep -lniE 'mcpServers|hooks' -- . || echo "no hooks/MCP tracked"
+node scripts/audit-mcp.mjs                      # every MCP server that can reach an agent
+git grep -lniE 'mcpServers|"hooks"' -- .        # anything tracked in the repo
+node -e 'const c=require(require("os").homedir()+"/.claude/settings.json");
+  console.log("defaultMode:", c.permissions?.defaultMode);
+  console.log("allow entries:", c.permissions?.allow?.length ?? 0);
+  console.log("hooks:", c.hooks ? JSON.stringify(c.hooks) : "none");'
 ```
 
-The current baseline is minimal (`defaultMode: default`, no hooks, no MCP servers, and `settings.local.json` is gitignored). Any growth in `permissions.allow`, any hook, or any added MCP server is a finding — describe what it would let an attacker do, not merely that it exists.
+**Do not grep `mcpServers` and conclude there are none.** Nothing is declared in any settings file on this machine, and this pass reported "no MCP servers" while five remote Cloudflare servers were live in every session. They arrive through `enabledPlugins`: a plugin ships its own `.mcp.json`, and enabling the plugin enables its servers. `scripts/audit-mcp.mjs` resolves both sources. A check that reads only the obvious location returns a confident, wrong answer.
+
+Treat each remote server as a dependency, not as configuration: who controls the endpoint, and what would a malicious tool description make an agent do? Note `defaultMode` too — under `auto`, an injected instruction executes against an agent that is already auto-approving, which multiplies the severity of everything else in this pass.
+
+Any growth in `permissions.allow`, any hook, or any added MCP server is a finding. Describe what it would let an attacker do, not merely that it exists.
 
 **2e. Attacker-influenced content that agents read.** Rank by who can write it: git commit messages and PR bodies on a *public* repo (anyone), `~/.bashrc.local` (ansible-managed, so whoever controls the private repo), MOTD, and any file a skill `cat`s into context. A skill that reads a URL or an untrusted file and acts on the result is a BLOCKER — quote the line.
 
