@@ -1,0 +1,12 @@
+# Stow reads this from the PACKAGE directory, not the stow dir — a
+# .stow-local-ignore at the repo root is never consulted for `stow -d . zsh`.
+# Note it REPLACES stow's default ignore list for this package, so the usual
+# VCS entries are restated here.
+\.git
+\.gitignore
+\.DS_Store
+
+# Generated at runtime by antidote into $HOME (see zsh/.zshrc:24). Never stow it:
+# a symlink here would make antidote write its output straight into this repo,
+# which is the same tree-fold hazard --no-folding exists to prevent.
+^\.zsh_plugins\.zsh$
