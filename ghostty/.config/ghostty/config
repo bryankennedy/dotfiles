@@ -23,8 +23,8 @@ theme = Catppuccin Macchiato
 #  Catppuccin but light
 # theme = Catppuccin Latte
 
-window-padding-x = 50
-window-padding-y = 50
+window-padding-x = 4
+window-padding-y = 2
 macos-titlebar-style = tabs
 
 # Dock / app switcher icon: ICNS from this repo at ghostty/.config/ghostty/Ghostty.icns (stow → ~/.config/ghostty/).
