@@ -1,7 +1,8 @@
 # Ghostty Configuration
 
-# Run tmux by default
-command = /opt/homebrew/bin/tmux new-session -A -s main
+# Launch straight into herdr, which replaced tmux as the multiplexer.
+# ~/.tmux.conf is still stowed for reference but nothing starts tmux now.
+command = /opt/homebrew/bin/herdr
 
 # After lots of trial and error, I always come back to Monaco
 font-family = "Monaco"

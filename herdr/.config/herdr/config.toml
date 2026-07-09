@@ -20,9 +20,12 @@ shell_mode = "auto"
 new_cwd = "follow"
 
 [keys]
-# ctrl+b avoids colliding with tmux (ctrl+a), since Ghostty launches herdr
-# inside tmux. If you run herdr standalone, ctrl+a is fine too.
-prefix = "ctrl+b"
+# ctrl+a, inherited from the tmux setup herdr replaced — Ghostty now launches
+# herdr directly, so nothing else wants this chord. Remote herdr keeps herdr's
+# own default (ctrl+b), set via herdr_prefix in the ansible inventory: the two
+# must differ or the outer client swallows every keypress meant for the inner.
+# ctrl+a = local, ctrl+b = whichever remote is focused.
+prefix = "ctrl+a"
 
 # Run lazygit in a temporary pane.
 [[keys.command]]
@@ -64,5 +67,5 @@ manage_ssh_config = true
 # (herdr sees HERDR_ENV=1 and refuses). The usual reason that guard exists —
 # an inner herdr stealing the outer's prefix — doesn't apply here: the fleet
 # attaches with `--remote-keybindings server`, and the VMs are configured with
-# a distinct prefix (ctrl+g) via the ansible inventory. See docs/herdr-fleet.md.
+# a distinct prefix (ctrl+b) via the ansible inventory. See docs/herdr-fleet.md.
 allow_nested = true

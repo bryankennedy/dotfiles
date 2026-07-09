@@ -48,13 +48,16 @@ warning) instead of hanging the whole fleet on an SSH timeout.
 
 The launcher starts each remote client with `--remote-keybindings server`, so
 the inner (remote) herdr uses the **remote** box's configured prefix, while your
-outer/local herdr keeps `ctrl+b`. The remotes must therefore use a *different*
+outer/local herdr keeps its own. The remotes must therefore use a *different*
 prefix, or the outer herdr swallows every keypress and the remote panes can't be
-driven. They're set to `ctrl+g` via `herdr_prefix` in the ansible inventory
+driven. They're set via `herdr_prefix` in the ansible inventory
 (`inventory/group_vars/vms.yml`), rendered into each VM's `~/.config/herdr/config.toml`
 by the `herdr` role.
 
-**So: `ctrl+b` drives local, `ctrl+g` drives whichever remote you're focused on.**
+**So: `ctrl+a` drives local, `ctrl+b` drives whichever remote you're focused on.**
+
+Local took over `ctrl+a` from tmux, which Ghostty no longer launches. Avoid
+`ctrl+g` for either — it collides with a macOS-level hotkey.
 
 ## Opting a host out of auto-launch
 
