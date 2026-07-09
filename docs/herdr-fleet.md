@@ -63,5 +63,6 @@ alias (for manual `herdr --remote foo-herdr`) but drop it from `hf`'s work-list.
 
 ## Per-host login user
 
-The `-herdr` alias uses `herdr_user` if set, else `ansible_user`. The progress
-boxes log in as `exedev`, so they carry `herdr_user: exedev` in the inventory.
+The `-herdr` alias uses `herdr_user` if set, else `ansible_user`. Where a host's
+login account differs from the Ansible user, set `herdr_user` on that host in the
+inventory. The inventory stays the only place any account name is written down.
