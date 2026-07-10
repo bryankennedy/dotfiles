@@ -139,6 +139,15 @@ Pass 1b derives the list of private strings to search for from the inventory. It
 
 `remote/install.sh` rewrote `~/.gitconfig` and moved every symlink aside on **every** run, so a config-management play reported `changed` forever and real drift was invisible in the noise — which is how hosts sat frozen on old commits while every play reported success. The installer now rewrites only when content differs and skips a relink when the symlink already resolves to its target. Verified on the fleet: the per-host `~/.dotfiles-backup/` directory counts are frozen at their pre-fix totals across multiple subsequent plays — before the fix, each play on each host minted a new one — which confirms both the gitconfig and the symlinks have stopped churning. (The historical backup directories remain as harmless cruft, available to clear separately.)
 
+### The private repo has no enforced branch protection, and that is accepted
+*Accepted 2026-07-10. Was LOW (finding 8).*
+
+The public repo's `main` requires a pull request and rejects direct pushes; the private companion repo — which holds the inventory and the deploy pin, and whose `main` is therefore the other half of the repo-to-fleet gate — cannot have the same, because GitHub reserves branch protection on private repositories for paid plans and this account is on the free tier. Making the repo public to unlock it is not an option: publishing the inventory is the exact exposure the whole audit exists to prevent.
+
+Accepted rather than bought. The maintainer is sole, and every change to that repo has in practice gone through a pull request already — the residual is an *accidental* direct-to-`main` push, not an attacker, since access is the account itself rather than anyone who can open a PR. The enforcement would guard a mistake, not a threat, and the discipline that would prevent the mistake is already in place.
+
+Reassess, and revisit the paid plan, if any of these change: a second contributor gains write access (self-review no longer covers it); the plan changes such that protection becomes available at no additional cost; or a direct-to-`main` push ever does land an unreviewed pin bump on the fleet.
+
 ## Known gaps in the audit itself
 
 Recorded so an unrun check never reads as a pass.
