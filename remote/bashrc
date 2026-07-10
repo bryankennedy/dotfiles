@@ -3,6 +3,19 @@
 
 DOTFILES_DIR="${DOTFILES_DIR:-$HOME/.dotfiles}"
 
+# --- Local environment overrides (not checked in) -------------------------
+# Sourced BEFORE the interactive guard on purpose. This file is written by the
+# ansible dotfiles role and holds per-host environment that must reach shells
+# the guard below would otherwise skip — GH_HOST in particular, which a
+# non-interactive login shell (`bash -lc`, agent automation) needs for `gh` to
+# authenticate through the exe.dev edge. Keep it to plain `export`s: everything
+# here runs even non-interactively, so no prompts, output, or interactive-only
+# setup. That belongs after the guard. Because this runs after ~/.bash_profile
+# (which sources this file), the managed value here also overrides any stale
+# hand-written copy a host's ~/.bash_profile might still carry — so this is the
+# single source of truth for GH_HOST, not one of two.
+[ -f "$HOME/.bashrc.local" ] && source "$HOME/.bashrc.local"
+
 # --- Non-interactive guard ------------------------------------------------
 [[ $- != *i* ]] && return
 
@@ -57,5 +70,5 @@ if [ -f "$DOTFILES_DIR/zsh/aliases-core.zsh" ]; then
   source "$DOTFILES_DIR/zsh/aliases-core.zsh"
 fi
 
-# --- Local overrides (not checked in) -------------------------------------
-[ -f "$HOME/.bashrc.local" ] && source "$HOME/.bashrc.local"
+# ~/.bashrc.local is sourced above, before the interactive guard, so its
+# environment reaches non-interactive login shells too. Nothing to do here.
