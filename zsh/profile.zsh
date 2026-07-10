@@ -1,6 +1,12 @@
 # Homebrew Setup
-if [[ -f /opt/homebrew/bin/brew ]]; then
+# `brew` is a symlink into /nix/store (nix-homebrew), so it dangles until the
+# encrypted /nix volume mounts — which happens seconds after login, sometimes
+# after Ghostty/herdr have already spawned their shells. The bin dirs are real
+# either way, so fall back to them rather than losing Homebrew from PATH.
+if [[ -x /opt/homebrew/bin/brew ]]; then
     eval "$(/opt/homebrew/bin/brew shellenv)"
+elif [[ -d /opt/homebrew/bin ]]; then
+    export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 fi
 
 # Path Configuration
