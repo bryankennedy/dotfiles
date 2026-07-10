@@ -203,6 +203,19 @@ Two traps. The first run downloads the whole NVD feed (~322 MB) and takes severa
 
 Read its output as **leads, not findings**. vulnix matches derivation name and version against NVD CPEs. It cannot see the patches nixpkgs backports, and it cannot distinguish packages that merely share a name: a run here flagged `curl-0.4.49` — the Rust *crate* — against CVEs for the C library `curl`, and rated ShellCheck 9.8. Confirm every hit against the real package before it goes in the report.
 
+Triage in three filters, cheapest first — the 2026-07-10 run went 47 flagged → 13 real this way:
+
+1. **Runtime vs build-time.** `vulnix --system` flags the whole closure including build dependencies. Intersect the flagged derivations against the *runtime* closure and drop the rest — a vulnerable compiler that no runtime path retains is not your exposure:
+   ```sh
+   nix-store -qR /run/current-system | grep -v '\.drv$' | sed -E 's;/nix/store/[a-z0-9]{32}-;;' | sort -u > /tmp/rt
+   # keep only vulnix entries whose name appears in /tmp/rt
+   ```
+   That run: 47 flagged, 28 build-time-only (every prior "5/5 noise" sample had been build-time `.drv`s — the Rust `curl` crate, `cargo`, `network`/`warp`/`Diff` Haskell libs).
+2. **Collision vs real product.** Read the CVE description, not just the name. Of 19 runtime leads, 4 were collisions the score alone would never expose: `zlib` matched a *Ruby* gem and a *Cloudflare* fork, `git` matched *Jenkins Git Plugin*, `openmp` matched *Intel oneAPI*, `ada` matched *Ada.cx* the SaaS. Two more were the right project but the wrong component (`nghttp2`'s **nghttpx proxy** not the linked lib; `libxml2`'s **xmlcatalog CLI** not the parse path).
+3. **NVD severity is not the vendor's severity — and this is the one that matters most.** vulnix reports NVD's CVSS, and NVD systematically over-rates. It scored `curl-8.20.0` a **9.8 critical**; curl's own advisory (`curl.se/docs/vuln-<version>.html`) rates the same CVEs mostly **Low**, a few Medium, and its single "Severe" (`CVE-2026-12064`) is a *Low* needing `curl --proto-default sftp` on a schemeless URL — an invocation no one issues. Always confirm severity and affected/fixed range against the **vendor** advisory before a number goes in the report. The gap between vulnix's 9.8 and curl's Low is the difference between an alarm and a fact.
+
+What survives all three is usually real but modest: latest-nixpkgs core libraries (curl, openssl, openssh, sqlite, vim, jq…) trailing an upstream point release, vendor-rated Low–Medium, fix present upstream but not yet packaged. That is the standing tax of a stable channel, and its control is the staleness watch (3a/3e), not per-CVE panic. Do **not** report vulnix's raw count as "N criticals"; report the triaged residual with vendor severities.
+
 **Homebrew — no vulnerability feed exists.** OSV has no Homebrew ecosystem, and `brew` ships no CVE command. Nothing here can tell you whether an installed formula is vulnerable. Staleness (3b) is the only available signal and upgrade cadence is the only control. Say this out loud in the report: Homebrew is *unscanned*, not *clean*. Given `onActivation.cleanup = "zap"`, the declared list in `flake.nix` is the whole surface, which at least bounds it.
 
 **One-off package queries.** When you need to check a specific package and version — something installed outside a lockfile — query OSV directly rather than guessing:
