@@ -14,6 +14,25 @@ fi
 
 # Interactive Shell Configuration
 
+# Vi keybindings. State the keymap explicitly rather than letting zsh infer it
+# from EDITOR=vim: /etc/zshrc used to force emacs here, but it lives in
+# /nix/store and is skipped when a shell starts before /nix mounts. Must precede
+# plugin loading so their bindings land in the right keymap.
+bindkey -v
+
+# Esc waits 400ms for an escape sequence by default, which makes mode switching
+# feel sluggish. 1 = 10ms.
+KEYTIMEOUT=1
+
+# viins drops these: ^A/^E become self-insert. (^R is rebound to fzf below.)
+bindkey -M viins '^A' beginning-of-line
+bindkey -M viins '^E' end-of-line
+
+# Esc v opens the current command line in $EDITOR; :wq runs it.
+autoload -Uz edit-command-line
+zle -N edit-command-line
+bindkey -M vicmd 'v' edit-command-line
+
 # Set up Antidote - A tool for managing zsh plugins
 source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
 
@@ -45,6 +64,16 @@ fi
 # Modern Tools
 if command -v zoxide > /dev/null; then
   eval "$(zoxide init zsh --cmd j)"
+fi
+
+# fzf: key bindings only (^R history, ^T files, alt-c cd) — it binds emacs,
+# viins and vicmd itself. Deliberately not `eval "$(fzf --zsh)"`, which also
+# loads fzf-completion and would rebind Tab over the menu-select setup above.
+if [[ -f /opt/homebrew/opt/fzf/shell/key-bindings.zsh ]]; then
+  source /opt/homebrew/opt/fzf/shell/key-bindings.zsh
+  # vim's search key, with fzf's search-as-you-type instead of the
+  # non-incremental mini-buffer of vi-history-search-backward.
+  bindkey -M vicmd '/' fzf-history-widget
 fi
 
 if command -v fnm > /dev/null; then
