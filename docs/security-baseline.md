@@ -11,6 +11,20 @@ Rules:
 
 ---
 
+## Run log
+
+A dated line per full audit, so a clean result is itself on the record — the point of the baseline is that silence is legible, and "we ran it and nothing new surfaced" is a claim worth being able to point to.
+
+### 2026-07-10 — full run (`all`), no new findings
+First fully clean pass. Every check either passed with evidence that it actually looked, or matched an accepted entry below that re-verified as still true; nothing new was found.
+
+- **Exposure** — gitleaks scanned 193 commits and the worktree with no leaks; the topology deny-list (14 terms from 9 hosts) hit only the accepted anchor-slug true-negative and finding 4's history; 0 symlinks escape the repo. Finding 4's void condition was re-checked and holds — **no fleet hostname appears anywhere in this repo, worktree or history**.
+- **Injection** — the gate is intact at both ends (this repo requires a PR with admin enforcement; the fleet pins a full commit sha, now `bc896bb`). The global `permissions.allow` list is empty (finding 6). Five Cloudflare plugin MCP servers remain the only injection surface, as baselined; no hooks.
+- **Dependencies** — npm (141 packages) scans clean; the nix closure is byte-identical to finding 7's triage (same 19 runtime leads, same versions), so that vendor-severity triage still stands; pins are current; nix inputs are 2–28 days old; 0 declared Homebrew formulae are stale.
+- **Stated unscanned, not clean** — Homebrew has no vulnerability feed; nix-closure vendor advisories were not re-fetched because the closure did not change; `defaultMode: auto` means agents auto-approve, which amplifies any injection vector and is why the gate and empty allow-list matter.
+
+---
+
 ## Accepted — Pass 1, exposure
 
 Entries are described, not quoted, wherever quoting would restate the private value. This file is public.
