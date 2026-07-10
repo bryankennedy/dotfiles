@@ -60,6 +60,17 @@ droid = "off"
 # After a herdr server restart, resume agent panes back into their sessions.
 resume_agents_on_restore = true
 
+[worktrees]
+# Where herdr's "New worktree" action checks out grouped worktree workspaces —
+# the mechanism for running a second agent in this repo without file collisions.
+# Checkouts land at <directory>/<repo>/<branch-slug>. These are ephemeral, untracked
+# checkouts, so keep them out of ~/src and under a dotpath alongside herdr's own
+# runtime data. This matches herdr's default; stated explicitly so the layout is
+# reproducible across machines and immune to a default change. herdr's own delete
+# action leaves the branch behind and skips PR checks — use the cleanup-worktree
+# command for post-merge teardown. See docs/herdr-fleet.md.
+directory = "~/.herdr/worktrees"
+
 [remote]
 # Layer keepalives on top of ~/.ssh/config and reuse one authenticated
 # connection per attach — helps `herdr --remote` survive idle drops.
