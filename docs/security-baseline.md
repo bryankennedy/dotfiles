@@ -21,11 +21,19 @@ Entries are described, not quoted, wherever quoting would restate the private va
 ### The `*-herdr` SSH aliases in `zsh/aliases-macos.zsh`
 *Accepted 2026-07-09.* These are SSH **alias** names. The hostnames and login accounts they resolve to live in `~/.ssh/config.d/`, generated from the private ansible inventory and never tracked here. An alias name alone reveals only that hosts by that nickname exist, which is not worth the cost of obfuscating.
 
-### Git identity in `git/.gitconfig`
-*Accepted 2026-07-09.* Real name and email, matched because the inventory's `ansible_user` is derived from the same first name. This is the authorship identity on every public commit already; the repo cannot hide what `git log` publishes.
+### ~~Git identity in `git/.gitconfig`~~
+*Accepted 2026-07-09. **Retired 2026-07-09**, second audit run.* It matched only because the inventory's `ansible_user` named a person rather than the login account. That field was wrong on every host — the fleet logs in as a service account — and correcting it removed the term from the deny-list, so this file no longer matches at all.
 
-### 21 gitleaks hits across 15 files under the vendor-installed plugin skill dirs
-*Accepted 2026-07-09, first full audit.* `gitleaks dir` walks the filesystem, not the index, so it reaches the Cloudflare plugin's reference docs that Cursor and Gemini auto-install into the stowed `cursor/.cursor/skills/` and `gemini/.gemini/antigravity/skills/` directories. All 15 files are gitignored — verified with `git check-ignore`, 15 of 15 — so `git add -A` cannot sweep them in. Reading the hits confirms they are documentation placeholders (`YOUR_API_TOKEN`) and one deliberate anti-pattern example labelled "❌ NEVER". No credential. Re-verify the ignore rules, not the file contents: the rules are what makes this safe.
+The identity itself was never the concern: it is the authorship on every public commit already, and no repo can hide what `git log` publishes. The entry is retired because the *match* was an artefact of a misdescribed inventory, which is worth knowing.
+
+### ~~21 gitleaks hits across 15 files under the vendor-installed plugin skill dirs~~
+*Accepted 2026-07-09. **Retired 2026-07-09**, second audit run. The rationale no longer applies; the entry is kept struck through so the change is visible rather than silent.*
+
+It described `gitleaks dir` reaching Cloudflare plugin reference docs that Cursor and Gemini auto-installed into the stowed skill directories, judged safe because all 15 files were gitignored. The acceptance rested entirely on those ignore rules holding.
+
+Those files no longer live in this repo at all. `--no-folding` stopped the agent config directories from being symlinks into the working tree, and `scripts/defold.mjs` evicted what had accumulated. The second run's worktree scan reports **no leaks found**, and bytes scanned fell from 6.20 MB to 848 KB — consistent with eviction rather than with a scanner that quietly stopped looking.
+
+Do not re-add this entry if the hits reappear. Their reappearance would mean a fold has returned, and that is a finding, not a baseline.
 
 ### The exposure pass matches its own source
 *Accepted 2026-07-09, first full audit.* `_agent/skills/security-audit.md` contains the grep patterns it runs, so passes 1b, 2c, and 2d each return hits on the skill file itself. Noise, not signal — but it does mean a real finding could hide next to a self-match. Read the file and line before dismissing.

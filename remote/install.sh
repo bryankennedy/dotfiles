@@ -39,6 +39,14 @@ fi
 # --- Helpers --------------------------------------------------------------
 backup_and_link() {
   local src="$1" dst="$2"
+  # Already correct? Do nothing. Without this the installer moved every symlink
+  # aside and recreated it on every run, minting a fresh ~/.dotfiles-backup/
+  # directory each time — one host had eight of them, growing without bound — and
+  # churning files that had not changed since the day they were linked.
+  if [ -L "$dst" ] && [ "$(readlink "$dst")" = "$src" ]; then
+    dim "  $(basename "$dst") already linked"
+    return
+  fi
   if [ -e "$dst" ] || [ -L "$dst" ]; then
     mkdir -p "$BACKUP_DIR"
     mv "$dst" "$BACKUP_DIR/$(basename "$dst")"
@@ -98,10 +106,24 @@ fi
 # Generate .gitconfig from the shared git/.gitconfig, stripping the [user]
 # block (contains personal identity) and appending [include] for local overrides.
 green "\nGit"
-{
-  sed '/^\[user\]/,/^\[/{ /^\[user\]/d; /^\[/!d; }' "$DOTFILES_DIR/git/.gitconfig"
+STRIP_USER='/^\[user\]/,/^\[/{ /^\[user\]/d; /^\[/!d; }'
+gitconfig_managed=$(
+  sed "$STRIP_USER" "$DOTFILES_DIR/git/.gitconfig"
   printf '\n[include]\n\tpath = ~/.gitconfig.local\n'
-} | backup_and_write "$HOME/.gitconfig"
+)
+# Rewrite only when the managed part actually differs, and compare the EXISTING
+# file with its [user] block stripped. Configuration management adds that block
+# after this script runs (ansible's git_identity role does), so comparing the
+# whole file always differs and we would clobber the identity on every play —
+# which is what used to happen. git_identity then restored it and reported
+# "changed" forever, so `changed` stopped meaning anything and real drift hid in
+# the noise. Stripping [user] from both sides asks the only question that
+# matters: is the part this script owns already correct?
+if [ -f "$HOME/.gitconfig" ] && [ "$(sed "$STRIP_USER" "$HOME/.gitconfig")" = "$gitconfig_managed" ]; then
+  dim "  .gitconfig already current (preserving [user])"
+else
+  printf '%s\n' "$gitconfig_managed" | backup_and_write "$HOME/.gitconfig"
+fi
 backup_and_link "$DOTFILES_DIR/git/.gitignore_global" "$HOME/.gitignore_global"
 
 # --- Bash -----------------------------------------------------------------
