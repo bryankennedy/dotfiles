@@ -110,6 +110,13 @@ What each upstream actually permits differs, and the fix follows that rather tha
 
 The shared trigger stands for all three: reassess upward if any ever drops to plain HTTP or gains a root path.
 
+### The nix closure's CVE leads are triaged, and the scary number was mostly NVD
+*Resolved 2026-07-10 as a triage + accepted residual. Was "56 affected, 16 CVSS ≥9.0, untriaged."*
+
+`vulnix --system` reports NVD's CVSS against every derivation in the system closure, and read raw it looked alarming. Triaged against the freshly-updated closure it collapses: 47 flagged → 28 dropped as build-time-only (not in the runtime closure) → 4 name collisions (a package matched against an unrelated product sharing its name) → 2 wrong-component → **~13 real leads**, and those are latest-nixpkgs core libraries trailing an upstream point release, **rated Low-to-Medium by their own vendors** even where NVD rated them 9.8. The worked example: vulnix scored `curl` a 9.8 critical; curl's own advisory rates the same CVEs mostly Low and its one "Severe" a *Low* requiring an invocation nobody uses.
+
+The decision: accept these as the standing cost of a stable channel rather than chase them. There is nothing to upgrade *to* — the pinned nixpkgs already ships the newest build of each package; the fix lands when nixpkgs packages the upstream release. The control is the dependency-staleness watch (flake age plus `scripts/audit-pins.mjs`), re-running vulnix after each flake update and re-checking the network-reachable subset against **vendor** advisories, not NVD. The method is written into the audit skill (pass 3c) so the next run does not re-panic over the same raw count.
+
 ### Global agent permissions no longer carry a stray project's command grants
 *Resolved 2026-07-10. Was LOW (finding 6).*
 
