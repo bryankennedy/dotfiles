@@ -83,6 +83,8 @@ git grep -nEI 'ansible_host|ansible_user|inventory_hostname|gh_host' -- .
 
 Note the asymmetry the history search exposes: `git grep` clears the worktree, `git log -S` clears the *published record*. A term can be absent from one and present in the other, and only the second matters once a commit is pushed.
 
+**The history search returns hits for the fleet's login account, and always will.** That exposure was reviewed and accepted; `docs/security-baseline.md` records why, and the private findings file holds the commit coordinates. Do not re-open it, and do not teach this pass to skip those commits — a pickaxe with an exception list reports clean on the one thing it was pointed at. Instead, re-verify: the acceptance names three conditions that would void it, one of which is a hostname appearing in this repo. Check those, then move on. A hit here is expected; a hit here *plus* a hostname is a BLOCKER.
+
 **1c. Things that must never be tracked.** `~/.ssh/config` is deliberately untracked and its `Host *-herdr` blocks are generated into `~/.ssh/config.d/` from the private inventory. Confirm nothing has pulled them in:
 
 ```sh

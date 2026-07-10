@@ -35,6 +35,27 @@ Those files no longer live in this repo at all. `--no-folding` stopped the agent
 
 Do not re-add this entry if the hits reappear. Their reappearance would mean a fold has returned, and that is a finding, not a baseline.
 
+### A fleet login account name remains in this repo's published history
+*Accepted 2026-07-10, after the second audit run. This entry exists so the decision is not re-litigated; the commit coordinates are in the private findings file, deliberately not here.*
+
+An account name was committed here and later removed from the worktree. Removal does not unpublish: this repo is public, so every commit that ever carried the string is still fetchable. Confirmed by reading the diffs, not by trusting the pickaxe — one of the matching commits is a false positive, a slugified vendor domain in a markdown anchor.
+
+Accepted because the name is not a credential and, here, is not even knowledge:
+
+- SSH to the fleet is key-only. There is no password prompt for a username to be typed into.
+- The corresponding **hostnames were never committed**. A reader of this repo learns a username with nowhere to use it.
+- The hosting edge maps *any* SSH username onto the same service account. An attacker who already had a hostname never needed the name.
+
+And the alternatives cost more than they buy. A history rewrite plus force-push does not expunge objects from GitHub — old SHAs stay reachable through the API, forks, and cached clones until a garbage collection you cannot trigger — while breaking every clone, including nine fleet checkouts pinned to a sha. Rotating the account is real work that the third point above renders close to worthless.
+
+**Re-verify, do not re-decide.** This acceptance rests on three conditions, and it expires with any of them. Re-raise as a live finding, not a baseline entry, if:
+
+- a **hostname is ever committed to this repo** — the pair is meaningful even though neither half is;
+- the fleet moves to a provider whose edge does *not* collapse arbitrary usernames onto one account;
+- password or keyboard-interactive SSH auth is ever enabled on any host.
+
+The finding was never "a string is public." It was "nobody decided." That is now closed.
+
 ### The exposure pass matches its own source
 *Accepted 2026-07-09, first full audit.* `_agent/skills/security-audit.md` contains the grep patterns it runs, so passes 1b, 2c, and 2d each return hits on the skill file itself. Noise, not signal — but it does mean a real finding could hide next to a self-match. Read the file and line before dismissing.
 
