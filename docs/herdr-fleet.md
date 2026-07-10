@@ -59,6 +59,25 @@ by the `herdr` role.
 Local took over `ctrl+a` from tmux, which Ghostty no longer launches. Avoid
 `ctrl+g` for either — it collides with a macOS-level hotkey.
 
+## Worktrees — two agents in one repo
+
+Separate from the fleet: herdr also manages **git worktrees** natively, which is
+how you run a second agent in the *same* repo without file collisions. From a git
+workspace, the sidebar's **New worktree** action creates a checkout (or checks out
+an existing branch), opens it as a workspace, and groups it under the source — run
+your second agent there and it operates in an isolated working directory.
+
+Checkouts land at `~/.herdr/worktrees/<repo>/<branch-slug>`, set via the
+`[worktrees]` block in `herdr/.config/herdr/config.toml`. They're ephemeral and
+untracked, so they live under a dotpath alongside herdr's runtime data rather than
+in `~/src`.
+
+herdr's own **Delete worktree checkout…** action runs `git worktree remove` but
+leaves the branch behind and does no PR-merge check. For anything that became a PR,
+use the `cleanup-worktree` command instead — it verifies the PR merged, deletes the
+remote branch, and resets local main. Rough division of labor: **herdr creates and
+runs; `cleanup-worktree` does the post-merge teardown.**
+
 ## Opting a host out of auto-launch
 
 Set `herdr_fleet: false` on a host in the inventory to keep its `-herdr` SSH
