@@ -129,6 +129,16 @@ One host carried a second, hand-written copy of its `GH_HOST` export in `~/.bash
 
 Fixed at the root: `remote/bashrc` now sources `~/.bashrc.local` *before* the guard, so the managed per-host environment reaches non-interactive login shells on every host. Because that sourcing runs after `~/.bash_profile`, the managed value also overrides any stale hand-written copy — so it is authoritative, not merely one of two. The block is documented as environment-only, since it now runs even non-interactively; interactive setup stays after the guard, which a test confirms it still gates.
 
+### The exposure pass's deny-list is now a checked contract, not a lucky accident
+*Resolved 2026-07-10. Was MEDIUM (finding 9) — a defect in the audit, not the lab.*
+
+Pass 1b derives the list of private strings to search for from the inventory. It used to assemble that list from whatever keys happened to be present, and the fleet's real login account survived into it only by accident — a redundant key on two hosts. Removing that redundancy as dead config, nearly done once, would have left the pass searching for nothing while printing exactly what a clean run prints. The inventory now declares the accounts explicitly as a contract, and `scripts/audit-topology.mjs` refuses to emit a deny-list when that contract is missing, empty, or names an account the derived terms do not contain — it exits non-zero and the pass stops. A contract nobody checks is just a comment; this one is checked on every run.
+
+### The remote installer is idempotent, so `changed` means something again
+*Resolved 2026-07-10. Was LOW (finding 11), but it is what let a BLOCKER hide.*
+
+`remote/install.sh` rewrote `~/.gitconfig` and moved every symlink aside on **every** run, so a config-management play reported `changed` forever and real drift was invisible in the noise — which is how hosts sat frozen on old commits while every play reported success. The installer now rewrites only when content differs and skips a relink when the symlink already resolves to its target. Verified on the fleet: the per-host `~/.dotfiles-backup/` directory counts are frozen at their pre-fix totals across multiple subsequent plays — before the fix, each play on each host minted a new one — which confirms both the gitconfig and the symlinks have stopped churning. (The historical backup directories remain as harmless cruft, available to clear separately.)
+
 ## Known gaps in the audit itself
 
 Recorded so an unrun check never reads as a pass.
