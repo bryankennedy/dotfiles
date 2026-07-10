@@ -110,6 +110,18 @@ What each upstream actually permits differs, and the fix follows that rather tha
 
 The shared trigger stands for all three: reassess upward if any ever drops to plain HTTP or gains a root path.
 
+### Global agent permissions no longer carry a stray project's command grants
+*Resolved 2026-07-10. Was LOW (finding 6).*
+
+The global `~/.claude/settings.json` `permissions.allow` list held two entries — its entire contents — that hard-coded a specific command against a file path belonging to an unrelated project. Exact-match command grants, so not exploitable, but a project-scoped grant sitting in global scope is how an allow-list quietly stops meaning anything, and the pattern (a project session writing its grants to the global file) is the thing to catch. Removed; the allow list is now empty. The path was never in this public repo — the file is machine-local and untracked, confirmed — so nothing was disclosed. That the file drifts unversioned is inherent to it being machine-specific agent state, and is accepted rather than fixed.
+
+### GH_HOST has a single managed source across the fleet
+*Resolved 2026-07-10. Was LOW (finding 10).*
+
+One host carried a second, hand-written copy of its `GH_HOST` export in `~/.bash_profile`, outside anything the ansible role managed. It existed for a real reason — `remote/bashrc` sourced the managed `~/.bashrc.local` *after* its non-interactive guard, so a non-interactive login shell (agent automation running `gh`) never reached the managed value, and the hand-written copy filled that gap. The cost was two sources of truth, one invisible to the role and free to drift when the inventory value changed.
+
+Fixed at the root: `remote/bashrc` now sources `~/.bashrc.local` *before* the guard, so the managed per-host environment reaches non-interactive login shells on every host. Because that sourcing runs after `~/.bash_profile`, the managed value also overrides any stale hand-written copy — so it is authoritative, not merely one of two. The block is documented as environment-only, since it now runs even non-interactively; interactive setup stays after the guard, which a test confirms it still gates.
+
 ## Known gaps in the audit itself
 
 Recorded so an unrun check never reads as a pass.
