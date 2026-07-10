@@ -226,7 +226,15 @@ gh api repos/ogulcancelik/herdr/releases/latest -q .tag_name
 
 Note the asymmetry: the Mac gets herdr from Homebrew, the VMs from `curl https://herdr.dev/install.sh | sh` in the ansible role. They drift independently, and the VM path has no checksum.
 
-**3e. JS.** `bin/bin/herdr-fleet` runs under bun with no `package.json` and no dependencies. If one appears, `bun audit` becomes part of this pass.
+**3e. Pinned network installers.** `remote/install.sh` pins the two installers it can — bun to an exact release tag, zoxide to its installer-script commit sha (herdr takes no version and cannot be pinned; that residual is accepted, see `docs/security-baseline.md`). Pinning is only safe if something notices when a pin falls behind a fix, so this pass measures the drift:
+
+```sh
+node scripts/audit-pins.mjs   # exit 0 current · 2 a pin is behind · 3 could not check
+```
+
+This answers "am I current," not "does the newer version fix a CVE" — 3c's osv-scanner and vulnix answer the latter. A pin can be simultaneously un-vulnerable and stale; report both. Do not treat a fast-moving tool being a patch or two behind as urgent on its own — it is a prompt to read the release notes, and only a matched osv/vulnix hit makes it actionable. A `BEHIND` here plus a hit there is the signal.
+
+**3f. JS.** `bin/bin/herdr-fleet` runs under bun with no `package.json` and no dependencies. If one appears, `bun audit` becomes part of this pass.
 
 ---
 

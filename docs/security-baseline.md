@@ -90,6 +90,26 @@ GNU Stow "folds" a directory when the target does not exist yet — it links the
 
 Stow now runs with `--no-folding`, which creates real directories and links only leaf files, so an application writing a new file writes it to `$HOME`. `-R` accompanies it because `--no-folding` alone will not undo a fold that already exists. `scripts/defold.mjs` performed the one-time migration and remains as the check. The stow package list was also completed: three packages were being stowed by hand without being declared, which is how one of these folds went unmanaged for so long.
 
+### Flake inputs are kept current, not left to drift
+*Resolved 2026-07-10. Was MEDIUM (finding 5, staleness).*
+
+Age is its own risk, distinct from any named CVE: a patched vulnerability does not reach a machine until the pin that references it moves. The four `nix-darwin/flake.lock` inputs had gone 53–61 days without an update, which is a standing decision to run old crypto and network code. They were refreshed (`nix flake update`), verified by building the full closure without switching, and the resulting `nix store diff-closures` showed the TLS/network stack advancing as intended — openssl, curl, git, krb5, nghttp2, ngtcp2, libxml2, libfido2, the CA bundle. This flake builds the Mac alone; the fleet is unaffected. The Homebrew half of the same finding had already resolved itself — `brew outdated` reports zero.
+
+The decision this records is not the one update but the posture: a lock this old is a finding, and the audit's dependency pass should say so rather than treat a quiet lock as a current one.
+
+### Three network installers are pinned as far as each upstream allows
+*Resolved 2026-07-10, with one accepted residual. Was MEDIUM ×3 (finding 3).*
+
+`remote/install.sh` and the herdr Ansible role each fetch an installer over HTTPS and pipe it to a shell. All three run as the login user, never root, but each fetched a *moving* ref — the code executed could differ from one bootstrap to the next with no signature or checksum. Checksum-pinning the vendor *installer scripts* was rejected outright: those scripts change often, so a pinned hash breaks bootstrap on every upstream edit and trains whoever hits it to bump the hash unread, which is worse than no check.
+
+What each upstream actually permits differs, and the fix follows that rather than pretending it is uniform:
+
+- **bun** takes a release tag as its first argument, so it is pinned to an exact version — the payload the VM keeps is deterministic.
+- **zoxide**'s installer has no version flag; it always fetches the latest release. So the pin is the *installer script's commit sha* instead of the `main` branch — it fixes the code piped into the shell, not the binary version, which is the part that could turn hostile between runs.
+- **herdr** can be pinned neither way: its installer takes no version argument and is served from a vendor URL with no git ref, so there is no immutable script to pin. Its one available hardening, binary checksumming, was declined against a MEDIUM, non-root install whose version is already reconciled by the Mac client on first connect. **This residual is accepted.**
+
+The shared trigger stands for all three: reassess upward if any ever drops to plain HTTP or gains a root path.
+
 ## Known gaps in the audit itself
 
 Recorded so an unrun check never reads as a pass.

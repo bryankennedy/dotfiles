@@ -164,7 +164,12 @@ if command -v zoxide &> /dev/null; then
   dim "  zoxide already installed"
 else
   green "  installing zoxide..."
-  curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | sh 2>&1
+  # Pinned to a reviewed installer commit, not the moving `main` branch. zoxide's
+  # installer has no version flag — it always fetches the latest release from the
+  # GitHub API — so this cannot pin the binary version; what it pins is the *code
+  # we pipe into a shell*, which is the part that could turn hostile between runs.
+  # Bump the sha after reading the diff at github.com/ajeetdsouza/zoxide/commits/main/install.sh.
+  curl -sSfL https://raw.githubusercontent.com/ajeetdsouza/zoxide/ce469159012efac2c4e005c6023e7f730ba65047/install.sh | sh 2>&1
   green "  installed zoxide"
 fi
 
@@ -181,7 +186,11 @@ else
   # appending exports to ~/.bashrc (a symlink into this repo)
   export BUN_INSTALL="$HOME/.bun"
   export PATH="$BUN_INSTALL/bin:$PATH"
-  curl -fsSL https://bun.sh/install | bash 2>&1 | tail -n 3
+  # Pinned version: the installer's first positional arg is a specific release tag
+  # (it downloads releases/download/<tag>/…), so the payload is deterministic
+  # rather than latest-at-bootstrap. `herdr --remote` does not gate bun, so unlike
+  # herdr this version is the one the VM actually keeps. Bump the tag deliberately.
+  curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.14" 2>&1 | tail -n 3
   green "  installed bun"
 fi
 
