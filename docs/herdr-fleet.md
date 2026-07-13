@@ -36,6 +36,7 @@ hf          # attach every reachable VM as a workspace (idempotent)
 | flag | effect |
 |------|--------|
 | *(none)* | attach every reachable VM; skip unreachable and already-open ones |
+| `--reattach` | also revive existing workspaces whose remote session died (see below) |
 | `--force` | attach even VMs that fail the SSH health check |
 | `--only a,b` | restrict to the named VMs |
 | `--dry-run` | print what it would do, change nothing |
@@ -43,6 +44,27 @@ hf          # attach every reachable VM as a workspace (idempotent)
 It is safe to re-run: existing workspaces are left as-is, so `hf` after a reboot
 just reattaches whatever isn't already up. A VM that's asleep is skipped (with a
 warning) instead of hanging the whole fleet on an SSH timeout.
+
+### After a reboot — `hf --reattach`
+
+A reboot often leaves the fleet in a half-dead state: the local herdr server
+restores the VM workspaces, but every SSH session inside them is gone. Each pane
+falls back to a bare login shell. Plain `hf` sees the workspace label still
+present and skips it (`= foo — workspace exists, leaving as-is`), so it can't fix
+this on its own.
+
+`hf --reattach` closes that gap. For each existing VM workspace it inspects the
+panes' foreground processes:
+
+- **every pane is just a shell** → the remote client exited; it re-runs
+  `herdr --remote <name>-herdr …` in the workspace's root pane (`~ foo —
+  reattached dead session`).
+- **any pane is running something else** (the live remote client, an agent, an
+  editor) → left untouched (`= foo — remote session live, leaving as-is`).
+
+It still creates workspaces for reachable VMs that have none, so a single
+`hf --reattach` fully restores the fleet after a reboot. Dead sessions on
+unreachable VMs are skipped with a warning (use `--force` to reattach anyway).
 
 ## Prefix hygiene (herdr inside herdr)
 

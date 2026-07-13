@@ -10,9 +10,16 @@
 //
 // Usage:
 //   herdr-fleet               attach every reachable VM (skips unreachable + existing)
+//   herdr-fleet --reattach    also revive existing workspaces whose remote session died
 //   herdr-fleet --force       attach even VMs that fail the SSH health check
 //   herdr-fleet --only a,b    restrict to the named VMs
 //   herdr-fleet --dry-run     print what it would do; change nothing
+//
+// After a reboot the local server can restore the VM workspaces while their SSH
+// sessions stay dead — each pane falls back to a bare login shell. Plain re-runs
+// skip those ("workspace exists, leaving as-is"). `--reattach` inspects each
+// existing VM workspace: if no pane is running anything but a shell, it re-runs
+// the `herdr --remote` command in place; live sessions are left untouched.
 
 import { readFileSync } from "node:fs";
 import { homedir } from "node:os";
@@ -25,6 +32,7 @@ const FLEET_PATH = `${homedir()}/.config/herdr/fleet.json`;
 const argv = process.argv.slice(2);
 const DRY = argv.includes("--dry-run");
 const FORCE = argv.includes("--force");
+const REATTACH = argv.includes("--reattach");
 const onlyRaw =
   argv.find((a) => a.startsWith("--only="))?.slice("--only=".length) ??
   (argv.includes("--only") ? argv[argv.indexOf("--only") + 1] : null);
@@ -57,6 +65,41 @@ async function reachable(remote) {
   }
 }
 
+// A pane whose foreground process is nothing but a login shell is idle — the
+// command that used to run there (our `herdr --remote` client) has exited.
+const SHELLS = new Set(["zsh", "bash", "fish", "sh", "dash", "ksh", "login"]);
+function isShellProc(fp) {
+  const name = (fp.argv0 || fp.name || fp.argv?.[0] || "").replace(/^-/, "");
+  return SHELLS.has(name);
+}
+
+async function panesFor(workspaceId) {
+  try {
+    const res = await herdr("pane", "list", "--workspace", workspaceId);
+    return res?.result?.panes ?? [];
+  } catch {
+    return [];
+  }
+}
+
+// A VM workspace's remote session is "alive" if any of its panes is running
+// something other than a bare shell. When every pane is idle at a shell prompt
+// (the reboot case), it's dead and safe to re-run the launch command into it.
+async function remoteAlive(workspaceId) {
+  const panes = await panesFor(workspaceId);
+  for (const p of panes) {
+    let info;
+    try {
+      info = await herdr("pane", "process-info", "--pane", p.pane_id);
+    } catch {
+      continue;
+    }
+    const procs = info?.result?.process_info?.foreground_processes ?? [];
+    if (procs.some((fp) => !isShellProc(fp))) return { alive: true, panes };
+  }
+  return { alive: false, panes };
+}
+
 // --- load the fleet ---------------------------------------------------------
 let fleet;
 try {
@@ -78,7 +121,10 @@ try {
 } catch {
   die("no running herdr server — start herdr first, then run this inside it.");
 }
-const existing = new Set((listed?.result?.workspaces ?? []).map((w) => w.label));
+const wsIdByLabel = new Map(
+  (listed?.result?.workspaces ?? []).map((w) => [w.label, w.workspace_id]),
+);
+const existing = new Set(wsIdByLabel.keys());
 
 // --- health-check all VMs in parallel --------------------------------------
 const checked = await Promise.all(
@@ -89,10 +135,44 @@ const checked = await Promise.all(
 let created = 0;
 let present = 0;
 let down = 0;
+let reattached = 0;
+const cmdFor = (vm) => `herdr --remote ${vm.remote} --remote-keybindings server`;
 for (const { vm, up } of checked) {
   if (existing.has(vm.name)) {
-    console.log(`= ${vm.name} — workspace exists, leaving as-is`);
-    present++;
+    if (!REATTACH) {
+      console.log(`= ${vm.name} — workspace exists, leaving as-is`);
+      present++;
+      continue;
+    }
+    // --reattach: revive the workspace only if its remote session has died.
+    const workspaceId = wsIdByLabel.get(vm.name);
+    const { alive, panes } = await remoteAlive(workspaceId);
+    if (alive) {
+      console.log(`= ${vm.name} — remote session live, leaving as-is`);
+      present++;
+      continue;
+    }
+    if (!up) {
+      console.warn(
+        `x ${vm.name} — session dead but ${vm.remote} unreachable; skipping. Use --force to reattach anyway.`,
+      );
+      down++;
+      continue;
+    }
+    const targetPane = panes[0]?.pane_id;
+    if (!targetPane) {
+      console.error(`! ${vm.name} — no pane found in workspace ${workspaceId}; skipping.`);
+      continue;
+    }
+    const cmd = cmdFor(vm);
+    if (DRY) {
+      console.log(`~ ${vm.name} — would reattach dead session in ${targetPane}: ${cmd}`);
+      reattached++;
+      continue;
+    }
+    await herdr("pane", "run", targetPane, cmd);
+    console.log(`~ ${vm.name} — reattached dead session (${vm.remote}) in ${targetPane}`);
+    reattached++;
     continue;
   }
   if (!up) {
@@ -102,7 +182,7 @@ for (const { vm, up } of checked) {
     down++;
     continue;
   }
-  const cmd = `herdr --remote ${vm.remote} --remote-keybindings server`;
+  const cmd = cmdFor(vm);
   if (DRY) {
     console.log(`+ ${vm.name} — would create workspace and run: ${cmd}`);
     created++;
@@ -121,6 +201,7 @@ for (const { vm, up } of checked) {
   created++;
 }
 
+const reattachSummary = REATTACH ? `, ${reattached} reattached` : "";
 console.log(
-  `\nherdr-fleet: ${created} attached, ${present} already present, ${down} unreachable.`,
+  `\nherdr-fleet: ${created} attached${reattachSummary}, ${present} already present, ${down} unreachable.`,
 );
