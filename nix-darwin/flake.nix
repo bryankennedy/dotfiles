@@ -165,6 +165,8 @@
           persistent-apps = [ ];
         };
         finder.AppleShowAllExtensions = true;
+        # Hide all desktop icons so files placed on the Desktop don't clutter it visually.
+        finder.CreateDesktop = false;
         NSGlobalDomain.ApplePressAndHoldEnabled = false;
 
         # Disable the system-wide "Minimize All" shortcut (⌥⌘M). macOS app-menu
