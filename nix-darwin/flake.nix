@@ -147,6 +147,7 @@
           "ollama-app"
           "raspberry-pi-imager"
           "shottr"
+          "tailscale"
           "visual-studio-code"
         ];
       };
