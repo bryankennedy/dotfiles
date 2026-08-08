@@ -145,7 +145,9 @@
           "nikitabobko/tap/aerospace"
           "obsidian"
           "ollama-app"
+          "raspberry-pi-imager"
           "shottr"
+          "tailscale"
           "visual-studio-code"
         ];
       };
