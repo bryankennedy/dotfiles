@@ -131,6 +131,8 @@
           "audacity"
           "claude"
           "cursor"
+          # Container runtime
+          "docker"
           # Screen capture utility
           "flameshot"
           "ghostty"
