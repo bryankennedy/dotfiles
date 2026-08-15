@@ -89,6 +89,40 @@ It still creates workspaces for reachable VMs that have none, so a single
 `hf --reattach` fully restores the fleet after a reboot. Dead sessions on
 unreachable VMs are skipped with a warning (use `--force` to reattach anyway).
 
+## Keeping local and remote herdr in step
+
+herdr refuses to attach across a protocol change — 0.7.3 speaks protocol 16,
+0.8.0 speaks 19, and the client errors out rather than negotiating down. The Mac
+upgrades on its own schedule through Homebrew, so **the fleet has to follow it or
+every remote workspace breaks at once.** This is not theoretical: the role's
+install task was guarded with `creates:`, which meant it could install herdr but
+never upgrade it, and the VMs sat on 0.7.3 for as long as that guard existed.
+
+```sh
+brew upgrade herdr                    # the Mac
+make herdr                            # (in ~/src/infrastructure) every VM
+```
+
+`make herdr` runs the `herdr`-tagged role against the `vms` group. It tracks
+whatever `herdr.dev/latest.json` names, downloads the release asset that manifest
+points at, and verifies its SHA-256 before installing — no `curl | sh`. Set
+`herdr_version` to an exact version to pin instead; `LIMIT=<host>` scopes the run.
+
+**Upgrading the binary does not upgrade a running server.** The replacement is a
+rename, so a `herdr server` already running keeps the old inode and keeps speaking
+the old protocol. The role detects this and prints the affected PIDs, but stops
+there, because stopping that server exits every pane process on the VM. Restart
+each host when it's idle:
+
+```sh
+ssh <name>-herdr ~/.local/bin/herdr server stop
+make herdr LIMIT=<name> UPGRADE_SERVERS=true   # or let the role do it
+```
+
+The same applies locally, where `herdr update --handoff` may avoid the teardown.
+A protocol mismatch is also the one case `hf` will name explicitly rather than
+reporting it as a missing server.
+
 ## Prefix hygiene (herdr inside herdr)
 
 The launcher starts each remote client with `--remote-keybindings server`, so

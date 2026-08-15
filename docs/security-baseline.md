@@ -112,17 +112,19 @@ Age is its own risk, distinct from any named CVE: a patched vulnerability does n
 The decision this records is not the one update but the posture: a lock this old is a finding, and the audit's dependency pass should say so rather than treat a quiet lock as a current one.
 
 ### Three network installers are pinned as far as each upstream allows
-*Resolved 2026-07-10, with one accepted residual. Was MEDIUM ×3 (finding 3).*
+*Resolved 2026-07-10. **Residual retired 2026-08-15**; the herdr half is now fully resolved. Was MEDIUM ×3 (finding 3).*
 
-`remote/install.sh` and the herdr Ansible role each fetch an installer over HTTPS and pipe it to a shell. All three run as the login user, never root, but each fetched a *moving* ref — the code executed could differ from one bootstrap to the next with no signature or checksum. Checksum-pinning the vendor *installer scripts* was rejected outright: those scripts change often, so a pinned hash breaks bootstrap on every upstream edit and trains whoever hits it to bump the hash unread, which is worse than no check.
+`remote/install.sh` and the herdr Ansible role each fetched an installer over HTTPS and piped it to a shell. All three run as the login user, never root, but each fetched a *moving* ref — the code executed could differ from one bootstrap to the next with no signature or checksum. Checksum-pinning the vendor *installer scripts* was rejected outright: those scripts change often, so a pinned hash breaks bootstrap on every upstream edit and trains whoever hits it to bump the hash unread, which is worse than no check.
 
 What each upstream actually permits differs, and the fix follows that rather than pretending it is uniform:
 
 - **bun** takes a release tag as its first argument, so it is pinned to an exact version — the payload the VM keeps is deterministic.
 - **zoxide**'s installer has no version flag; it always fetches the latest release. So the pin is the *installer script's commit sha* instead of the `main` branch — it fixes the code piped into the shell, not the binary version, which is the part that could turn hostile between runs.
-- **herdr** can be pinned neither way: its installer takes no version argument and is served from a vendor URL with no git ref, so there is no immutable script to pin. Its one available hardening, binary checksumming, was declined against a MEDIUM, non-root install whose version is already reconciled by the Mac client on first connect. **This residual is accepted.**
+- **herdr** no longer pipes anything to a shell. ~~It could be pinned neither way, and binary checksumming was declined.~~ The role now reads herdr's release manifest itself and hands Ansible the two values the vendor installer was using anyway: an immutable `github.com/herdrdev/herdr/releases/download/v<version>/` asset URL, and that asset's SHA-256, verified before the file is placed. The residual was accepted on the premise that neither pinning nor verification was available; both are, so it is retired rather than re-accepted.
 
-The shared trigger stands for all three: reassess upward if any ever drops to plain HTTP or gains a root path.
+The trigger stands for the remaining two: reassess upward if either ever drops to plain HTTP or gains a root path.
+
+The herdr change was not made for this finding — it was made because `creates:` meant the role could install herdr but never upgrade it, and the fleet silently fell a protocol version behind the Mac until every remote workspace broke at once. Worth recording: the availability of a checksum was discovered by reading the installer the role was piping to a shell. The earlier assessment took the vendor's constraints on faith instead.
 
 ### The nix closure's CVE leads are triaged, and the scary number was mostly NVD
 *Resolved 2026-07-10 as a triage + accepted residual. Was "56 affected, 16 CVSS ≥9.0, untriaged."*
