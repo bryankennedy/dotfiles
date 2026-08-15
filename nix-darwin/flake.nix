@@ -97,6 +97,8 @@
           "jq"
           # System information
           "fastfetch"
+          # Infrastructure as code - open source Terraform fork
+          "opentofu"
           # Run a command across multiple ssh sessions
           "pdsh"
           # Sync files to/from cloud storage - used for Google Drive backups
@@ -131,8 +133,13 @@
           "audacity"
           "claude"
           "cursor"
-          # Container runtime
-          "docker"
+          # Container runtime — NOT managed here. Docker Desktop is installed
+          # manually from the official .dmg, so there is no Caskroom entry and
+          # brew would install a second copy alongside it. Adding the
+          # "docker" cask (now renamed "docker-desktop" upstream) would
+          # conflict with the manual install; grab updates from Docker instead.
+          # Backup CLI
+          "duplicacy-cli"
           # Screen capture utility
           "flameshot"
           "ghostty"
