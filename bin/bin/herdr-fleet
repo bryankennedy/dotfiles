@@ -3,7 +3,9 @@
 // that VM's remote herdr server via `herdr --remote <name>-herdr`.
 //
 // Source of truth: ~/.config/herdr/fleet.json, generated from the ansible
-// inventory by `ansible-playbook playbooks/herdr-fleet.yml` (repo ~/src/ansible).
+// inventory by `ansible-playbook playbooks/herdr-fleet.yml` (in the private
+// infrastructure repo, ~/src/infrastructure/ansible — or `make fleet` from its
+// root). This script refuses to run when that inventory is missing; see below.
 // Add a VM to the inventory, re-run that playbook, re-run this — the new VM
 // shows up as a workspace. Idempotent: workspaces that already exist are left
 // untouched, so it is safe to re-run at login or after a reboot.
@@ -14,6 +16,8 @@
 //   herdr-fleet --force       attach even VMs that fail the SSH health check
 //   herdr-fleet --only a,b    restrict to the named VMs
 //   herdr-fleet --dry-run     print what it would do; change nothing
+//   herdr-fleet --no-inventory-check  trust fleet.json without checking the inventory
+//   herdr-fleet --help        print the usage summary above
 //
 // After a reboot the local server can restore the VM workspaces while their SSH
 // sessions stay dead — each pane falls back to a bare login shell. Plain re-runs
@@ -21,7 +25,7 @@
 // existing VM workspace: if no pane is running anything but a shell, it re-runs
 // the `herdr --remote` command in place; live sessions are left untouched.
 
-import { readFileSync } from "node:fs";
+import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
@@ -29,10 +33,64 @@ import { promisify } from "node:util";
 const pexec = promisify(execFile);
 const FLEET_PATH = `${homedir()}/.config/herdr/fleet.json`;
 
+// The private ansible repo that generates FLEET_PATH. It has moved once already
+// (standalone ~/src/ansible -> the infrastructure monorepo), and the move went
+// unnoticed for a month: hf-sync's `cd` failed, the playbook never ran, and this
+// script kept attaching a decommissioned VM out of a fleet.json that nothing
+// could tell was stale. HERDR_FLEET_ANSIBLE_DIR overrides the path without an
+// edit; the preflight below makes the next move fatal instead of invisible.
+const ANSIBLE_DIR =
+  process.env.HERDR_FLEET_ANSIBLE_DIR || `${homedir()}/src/infrastructure/ansible`;
+const INVENTORY = `${ANSIBLE_DIR}/inventory/hosts.yml`;
+const SYNC_CMD = `(cd ${ANSIBLE_DIR} && ansible-playbook playbooks/herdr-fleet.yml)`;
+
 const argv = process.argv.slice(2);
+
+if (argv.includes("--help") || argv.includes("-h")) {
+  console.log(`herdr-fleet (alias: hf) — one local herdr workspace per fleet VM.
+
+Reads the fleet from
+  ${FLEET_PATH}
+and, for each VM, creates a herdr workspace labelled with the VM name running
+\`herdr --remote <vm>-herdr\` — so every VM's remote herdr is one workspace away.
+Idempotent: VMs that already have a workspace are left alone, so it is safe to
+re-run at login or after a reboot.
+
+Usage:
+  hf                  attach every reachable VM (skips unreachable + existing)
+  hf --reattach       also revive existing workspaces whose remote session died
+  hf --force          attach even VMs that fail the SSH health check
+  hf --only a,b       restrict to the named VMs
+  hf --dry-run        print what it would do; change nothing
+  hf --no-inventory-check
+                      skip the inventory preflight (see below)
+  hf --help, -h       show this help
+
+Requires a running local herdr server — run this from inside herdr.
+
+The fleet file is generated from the private ansible inventory
+  ${INVENTORY}
+Regenerate it after editing the inventory with \`hf-sync\`:
+  ${SYNC_CMD}
+
+Preflight: fleet.json is a build artifact, so this refuses to run when the
+inventory it is built from is missing — otherwise a moved or unavailable
+ansible repo leaves a stale VM list in service indefinitely. Set
+HERDR_FLEET_ANSIBLE_DIR to point at the repo if it moves, or
+--no-inventory-check to run against fleet.json alone. Hosts present in
+fleet.json but no longer in the inventory are reported and skipped.
+
+After a reboot the local server can restore VM workspaces while their SSH
+sessions stay dead — each pane falls back to a bare login shell. Plain re-runs
+skip those; --reattach re-runs the \`herdr --remote\` command in place for any
+workspace whose panes are all sitting at a bare shell. See docs/herdr-fleet.md.`);
+  process.exit(0);
+}
+
 const DRY = argv.includes("--dry-run");
 const FORCE = argv.includes("--force");
 const REATTACH = argv.includes("--reattach");
+const NO_INV_CHECK = argv.includes("--no-inventory-check");
 const onlyRaw =
   argv.find((a) => a.startsWith("--only="))?.slice("--only=".length) ??
   (argv.includes("--only") ? argv[argv.indexOf("--only") + 1] : null);
@@ -100,6 +158,56 @@ async function remoteAlive(workspaceId) {
   return { alive: false, panes };
 }
 
+// --- preflight: fleet.json is an artifact, the inventory is the source -------
+// Reading fleet.json alone cannot distinguish a current VM list from one frozen
+// at the last successful sync. Refuse to guess: if the inventory it is built
+// from isn't there, the list is unverifiable and a decommissioned VM in it will
+// be attached forever. This is the check whose absence hid the last repo move.
+if (!NO_INV_CHECK && !existsSync(INVENTORY)) {
+  die(
+    `cannot find the ansible inventory at\n` +
+      `    ${INVENTORY}\n` +
+      `  ${FLEET_PATH} is generated from it, so with the inventory gone there is\n` +
+      `  no way to tell whether that file still describes the fleet. Either the\n` +
+      `  private ansible repo moved again, or it is not checked out here.\n\n` +
+      `  Point at it:  export HERDR_FLEET_ANSIBLE_DIR=/path/to/ansible\n` +
+      `  Or edit the default in bin/bin/herdr-fleet and the hf-sync alias in\n` +
+      `  zsh/aliases-core.zsh (both in ~/src/dotfiles).\n` +
+      `  To run anyway against fleet.json alone:  hf --no-inventory-check`,
+  );
+}
+
+// Host keys under the inventory's `vms: hosts:` block, minus any that opted out
+// of the launcher with `herdr_fleet: false` — mirroring roles/herdr_fleet's
+// fleet.json template. Deliberately a shallow read of a file whose shape we
+// own, not a YAML implementation: it returns null when the shape is anything
+// but the expected one, and callers then skip the comparison rather than act on
+// a bad parse.
+function inventoryVmNames(text) {
+  const lines = text.split("\n");
+  const vmsIdx = lines.findIndex((l) => /^\s*vms:\s*$/.test(l));
+  if (vmsIdx === -1) return null;
+  const hostsIdx = lines.findIndex((l, i) => i > vmsIdx && /^\s*hosts:\s*$/.test(l));
+  if (hostsIdx === -1) return null;
+  const indent = lines[hostsIdx].search(/\S/);
+  const names = new Set();
+  let current = null;
+  for (let i = hostsIdx + 1; i < lines.length; i++) {
+    const line = lines[i];
+    if (!line.trim() || /^\s*#/.test(line)) continue;
+    const col = line.search(/\S/);
+    if (col <= indent) break; // dedented out of the vms group
+    const host = line.match(/^\s*([A-Za-z0-9_.-]+):\s*$/);
+    if (host && col === indent + 2) {
+      current = host[1];
+      names.add(current);
+      continue;
+    }
+    if (current && /^\s*herdr_fleet:\s*(false|no)\s*$/i.test(line)) names.delete(current);
+  }
+  return names.size ? names : null;
+}
+
 // --- load the fleet ---------------------------------------------------------
 let fleet;
 try {
@@ -107,10 +215,36 @@ try {
 } catch (e) {
   die(
     `cannot read ${FLEET_PATH} (${e.code || e.message}).\n` +
-      "  Generate it with: (cd ~/src/ansible && ansible-playbook playbooks/herdr-fleet.yml)",
+      `  Generate it with: ${SYNC_CMD}`,
   );
 }
 if (!Array.isArray(fleet) || fleet.length === 0) die(`${FLEET_PATH} is empty`);
+
+// --- drift: fleet.json vs the inventory it claims to come from ---------------
+// A successful sync makes these identical. Any difference means fleet.json
+// predates an inventory edit, so say which way it drifted and drop the hosts
+// that no longer exist rather than trying to SSH to them.
+let drift = null;
+if (!NO_INV_CHECK) {
+  const invNames = inventoryVmNames(readFileSync(INVENTORY, "utf8"));
+  if (invNames) {
+    const stale = fleet.filter((v) => !invNames.has(v.name)).map((v) => v.name);
+    const fleetNames = new Set(fleet.map((v) => v.name));
+    const missing = [...invNames].filter((n) => !fleetNames.has(n));
+    if (stale.length || missing.length) {
+      console.warn(`! ${FLEET_PATH}\n  is out of date with ${INVENTORY}:`);
+      if (stale.length)
+        console.warn(`    gone from the inventory, skipping: ${stale.join(", ")}`);
+      if (missing.length)
+        console.warn(`    in the inventory but not attached: ${missing.join(", ")}`);
+      console.warn(`  Regenerate with hf-sync:  ${SYNC_CMD}\n`);
+      fleet = fleet.filter((v) => invNames.has(v.name));
+      drift = { stale: stale.length, missing: missing.length };
+    }
+  }
+}
+if (fleet.length === 0) die(`no VMs left in ${FLEET_PATH} after the inventory check`);
+
 if (only) fleet = fleet.filter((v) => only.has(v.name));
 if (fleet.length === 0) die("no VMs matched --only");
 
@@ -205,3 +339,10 @@ const reattachSummary = REATTACH ? `, ${reattached} reattached` : "";
 console.log(
   `\nherdr-fleet: ${created} attached${reattachSummary}, ${present} already present, ${down} unreachable.`,
 );
+// Repeat the drift warning under the summary: the one above scrolls off behind
+// a long fleet, and an unnoticed warning is how the stale list survived before.
+if (drift) {
+  console.warn(
+    `herdr-fleet: fleet.json is stale (${drift.stale} removed, ${drift.missing} missing). Run hf-sync.`,
+  );
+}

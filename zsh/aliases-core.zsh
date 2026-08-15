@@ -133,7 +133,27 @@ github() {
 # inventory -> ~/.config/herdr/fleet.json (see docs/herdr-fleet.md).
 alias hf='herdr-fleet'
 # Regenerate the SSH aliases + fleet.json after editing the inventory.
-alias hf-sync='(cd ~/src/ansible && ansible-playbook playbooks/herdr-fleet.yml)'
+# A function, not an alias: this was `(cd <dir> && ansible-playbook ...)`, and
+# when the ansible repo moved into the infrastructure monorepo the `cd` failed,
+# the `&&` swallowed the run, and a bare "no such file or directory" was easy to
+# miss — so the generated fleet.json silently went a month out of date. Say what
+# broke and what to do about it. HERDR_FLEET_ANSIBLE_DIR (also read by `hf`)
+# overrides the path if it moves again.
+hf-sync() {
+  local dir=${HERDR_FLEET_ANSIBLE_DIR:-~/src/infrastructure/ansible}
+  if [[ ! -d $dir ]]; then
+    print -u2 "hf-sync: no ansible repo at $dir"
+    print -u2 "  fleet.json and ~/.ssh/config.d/vms-herdr.conf are generated from"
+    print -u2 "  its inventory; without it they cannot be refreshed and 'hf' will"
+    print -u2 "  refuse to run. If the repo moved, set HERDR_FLEET_ANSIBLE_DIR or"
+    print -u2 "  update this function in ~/src/dotfiles/zsh/aliases-core.zsh."
+    return 1
+  fi
+  (cd "$dir" && ansible-playbook playbooks/herdr-fleet.yml) || {
+    print -u2 "hf-sync: the playbook failed; fleet.json was NOT refreshed."
+    return 1
+  }
+}
 
 # -------------------------------------------------------------------
 # Editor

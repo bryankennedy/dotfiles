@@ -11,8 +11,8 @@ The ansible inventory is the single source of truth. Nothing about the VM list
 lives in the dotfiles.
 
 ```
-~/src/ansible/inventory/hosts.yml   (vms group: host, user, herdr_user)
-        │  ansible-playbook playbooks/herdr-fleet.yml   (runs locally)
+~/src/infrastructure/ansible/inventory/hosts.yml   (vms group: host, user, herdr_user)
+        │  make fleet   (== ansible-playbook playbooks/herdr-fleet.yml, runs locally)
         ├─►  ~/.ssh/config.d/vms-herdr.conf   clean `<name>-herdr` SSH aliases
         └─►  ~/.config/herdr/fleet.json       work-list for the launcher
                     │  herdr-fleet (bun)  reads fleet.json
@@ -40,10 +40,33 @@ hf          # attach every reachable VM as a workspace (idempotent)
 | `--force` | attach even VMs that fail the SSH health check |
 | `--only a,b` | restrict to the named VMs |
 | `--dry-run` | print what it would do, change nothing |
+| `--no-inventory-check` | trust `fleet.json` without consulting the inventory |
+| `--help`, `-h` | usage summary |
 
 It is safe to re-run: existing workspaces are left as-is, so `hf` after a reboot
 just reattaches whatever isn't already up. A VM that's asleep is skipped (with a
 warning) instead of hanging the whole fleet on an SSH timeout.
+
+### Why `hf` checks the inventory before it runs
+
+`fleet.json` is a build artifact. Read on its own it looks identical whether it
+was generated a minute ago or a month ago, and that gap is not hypothetical: when
+the ansible repo moved from `~/src/ansible` into the infrastructure monorepo,
+`hf-sync`'s `cd` failed, the playbook stopped running, and `hf` went on attaching
+a VM that had been removed from the inventory and decommissioned.
+
+So `hf` now treats the inventory as the authority it claims to be:
+
+- **Inventory missing** → hard failure with the path it looked for. A fleet list
+  that can't be checked against its source doesn't get used by default.
+- **Inventory present but `fleet.json` disagrees** → the differences are printed
+  both up front and under the summary, hosts that are gone from the inventory are
+  skipped rather than dialled, and hosts newly added to it are named so you know
+  what a `hf-sync` would pick up.
+
+If the repo moves again, `export HERDR_FLEET_ANSIBLE_DIR=/path/to/ansible` fixes
+both `hf` and `hf-sync` (and `scripts/audit-topology.mjs`) without an edit.
+`--no-inventory-check` bypasses all of it for the offline case.
 
 ### After a reboot — `hf --reattach`
 
