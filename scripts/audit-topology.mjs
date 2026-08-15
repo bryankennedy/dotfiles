@@ -26,7 +26,12 @@
 import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
 
-const INV = `${homedir()}/src/ansible/inventory`;
+// The private inventory, inside the infrastructure monorepo. Overridable with
+// HERDR_FLEET_ANSIBLE_DIR — the same variable `hf` reads — so a future move of
+// that repo is one export away rather than an edit in several repos.
+const ANSIBLE_DIR =
+  process.env.HERDR_FLEET_ANSIBLE_DIR || `${homedir()}/src/infrastructure/ansible`;
+const INV = `${ANSIBLE_DIR}/inventory`;
 const HOSTS = `${INV}/hosts.yml`;
 const ALL = `${INV}/group_vars/all.yml`;
 

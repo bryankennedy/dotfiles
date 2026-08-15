@@ -12,23 +12,25 @@ You are auditing a two-repo personal lab. Work a pass at a time, verify every fi
 | Repo | Path | Visibility | Role |
 |---|---|---|---|
 | dotfiles | `~/src/dotfiles` | **public** | stow packages, agent rules and skills, `remote/install.sh` |
-| ansible | `~/src/ansible` | **private** | inventory (real hostnames, accounts), roles, playbooks |
+| infrastructure | `~/src/infrastructure` | **private** | `ansible/` (inventory with real hostnames and accounts, roles, playbooks), `tofu/` |
+
+The ansible tree used to be its own repo at `~/src/ansible`; it is now the `ansible/` directory of the infrastructure monorepo. Paths below point at the current layout.
 
 Confirm visibility rather than assuming it — the whole audit hinges on which repo is which:
 
 ```sh
-for r in dotfiles ansible; do
-  printf '%-10s private=%s\n' "$r" "$(cd ~/src/$r && gh repo view --json isPrivate -q .isPrivate)"
+for r in dotfiles infrastructure; do
+  printf '%-16s private=%s\n' "$r" "$(cd ~/src/$r && gh repo view --json isPrivate -q .isPrivate)"
 done
 ```
 
-Expect `dotfiles private=false`, `ansible private=true`. If either has flipped, stop and report it as a BLOCKER before running anything else.
+Expect `dotfiles private=false`, `infrastructure private=true`. If either has flipped, stop and report it as a BLOCKER before running anything else.
 
 Let `gh` infer the repo from the working directory. Parsing the remote URL with `sed -E` and a lazy `+?` quantifier fails on BSD sed, and the failure mode is a *false negative*: the command substitution yields an empty repo name, `gh` falls back to some other repo, and the private repo is reported `private=false`. A check that breaks toward "safe" is worse than no check.
 
 **The load-bearing question.** `remote/install.sh` symlinks `_agent/rules/global.md` to `~/.claude/CLAUDE.md` and `_agent/skills/*.md` into `~/.claude/commands/`. That much is visible here. What turns it into a supply chain is how the fleet *acquires* this repo — which ref it tracks, whether it re-runs the installer, and what gates a merge. Establish those from the private repo during Pass 2 rather than assuming them; most of the injection pass follows from the answer.
 
-Findings about that chain are **private**. Record them in `~/src/ansible/docs/security-findings.md`, never here. Individually such findings are often discoverable; collected into one ranked list they are a plan of attack, and a public repo is the wrong place for one. This constraint binds the report, the baseline, commit messages, and PR bodies alike.
+Findings about that chain are **private**. Record them in `~/src/infrastructure/docs/security-findings.md`, never here. Individually such findings are often discoverable; collected into one ranked list they are a plan of attack, and a public repo is the wrong place for one. This constraint binds the report, the baseline, commit messages, and PR bodies alike.
 
 ## Severity
 
@@ -127,7 +129,7 @@ Re-derive this list from `remote/install.sh` and the `stow` line in `nix-darwin/
 
 ```sh
 cd ~/src/dotfiles && gh api "repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/branches/main/protection" 2>&1 | head -3
-grep -rn 'version:' ~/src/ansible/roles/dotfiles/tasks/main.yml   # pinned ref, or moving branch?
+grep -rn 'version:' ~/src/infrastructure/ansible/roles/dotfiles/tasks/main.yml   # pinned ref, or moving branch?
 ```
 
 A 404 from the first means no protection rule. A moving ref in the second means the fleet adopts new commits without a deliberate bump. Either alone is a weakness; together they are a BLOCKER, because nothing stands between a merge and execution across the fleet.
@@ -136,7 +138,7 @@ A 404 from the first means no protection rule. A moving ref in the second means 
 
 ```sh
 git -C ~/src/dotfiles grep -nE 'curl [^|]*\| *(ba)?sh' -- .
-git -C ~/src/ansible  grep -nE 'curl [^|]*\| *(ba)?sh' -- .
+git -C ~/src/infrastructure  grep -nE 'curl [^|]*\| *(ba)?sh' -- .
 ```
 
 Rate each MEDIUM, or HIGH if fetched over plain `http://`, from a repo you do not control, or without a checksum *and* on a path that runs as root.
