@@ -139,6 +139,13 @@ alias hf='herdr-fleet'
 # miss — so the generated fleet.json silently went a month out of date. Say what
 # broke and what to do about it. HERDR_FLEET_ANSIBLE_DIR (also read by `hf`)
 # overrides the path if it moves again.
+#
+# The unalias is the upgrade path, not decoration. hf-sync was an alias until
+# this change, and zsh expands aliases while parsing a function definition of
+# the same name: re-sourcing this file from a shell that still has the old
+# alias fails with "defining function based on alias" + "parse error near ()",
+# leaves the broken alias in place, and makes `reload` look like it worked.
+unalias hf-sync 2>/dev/null
 hf-sync() {
   local dir=${HERDR_FLEET_ANSIBLE_DIR:-~/src/infrastructure/ansible}
   if [[ ! -d $dir ]]; then
