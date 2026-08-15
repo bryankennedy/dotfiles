@@ -101,9 +101,38 @@ function die(msg) {
   process.exit(1);
 }
 
+// A failing herdr CLI call still emits its JSON-RPC-ish object with an `error`
+// member naming the reason — on stderr, where the success payload goes to
+// stdout. execFile only reports "exited 1", so lift that payload onto the thrown
+// error: without it every failure looks alike and the caller has to guess which
+// one it was. Both streams are checked because which one carries the payload is
+// herdr's choice, not ours, and it costs nothing to not depend on it.
+function herdrError(...streams) {
+  for (const s of streams) {
+    if (!s) continue;
+    try {
+      const parsed = JSON.parse(String(s).trim());
+      if (parsed?.error?.code) return parsed.error;
+    } catch {
+      // not JSON; try the next stream
+    }
+  }
+  return null;
+}
+
 // The herdr CLI prints one JSON-RPC-ish object per call on stdout.
 async function herdr(...args) {
-  const { stdout } = await pexec("herdr", args, { maxBuffer: 8 << 20 });
+  let stdout;
+  try {
+    ({ stdout } = await pexec("herdr", args, { maxBuffer: 8 << 20 }));
+  } catch (e) {
+    const payload = herdrError(e.stderr, e.stdout);
+    if (!payload) throw e;
+    const err = new Error(payload.message || payload.code);
+    err.herdrCode = payload.code;
+    err.herdrMessage = payload.message || "";
+    throw err;
+  }
   const out = stdout.trim();
   return out ? JSON.parse(out) : null;
 }
@@ -249,10 +278,28 @@ if (only) fleet = fleet.filter((v) => only.has(v.name));
 if (fleet.length === 0) die("no VMs matched --only");
 
 // --- require a running herdr server ----------------------------------------
+// Every reason this call can fail used to collapse into "no running server",
+// which sends you looking for a server that is in fact running fine. Upgrading
+// the herdr binary under a live server is the common case: the CLI then refuses
+// on a protocol mismatch, and the remedy is a restart, not a start.
+const indent = (s) => String(s).split("\n").join("\n    ");
 let listed;
 try {
   listed = await herdr("workspace", "list");
-} catch {
+} catch (e) {
+  if (e.herdrCode === "protocol_mismatch") {
+    die(
+      `the herdr CLI and the running server are different versions.\n` +
+        `  Upgrading the binary does not touch a server already running, so the\n` +
+        `  two have to be brought back in step. herdr's own instructions:\n\n` +
+        `    ${indent(e.herdrMessage)}\n`,
+    );
+  }
+  if (e.herdrCode && e.herdrCode !== "server_not_running") {
+    // An error herdr named but this script has no advice for. Print what herdr
+    // said rather than substituting a guess — the guess is what caused this.
+    die(`herdr refused \`workspace list\` (${e.herdrCode}):\n    ${indent(e.herdrMessage)}`);
+  }
   die("no running herdr server — start herdr first, then run this inside it.");
 }
 const wsIdByLabel = new Map(
