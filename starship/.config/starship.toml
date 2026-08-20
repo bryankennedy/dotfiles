@@ -6,7 +6,7 @@
 # starship's default order, exactly as it rendered before this line existed.
 # The glyphs on either side of `$fill` are end caps: fill sizes itself to the
 # space left over on the line, so they stay pinned to the two edges at any width.
-format = "[◆](dimmed blue)$fill[◆](dimmed blue)\n$all"
+format = "[◆](bold purple)$fill[◆](bold purple)\n$all"
 
 [aws]
 symbol = " "
@@ -211,4 +211,4 @@ symbol = " "
 
 [fill]
 symbol = "┈"
-style = "dimmed blue"
+style = "purple"
