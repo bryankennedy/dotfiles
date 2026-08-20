@@ -42,6 +42,9 @@ command = "lazygit"
 show_agent_labels_on_pane_borders = true
 accent = "cyan"
 
+[ui.sidebar.spaces]
+row_gap = 1
+
 [ui.toast]
 # Surface "agent needs attention / finished" as macOS notifications so an idle
 # agent can't sit forgotten.
