@@ -1,5 +1,13 @@
 "$schema" = 'https://starship.rs/config-schema.json'
 
+# A full-width rule above each prompt, so command boundaries are scannable when
+# scrolling back through a long session. `$fill` expands to whatever width the
+# terminal (or herdr pane) currently is; `$all` is every other module, in
+# starship's default order, exactly as it rendered before this line existed.
+# The glyphs on either side of `$fill` are end caps: fill sizes itself to the
+# space left over on the line, so they stay pinned to the two edges at any width.
+format = "[◆](dimmed blue)$fill[◆](dimmed blue)\n$all"
+
 [aws]
 symbol = " "
 
@@ -200,3 +208,7 @@ symbol = " "
 
 [zig]
 symbol = " "
+
+[fill]
+symbol = "┈"
+style = "dimmed blue"
