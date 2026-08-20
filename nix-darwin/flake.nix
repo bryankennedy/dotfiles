@@ -12,7 +12,27 @@
 
   outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew }:
   let
-    configuration = { pkgs, config, ... }: {
+    configuration = { pkgs, config, ... }:
+    let
+      # Password strength estimator — the Rust CLI wrapper (u32i64/zxcvbn-cli)
+      # around zxcvbn-rs, itself a port of Dropbox's zxcvbn. There is no nixpkgs
+      # attribute and no Homebrew formula for it, so it is built here straight
+      # from the crates.io release. The binary it installs is named `zxcvbn`,
+      # not `zxcvbn-cli`.
+      #
+      # To bump: change `version`, set both hashes to `pkgs.lib.fakeHash`, and
+      # rebuild — nix reports the real values in the hash-mismatch errors (src
+      # hash first, then cargoHash).
+      zxcvbn-cli = pkgs.rustPlatform.buildRustPackage rec {
+        pname = "zxcvbn-cli";
+        version = "2.0.3";
+        src = pkgs.fetchCrate {
+          inherit pname version;
+          hash = "sha256-GjQxnHwFL8YMAk3HnuMigD1S42jVqhqcjDIdmU/J6Uw=";
+        };
+        cargoHash = "sha256-JMRmVMHjpeOGi7DcUxY9n78UdPIY5AQ1/IM1ca20L1E=";
+      };
+    in {
       nix.enable = false;
       system.primaryUser = "bk";
 
@@ -35,6 +55,7 @@
         pkgs.nodejs
         pkgs.google-clasp
         pkgs.vim
+        zxcvbn-cli
       ];
 
       # --- HOMEBREW CONFIGURATION START ---
