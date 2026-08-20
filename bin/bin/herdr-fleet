@@ -369,7 +369,22 @@ for (const { vm, up } of checked) {
     created++;
     continue;
   }
-  const res = await herdr("workspace", "create", "--label", vm.name, "--no-focus");
+  // --cwd $HOME, deliberately: herdr computes the sidebar's branch/git_status
+  // tokens locally, from each workspace's root-pane cwd. The pane here only
+  // hosts an SSH client (`herdr --remote`), so the local server can never see
+  // the VM's git state — but without --cwd the pane inherits the directory
+  // `hf` was run from (config's new_cwd = "follow"), and every VM row then
+  // reports that repo's branch and ahead/behind as if it were the VM's. $HOME
+  // is not a repo, so those tokens render empty and the rows show just the VM.
+  const res = await herdr(
+    "workspace",
+    "create",
+    "--label",
+    vm.name,
+    "--cwd",
+    homedir(),
+    "--no-focus",
+  );
   const paneId = res?.result?.root_pane?.pane_id;
   if (!paneId) {
     console.error(`! ${vm.name} — created workspace but no pane id returned; skipping run.`);
