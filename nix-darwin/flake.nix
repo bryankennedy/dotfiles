@@ -14,6 +14,11 @@
   let
     configuration = { pkgs, config, ... }:
     let
+      # Single source of truth for the primary user's home directory, used
+      # below by launchd.user.agents.heic-watch so its paths stay in sync
+      # with system.primaryUser instead of being hardcoded twice.
+      homeDir = "/Users/bk";
+
       # Password strength estimator — the Rust CLI wrapper (u32i64/zxcvbn-cli)
       # around zxcvbn-rs, itself a port of Dropbox's zxcvbn. There is no nixpkgs
       # attribute and no Homebrew formula for it, so it is built here straight
@@ -57,6 +62,22 @@
         pkgs.vim
         zxcvbn-cli
       ];
+
+      # Watches ~/Downloads (e.g. HEIC files dropped in via AirDrop) and
+      # converts them to JPG with `sips`. Declared here instead of a raw
+      # .plist in ~/Library/LaunchAgents so it's version-controlled and
+      # reapplied on every darwin-rebuild switch. See
+      # nix-darwin/scripts/convert-heic.sh for the conversion logic.
+      launchd.user.agents.heic-watch = {
+        serviceConfig = {
+          Label = "com.bryan.heicwatch";
+          ProgramArguments = [ "${pkgs.bash}/bin/bash" "${./scripts/convert-heic.sh}" "${homeDir}/Downloads" ];
+          WatchPaths = [ "${homeDir}/Downloads" ];
+          StandardOutPath = "${homeDir}/Library/Logs/heic-watch-stdout.log";
+          StandardErrorPath = "${homeDir}/Library/Logs/heic-watch-stderr.log";
+          RunAtLoad = true;
+        };
+      };
 
       # --- HOMEBREW CONFIGURATION START ---
       # This part installs/manages Homebrew itself
