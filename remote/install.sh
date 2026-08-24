@@ -194,11 +194,12 @@ else
   green "  installed bun"
 fi
 
-# --- Claude Code plugins --------------------------------------------------
-# Enable standard plugins by merging into ~/.claude/settings.json. Runs after
-# Bun so a JS runtime is available (prefers an existing node, falls back to the
-# bun installed above). Idempotent — only sets the keys it manages.
-green "\nClaude Code plugins"
+# --- Claude Code settings --------------------------------------------------
+# Enable standard plugins and set fleet-wide preferences by merging into
+# ~/.claude/settings.json. Runs after Bun so a JS runtime is available
+# (prefers an existing node, falls back to the bun installed above).
+# Idempotent — only sets the keys it manages.
+green "\nClaude Code settings"
 CLAUDE_JS_RUNTIME=""
 if   command -v node &>/dev/null;        then CLAUDE_JS_RUNTIME="node"
 elif command -v bun  &>/dev/null;        then CLAUDE_JS_RUNTIME="bun"
@@ -215,10 +216,13 @@ if [ -n "$CLAUDE_JS_RUNTIME" ]; then
     cfg.extraKnownMarketplaces['claude-plugins-official'] = { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } };
     cfg.enabledPlugins = cfg.enabledPlugins || {};
     cfg.enabledPlugins['frontend-design@claude-plugins-official'] = true;
+    // Concise output style fleet-wide, so remote agents match the local default.
+    cfg.outputStyle = 'Concise';
     mkdirSync(dir, { recursive: true });
     writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
   "
   green "  enabled frontend-design@claude-plugins-official"
+  green "  set outputStyle=Concise"
 else
   red "  skipped: no node/bun runtime found to update settings.json"
 fi
