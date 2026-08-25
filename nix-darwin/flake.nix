@@ -79,6 +79,51 @@
         };
       };
 
+      # Runs `agentsview serve` as a persistent background service so the web
+      # UI survives logout/reboot without needing a terminal open. Port 58080
+      # (not the 8080 default) avoids colliding with common dev-server ports.
+      # Bound to 0.0.0.0 + --require-auth so it's also reachable over
+      # Tailscale (bearer token lives in ~/.agentsview/config.toml, never
+      # committed) — see scripts/agentsview-serve.sh for the port/host/auth
+      # setup. --no-update-check skips its self-update ping, and
+      # AGENTSVIEW_TELEMETRY_ENABLED=0 disables its PostHog usage-stats ping
+      # (see LuLu prompt for agentsview connecting out to posthog/GitHub).
+      # KeepAlive restarts it if it crashes; RunAtLoad brings it back on every
+      # login, including after a restart.
+      launchd.user.agents.agentsview-serve = {
+        serviceConfig = {
+          Label = "com.bryan.agentsview-serve";
+          ProgramArguments = [ "${pkgs.bash}/bin/bash" "${./scripts/agentsview-serve.sh}" ];
+          EnvironmentVariables = {
+            AGENTSVIEW_TELEMETRY_ENABLED = "0";
+          };
+          StandardOutPath = "${homeDir}/Library/Logs/agentsview-serve-stdout.log";
+          StandardErrorPath = "${homeDir}/Library/Logs/agentsview-serve-stderr.log";
+          RunAtLoad = true;
+          KeepAlive = true;
+        };
+      };
+
+      # Second, independent AgentsView job: pushes this Mac's session index
+      # into the fleet's shared Postgres on bet (`pg push --watch`), so it
+      # shows up alongside every VM's at https://agents.bck.dev — additive
+      # to agentsview-serve above, not a replacement for it. The connection
+      # credential is deliberately NOT here (this repo is public); see
+      # scripts/agentsview-pg-push.sh for where it comes from and what
+      # happens when it is missing. KeepAlive/RunAtLoad match
+      # agentsview-serve for the same reason: survive logout/reboot with no
+      # terminal open.
+      launchd.user.agents.agentsview-pg-push = {
+        serviceConfig = {
+          Label = "com.bryan.agentsview-pg-push";
+          ProgramArguments = [ "${pkgs.bash}/bin/bash" "${./scripts/agentsview-pg-push.sh}" ];
+          StandardOutPath = "${homeDir}/Library/Logs/agentsview-pg-push-stdout.log";
+          StandardErrorPath = "${homeDir}/Library/Logs/agentsview-pg-push-stderr.log";
+          RunAtLoad = true;
+          KeepAlive = true;
+        };
+      };
+
       # --- HOMEBREW CONFIGURATION START ---
       # This part installs/manages Homebrew itself
       nix-homebrew = {
@@ -171,6 +216,7 @@
         casks = [
           "1password"
           "1password-cli"
+          "agentsview"
           "alfred"
           "audacity"
           "claude"
