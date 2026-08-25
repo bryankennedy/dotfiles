@@ -29,6 +29,12 @@ export EDITOR="vim"
 export VISUAL="vim"
 export GIT_EDITOR="vim"
 
+# Disable agentsview's PostHog usage-stats ping for any manual/ad-hoc
+# invocation. The `agentsview serve` service (nix-darwin/flake.nix,
+# launchd.user.agents.agentsview-serve) sets this independently since
+# launchd doesn't source shell profiles.
+export AGENTSVIEW_TELEMETRY_ENABLED=0
+
 # FNM (Fast Node Manager)
 # Basic environment setup for tools (no interactive hooks)
 if command -v fnm > /dev/null; then
