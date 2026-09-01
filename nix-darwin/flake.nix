@@ -343,6 +343,17 @@
         # Frontend build tool / dev server. bun global (not nix) for the latest
         # npm release.
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g vite || true
+        # Impeccable design skills (impeccable.style) for Claude Code, installed
+        # into ~/.claude/skills/impeccable — a real directory in $HOME, not this
+        # repo, so nothing lands in the public working tree. Goes through a
+        # wrapper script (not a bare `bun x impeccable install`) because the
+        # CLI's own bundle downloader can't follow the two-hop redirect its
+        # bundle URL now uses — see scripts/impeccable-install.mjs for the bug
+        # and the install flags. Re-running is an update check (no-op when
+        # current), so every switch also keeps it fresh. bun x (not nix) for
+        # the same latest-release reason as claude-code above; || true so an
+        # offline rebuild doesn't abort.
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun ${./scripts/impeccable-install.mjs} || true
         /usr/bin/sudo -Hu bk sh -c 'test -d /Users/bk/.tmux/plugins/tpm || ${pkgs.git}/bin/git clone https://github.com/tmux-plugins/tpm /Users/bk/.tmux/plugins/tpm' || true
       '';
 
