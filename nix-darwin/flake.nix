@@ -147,7 +147,14 @@
       # This part manages the apps installed via Homebrew
       homebrew = {
         enable = true;
-        onActivation.cleanup = "zap"; # Uninstalls anything not listed here
+        # Uninstalls anything not listed here, so this list is the whole Homebrew
+        # surface. "uninstall", not "zap": zap also deletes the cask's user data
+        # (preferences, caches, app support), and with autoMigrate = true above
+        # anything Homebrew learns about that isn't declared here would lose its
+        # data on the next switch — the hand-installed Docker Desktop noted in
+        # the casks list is exactly that shape. Undeclared casks still go; their
+        # settings survive until someone removes them on purpose.
+        onActivation.cleanup = "uninstall";
         taps = [
           "drawthingsai/draw-things"
           "FelixKratz/formulae"
@@ -304,8 +311,10 @@
         # describes each package but does NOT re-list the tokens, to avoid drift.
         # All packages are stowed together in one invocation so Stow links into
         # existing ~/.config/<app> paths instead of trying to replace all of
-        # ~/.config. `|| true` so a pre-existing real file (a stow conflict)
-        # doesn't abort activation.
+        # ~/.config. `|| echo … >&2` so a pre-existing real file (a stow
+        # conflict) doesn't abort activation but does land in the switch log —
+        # the earlier `|| true` made a broken stow indistinguishable from a
+        # clean one.
         #
         # --no-folding is load-bearing, not a style choice. Without it Stow links
         # a whole directory when the target doesn't exist yet — so ~/.claude/commands,
@@ -324,7 +333,7 @@
         # bin, nvim and claude were stowed by hand and never declared here, which
         # is how ~/.claude/commands became an unmanaged fold into the repo. The
         # list is only a source of truth if it is complete.
-        /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -R --no-folding -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux herdr claude nvim bin || true
+        /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -R --no-folding -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux herdr claude nvim bin || echo "postActivation: stow reported a conflict; run it by hand to see which file" >&2
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun -e "
           const { readFileSync, writeFileSync, mkdirSync } = require('fs');
           const dir = process.env.HOME + '/.claude';
@@ -333,6 +342,13 @@
           try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch(_) {}
           cfg.preferredNotifChannel = 'terminal_bell';
           cfg.permissions = cfg.permissions || {};
+          // User-level permission mode for Claude Code on this Mac. This is the
+          // effective default in every project that does not set its own; this
+          // repo's tracked .claude/settings.json pins 'default' for itself
+          // because it is the public half of the agent instruction supply
+          // chain. Recorded in docs/security-baseline.md (pass 2, accepted).
+          // The fleet does not set this — remote/install.sh leaves the mode at
+          // Claude Code's own default.
           cfg.permissions.defaultMode = 'auto';
           // Standard plugins enabled on every machine. The official marketplace
           // is registered explicitly (mirrors the cloudflare plugin setup) so a
@@ -345,26 +361,32 @@
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g @anthropic-ai/claude-code || true
-        # Cloudflare Workers CLI. Like claude-code, installed via bun global
-        # (not nix) so we always get the latest npm release — wrangler ships
-        # frequent updates and lags in nixpkgs.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g wrangler || true
-        # Frontend build tool / dev server. bun global (not nix) for the latest
-        # npm release.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g vite || true
+        # npm globals via bun, not nix: claude-code, wrangler and vite ship
+        # faster than nixpkgs packages them. Each is pinned to an exact version
+        # so a rebuild installs code that was chosen, not whatever npm served
+        # that minute — the same posture as the bun pin in remote/install.sh.
+        # Pinning trades auto-freshness for review, so the pin has to be
+        # watched: scripts/audit-pins.mjs reads these lines and reports when
+        # one falls behind. Bump here, deliberately. `|| echo … >&2`, not
+        # `|| true`, so an offline or failed install shows in the switch log
+        # instead of silently leaving the old version in place.
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g @anthropic-ai/claude-code@2.1.263 || echo "postActivation: claude-code install failed (offline?)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g wrangler@4.129.0 || echo "postActivation: wrangler install failed (offline?)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g vite@8.2.2 || echo "postActivation: vite install failed (offline?)" >&2
         # Impeccable design skills (impeccable.style) for Claude Code, installed
         # into ~/.claude/skills/impeccable — a real directory in $HOME, not this
         # repo, so nothing lands in the public working tree. Goes through a
-        # wrapper script (not a bare `bun x impeccable install`) because the
-        # CLI's own bundle downloader can't follow the two-hop redirect its
-        # bundle URL now uses — see scripts/impeccable-install.mjs for the bug
-        # and the install flags. Re-running is an update check (no-op when
-        # current), so every switch also keeps it fresh. bun x (not nix) for
-        # the same latest-release reason as claude-code above; || true so an
-        # offline rebuild doesn't abort.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun ${./scripts/impeccable-install.mjs} || true
-        /usr/bin/sudo -Hu bk sh -c 'test -d /Users/bk/.tmux/plugins/tpm || ${pkgs.git}/bin/git clone https://github.com/tmux-plugins/tpm /Users/bk/.tmux/plugins/tpm' || true
+        # wrapper script (not a bare `bun x impeccable install`) for two
+        # reasons: the CLI's own downloader can't follow the redirect chain its
+        # bundle URL uses, and — the one that matters — the bundle becomes
+        # agent instructions on every switch, so the script pins it to a
+        # release tag and verifies the asset's SHA-256 before the CLI unpacks
+        # it, and pins the CLI version too. See scripts/impeccable-install.mjs
+        # for the pins, the bump procedure and the install flags. Re-running
+        # is an update check (no-op when current). audit-pins.mjs watches the
+        # skill tag like the npm pins above.
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun ${./scripts/impeccable-install.mjs} || echo "postActivation: impeccable install failed (offline, or the pinned bundle hash no longer matches)" >&2
+        /usr/bin/sudo -Hu bk sh -c 'test -d /Users/bk/.tmux/plugins/tpm || ${pkgs.git}/bin/git clone https://github.com/tmux-plugins/tpm /Users/bk/.tmux/plugins/tpm' || echo "postActivation: tpm clone failed (offline?)" >&2
         # herdr: direct install, bootstrapped once. Homebrew's herdr is
         # stable-only (`herdr channel set preview` refuses it), so the binary
         # lives in ~/.local/bin — ahead of /opt/homebrew/bin on PATH via
@@ -375,7 +397,7 @@
         # install state — herdr/.config/herdr/config.toml carries
         # `[update] channel`. The curl|sh trust decision is recorded in
         # docs/security-baseline.md ("The Mac's herdr bootstrap …").
-        /usr/bin/sudo -Hu bk env PATH="/usr/bin:/bin:${pkgs.curl}/bin" sh -c 'test -x /Users/bk/.local/bin/herdr || curl -fsSL https://herdr.dev/install.sh | sh' || true
+        /usr/bin/sudo -Hu bk env PATH="/usr/bin:/bin:${pkgs.curl}/bin" sh -c 'test -x /Users/bk/.local/bin/herdr || curl -fsSL https://herdr.dev/install.sh | sh' || echo "postActivation: herdr bootstrap failed (offline?)" >&2
       '';
 
       # Set Git commit hash for darwin-version.
