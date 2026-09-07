@@ -231,8 +231,6 @@
           # conflict with the manual install; grab updates from Docker instead.
           # Backup CLI
           "duplicacy-cli"
-          # Screen capture utility
-          "flameshot"
           "ghostty"
           "google-chrome"
           "keycastr"
