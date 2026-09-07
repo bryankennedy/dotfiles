@@ -11,9 +11,12 @@ font-size = 16
 #
 # Themes
 #
-# Active. Ghostty follows the macOS system appearance and swaps between these
-# two live, no restart needed.
-theme = light:ghostty-tokyonight-day,dark:Catppuccin Macchiato
+# Active. Dark all the time, regardless of the macOS system appearance.
+theme = Catppuccin Macchiato
+
+# Follow the macOS system appearance and swap between these two live, no
+# restart needed. Uncomment this line and comment out the one above to go back.
+# theme = light:ghostty-tokyonight-day,dark:Catppuccin Macchiato
 
 #
 # Themes - Archived
