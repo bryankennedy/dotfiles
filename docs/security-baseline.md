@@ -78,6 +78,17 @@ The finding was never "a string is public." It was "nobody decided." That is now
 
 ---
 
+## Accepted — Pass 3, dependencies
+
+### The Mac's herdr bootstrap pipes the vendor installer to a shell, once
+*Accepted 2026-09-06.*
+
+`nix-darwin/flake.nix` runs `curl https://herdr.dev/install.sh | sh` as the login user when `~/.local/bin/herdr` is absent — the same moving-ref `curl | sh` shape that finding 3 retired from the fleet. It is accepted here because the purpose is different. The Mac left Homebrew precisely so `herdr update` can follow the vendor's **preview** channel, and every update after the bootstrap is the binary fetching `herdr.dev/preview.json` and installing what it names. Pinning the first download the way the ansible role does (which now pins preview tags too, from GitHub's asset digest) would fix a binary that the very next `herdr update` replaces: one verified download, then nothing. The trust placed in herdr.dev is inherent to opting into vendor preview builds, not introduced by the bootstrap.
+
+Bounds: runs as `bk`, never root; only when the binary is missing, so an installed herdr is never re-fetched or downgraded by activation; the installer checks the asset against the manifest's SHA-256 (internal consistency only, as finding 3 notes). Reassess if the bootstrap ever runs unconditionally or gains a root path. Retire this entry if the Mac returns to the stable channel — Homebrew is the better source again at that point, and the brew should come back with it.
+
+---
+
 ## Open
 
 The first full audit ran 2026-07-09. Its open findings are recorded in the **private** ansible repo at `docs/security-findings.md`, not here. See `docs/decisions/DOT-1.md` for why: a ranked list of a system's weaknesses does not belong in a public repo, however discoverable each item is on its own.

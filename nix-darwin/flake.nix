@@ -198,13 +198,16 @@
           "stow"
           # Puthon to Python
           "thefuck"
-          # Agent multiplexer — tmux reimagined for running many AI coding
-          # agents; trialing as a persistence-friendly alternative to tmux.
+          # herdr (agent multiplexer) is deliberately NOT a brew any more. It
+          # moved to a direct install in ~/.local/bin (see postActivation
+          # below) because herdr's preview update channel is only offered to
+          # direct installs — a Homebrew herdr refuses `herdr channel set
+          # preview`. Re-adding it here would put a second, stable-only copy
+          # on PATH behind ~/.local/bin and confuse `herdr update`.
           # (Tried the herdr-mx fork for its multi-remote single-sidebar view,
           # but its only build predates the upstream cursor-flicker fixes —
           # ogulcancelik/herdr #930/#967 — so reverted to upstream. Re-trial mx
           # once it rebases on >=0.7.3, or when native multi-remote lands: #334.)
-          "herdr"
           "tmux"
           # Show files in a directory in a tree
           "tree"
@@ -344,6 +347,17 @@
         # npm release.
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g vite || true
         /usr/bin/sudo -Hu bk sh -c 'test -d /Users/bk/.tmux/plugins/tpm || ${pkgs.git}/bin/git clone https://github.com/tmux-plugins/tpm /Users/bk/.tmux/plugins/tpm' || true
+        # herdr: direct install, bootstrapped once. Homebrew's herdr is
+        # stable-only (`herdr channel set preview` refuses it), so the binary
+        # lives in ~/.local/bin — ahead of /opt/homebrew/bin on PATH via
+        # zsh/profile.zsh — and updates itself from herdr.dev via `herdr
+        # update`. Runs only when the binary is absent: a pinned re-download
+        # here would fight the self-updater and silently downgrade whatever
+        # `herdr update` last installed. The channel itself is config, not
+        # install state — herdr/.config/herdr/config.toml carries
+        # `[update] channel`. The curl|sh trust decision is recorded in
+        # docs/security-baseline.md ("The Mac's herdr bootstrap …").
+        /usr/bin/sudo -Hu bk env PATH="/usr/bin:/bin:${pkgs.curl}/bin" sh -c 'test -x /Users/bk/.local/bin/herdr || curl -fsSL https://herdr.dev/install.sh | sh' || true
       '';
 
       # Set Git commit hash for darwin-version.

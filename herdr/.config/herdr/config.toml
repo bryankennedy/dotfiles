@@ -87,3 +87,14 @@ manage_ssh_config = true
 # attaches with `--remote-keybindings server`, and the VMs are configured with
 # a distinct prefix (ctrl+b) via the ansible inventory. See docs/herdr-fleet.md.
 allow_nested = true
+
+[update]
+# preview: herdr's pre-release channel — the reason the Mac install moved from
+# Homebrew to a direct ~/.local/bin binary (nix-darwin/flake.nix); Homebrew
+# installs are refused this channel. Preview builds speak a newer wire protocol
+# than the stable release the fleet is pinned to (herdr_version in the ansible
+# inventory), and a client refuses to attach across a protocol change — so after
+# `herdr update` here, the `hf` remotes break until the VMs are bumped to a
+# matching build. See docs/herdr-fleet.md. `herdr channel set <stable|preview>`
+# rewrites this key in place (through the stow symlink, so it edits the repo).
+channel = "preview"
