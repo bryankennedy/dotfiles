@@ -133,6 +133,15 @@
 
         # Automatically migrate existing Homebrew installations
         autoMigrate = true;
+
+        # Defaults to true, which writes `eval "$(brew shellenv)"` into
+        # /etc/zshrc for every interactive shell. That runs after ~/.zprofile
+        # and brew's path_helper moves /opt/homebrew/bin to the front, ahead
+        # of ~/.local/bin (the direct herdr install) and ~/.bun/bin (the bun
+        # globals). zsh/profile.zsh already sets Homebrew up — with a fallback
+        # for the /nix mount race this integration lacks — so one owner, not
+        # two.
+        enableZshIntegration = false;
       };
 
       # This part manages the apps installed via Homebrew
