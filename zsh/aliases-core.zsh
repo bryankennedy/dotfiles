@@ -128,9 +128,11 @@ github() {
 # -------------------------------------------------------------------
 # herdr (agent multiplexer)
 # -------------------------------------------------------------------
-# Fan the local herdr client out to every VM: one workspace per host, each
-# attached to that host's remote herdr. Source of truth is the ansible
-# inventory -> ~/.config/herdr/fleet.json (see docs/herdr-fleet.md).
+# Keep herdr's saved SSH machines equal to the fleet: one machine per VM, so
+# every VM's workspaces and agents sit in the local sidebar (preview channel;
+# nothing to re-run after a reboot). Source of truth is the ansible inventory
+# -> ~/.config/herdr/fleet.json (see docs/herdr-fleet.md). `hf --prune` drops
+# machines whose VM left the inventory.
 alias hf='herdr-fleet'
 # Regenerate the SSH aliases + fleet.json after editing the inventory.
 # A function, not an alias: this was `(cd <dir> && ansible-playbook ...)`, and

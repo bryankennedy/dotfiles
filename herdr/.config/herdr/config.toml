@@ -31,10 +31,13 @@ new_cwd = "follow"
 
 [keys]
 # ctrl+a, inherited from the tmux setup herdr replaced — Ghostty now launches
-# herdr directly, so nothing else wants this chord. Remote herdr keeps herdr's
-# own default (ctrl+b), set via herdr_prefix in the ansible inventory: the two
-# must differ or the outer client swallows every keypress meant for the inner.
-# ctrl+a = local, ctrl+b = whichever remote is focused.
+# herdr directly, so nothing else wants this chord. It drives every saved SSH
+# machine too: the client applies local keybindings to whichever machine is
+# selected. The VMs' own prefix (ctrl+b, herdr_prefix in the ansible inventory)
+# only matters when a remote is driven outside the catalog — `herdr --remote
+# … --remote-keybindings server`, or `herdr` after SSHing in — and it stays
+# different from this one so a remote client nested in a local pane can never
+# have its keys swallowed by the outer client. See docs/herdr-fleet.md.
 prefix = "ctrl+a"
 
 # Run lazygit in a temporary pane.
@@ -85,11 +88,16 @@ directory = "~/.herdr/worktrees"
 # connection per attach — helps `herdr --remote` survive idle drops.
 manage_ssh_config = true
 
-[experimental]
-# Required by the herdr-fleet launcher (`hf`): it runs `herdr --remote <vm>`
-# inside a pane of this local herdr, which trips the nested-herdr guard
-# (herdr sees HERDR_ENV=1 and refuses). The usual reason that guard exists —
-# an inner herdr stealing the outer's prefix — doesn't apply here: the fleet
-# attaches with `--remote-keybindings server`, and the VMs are configured with
-# a distinct prefix (ctrl+b) via the ansible inventory. See docs/herdr-fleet.md.
-allow_nested = true
+[update]
+# preview: herdr's pre-release channel — the reason the Mac install moved from
+# Homebrew to a direct ~/.local/bin binary (nix-darwin/flake.nix); Homebrew
+# installs are refused this channel. The fleet's saved SSH machines (`herdr
+# machine list`, kept in step with the ansible inventory by `hf`) only exist on
+# preview, and the VMs follow the same channel: herdr_channel and herdr_version
+# in the ansible inventory pin every VM to a preview build. Preview builds bump
+# the wire protocol ahead of stable, so after `herdr update` here the saved
+# machines show Attention until the fleet pin is moved to the same build
+# (`make herdr-pin`, then `make herdr` — see docs/herdr-fleet.md).
+# `herdr channel set <stable|preview>` rewrites this key in place (through the
+# stow symlink, so it edits the repo).
+channel = "preview"

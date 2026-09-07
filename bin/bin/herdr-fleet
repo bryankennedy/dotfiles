@@ -1,33 +1,39 @@
 #!/usr/bin/env bun
-// herdr-fleet — materialize one local herdr workspace per VM, each attached to
-// that VM's remote herdr server via `herdr --remote <name>-herdr`.
+// herdr-fleet — keep herdr's saved SSH machines in step with the fleet.
 //
+// herdr (preview channel, 2026-09-06 and later) can hold a catalog of saved SSH
+// machines: the local client connects to each one's remote server in the
+// background, and their workspaces, agents and notifications appear in the
+// local sidebar under "Local". That replaced this script's original job, which
+// was to open one local workspace per VM with a nested `herdr --remote` client
+// in it. Nested clients streamed a remote UI into a pane; the local server never
+// saw the remote's agents. Saved machines are the fix, and they persist across
+// restarts, so nothing has to be re-run after a reboot — plain `herdr` reconnects.
+//
+// What is left to automate is keeping that catalog equal to the inventory.
 // Source of truth: ~/.config/herdr/fleet.json, generated from the ansible
 // inventory by `ansible-playbook playbooks/herdr-fleet.yml` (in the private
 // infrastructure repo, ~/src/infrastructure/ansible — or `make fleet` from its
-// root). This script refuses to run when that inventory is missing; see below.
-// Add a VM to the inventory, re-run that playbook, re-run this — the new VM
-// shows up as a workspace. Idempotent: workspaces that already exist are left
-// untouched, so it is safe to re-run at login or after a reboot.
+// root; `hf-sync` from the shell). This script refuses to run when that
+// inventory is missing; see below. Add a VM to the inventory, `hf-sync`, `hf` —
+// the new VM is a saved machine. Remove one, `hf-sync`, `hf --prune` — gone.
 //
 // Usage:
-//   herdr-fleet               attach every reachable VM (skips unreachable + existing)
-//   herdr-fleet --reattach    also revive existing workspaces whose remote session died
-//   herdr-fleet --force       attach even VMs that fail the SSH health check
+//   herdr-fleet               save every fleet VM missing from the catalog
+//   herdr-fleet --prune       also remove saved fleet machines whose VM is gone
+//   herdr-fleet --force       try to save VMs that fail the SSH health check
 //   herdr-fleet --only a,b    restrict to the named VMs
 //   herdr-fleet --dry-run     print what it would do; change nothing
 //   herdr-fleet --no-inventory-check  trust fleet.json without checking the inventory
 //   herdr-fleet --help        print the usage summary above
 //
-// After a reboot the local server can restore the VM workspaces while their SSH
-// sessions stay dead — each pane falls back to a bare login shell. Plain re-runs
-// skip those ("workspace exists, leaving as-is"). `--reattach` inspects each
-// existing VM workspace: if no pane is running anything but a shell, it re-runs
-// the `herdr --remote` command in place; live sessions are left untouched.
+// The catalog itself is herdr's: ~/.local/state/herdr/client/endpoints.json,
+// edited only through `herdr machine …`. It holds labels, SSH targets and
+// session names — never keys or credentials — and is not stowed from this repo.
 
 import { readFileSync, existsSync } from "node:fs";
 import { homedir } from "node:os";
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { promisify } from "node:util";
 
 const pexec = promisify(execFile);
@@ -47,26 +53,29 @@ const SYNC_CMD = `(cd ${ANSIBLE_DIR} && ansible-playbook playbooks/herdr-fleet.y
 const argv = process.argv.slice(2);
 
 if (argv.includes("--help") || argv.includes("-h")) {
-  console.log(`herdr-fleet (alias: hf) — one local herdr workspace per fleet VM.
+  console.log(`herdr-fleet (alias: hf) — saved herdr machines, one per fleet VM.
 
 Reads the fleet from
   ${FLEET_PATH}
-and, for each VM, creates a herdr workspace labelled with the VM name running
-\`herdr --remote <vm>-herdr\` — so every VM's remote herdr is one workspace away.
-Idempotent: VMs that already have a workspace are left alone, so it is safe to
-re-run at login or after a reboot.
+and makes sure every VM in it is a saved SSH machine in the local herdr client
+(\`herdr machine list\`), labelled with the VM name and targeting its
+\`<vm>-herdr\` SSH alias. The client then connects to each VM's remote herdr
+server in the background and shows its workspaces and agents in the sidebar —
+after a reboot too, with nothing to re-run. Idempotent: VMs already saved are
+left alone.
 
 Usage:
-  hf                  attach every reachable VM (skips unreachable + existing)
-  hf --reattach       also revive existing workspaces whose remote session died
-  hf --force          attach even VMs that fail the SSH health check
+  hf                  save every fleet VM missing from the catalog
+  hf --prune          also remove saved fleet machines whose VM is gone
+  hf --force          try to save VMs that fail the SSH health check
   hf --only a,b       restrict to the named VMs
   hf --dry-run        print what it would do; change nothing
   hf --no-inventory-check
                       skip the inventory preflight (see below)
   hf --help, -h       show this help
 
-Requires a running local herdr server — run this from inside herdr.
+Run it from a terminal: \`herdr machine add\` prepares the remote server and may
+need an interactive approval (host key, install) the first time.
 
 The fleet file is generated from the private ansible inventory
   ${INVENTORY}
@@ -80,16 +89,15 @@ HERDR_FLEET_ANSIBLE_DIR to point at the repo if it moves, or
 --no-inventory-check to run against fleet.json alone. Hosts present in
 fleet.json but no longer in the inventory are reported and skipped.
 
-After a reboot the local server can restore VM workspaces while their SSH
-sessions stay dead — each pane falls back to a bare login shell. Plain re-runs
-skip those; --reattach re-runs the \`herdr --remote\` command in place for any
-workspace whose panes are all sitting at a bare shell. See docs/herdr-fleet.md.`);
+Only machines whose target ends in "-herdr" are treated as fleet machines;
+anything you saved by hand with another target is never touched or reported.
+See docs/herdr-fleet.md.`);
   process.exit(0);
 }
 
 const DRY = argv.includes("--dry-run");
 const FORCE = argv.includes("--force");
-const REATTACH = argv.includes("--reattach");
+const PRUNE = argv.includes("--prune");
 const NO_INV_CHECK = argv.includes("--no-inventory-check");
 const onlyRaw =
   argv.find((a) => a.startsWith("--only="))?.slice("--only=".length) ??
@@ -101,44 +109,36 @@ function die(msg) {
   process.exit(1);
 }
 
-// A failing herdr CLI call still emits its JSON-RPC-ish object with an `error`
-// member naming the reason — on stderr, where the success payload goes to
-// stdout. execFile only reports "exited 1", so lift that payload onto the thrown
-// error: without it every failure looks alike and the caller has to guess which
-// one it was. Both streams are checked because which one carries the payload is
-// herdr's choice, not ours, and it costs nothing to not depend on it.
-function herdrError(...streams) {
-  for (const s of streams) {
-    if (!s) continue;
-    try {
-      const parsed = JSON.parse(String(s).trim());
-      if (parsed?.error?.code) return parsed.error;
-    } catch {
-      // not JSON; try the next stream
-    }
-  }
-  return null;
-}
-
-// The herdr CLI prints one JSON-RPC-ish object per call on stdout.
-async function herdr(...args) {
+// `herdr machine list --json` is a plain JSON array; the other machine
+// subcommands print prose and exit non-zero on failure.
+async function machineList() {
   let stdout;
   try {
-    ({ stdout } = await pexec("herdr", args, { maxBuffer: 8 << 20 }));
+    ({ stdout } = await pexec("herdr", ["machine", "list", "--json"], { maxBuffer: 8 << 20 }));
   } catch (e) {
-    const payload = herdrError(e.stderr, e.stdout);
-    if (!payload) throw e;
-    const err = new Error(payload.message || payload.code);
-    err.herdrCode = payload.code;
-    err.herdrMessage = payload.message || "";
-    throw err;
+    die(
+      `\`herdr machine list --json\` failed:\n    ${String(e.stderr || e.message).trim()}\n` +
+        `  Saved machines need a herdr from the preview channel (2026-09-06 or later).`,
+    );
   }
   const out = stdout.trim();
-  return out ? JSON.parse(out) : null;
+  return out ? JSON.parse(out) : [];
 }
 
-// Warm, non-interactive reachability probe. With ControlMaster=auto this also
-// primes the shared connection, so the subsequent `herdr --remote` is instant.
+// `machine add` may prompt (host-key approval, a remote install) and prepares
+// the remote server, so it gets the real terminal rather than captured pipes:
+// a swallowed prompt is a hang with no explanation.
+function herdrInteractive(...args) {
+  return new Promise((resolve) => {
+    const child = spawn("herdr", args, { stdio: "inherit" });
+    child.on("error", (e) => resolve({ ok: false, error: e.message }));
+    child.on("exit", (code) => resolve({ ok: code === 0, code }));
+  });
+}
+
+// Warm, non-interactive reachability probe. `machine add` on a host that is
+// asleep would sit in SSH until it times out; an asleep VM is the normal case
+// on this fleet, so probe first and say so.
 async function reachable(remote) {
   try {
     await pexec(
@@ -152,46 +152,11 @@ async function reachable(remote) {
   }
 }
 
-// A pane whose foreground process is nothing but a login shell is idle — the
-// command that used to run there (our `herdr --remote` client) has exited.
-const SHELLS = new Set(["zsh", "bash", "fish", "sh", "dash", "ksh", "login"]);
-function isShellProc(fp) {
-  const name = (fp.argv0 || fp.name || fp.argv?.[0] || "").replace(/^-/, "");
-  return SHELLS.has(name);
-}
-
-async function panesFor(workspaceId) {
-  try {
-    const res = await herdr("pane", "list", "--workspace", workspaceId);
-    return res?.result?.panes ?? [];
-  } catch {
-    return [];
-  }
-}
-
-// A VM workspace's remote session is "alive" if any of its panes is running
-// something other than a bare shell. When every pane is idle at a shell prompt
-// (the reboot case), it's dead and safe to re-run the launch command into it.
-async function remoteAlive(workspaceId) {
-  const panes = await panesFor(workspaceId);
-  for (const p of panes) {
-    let info;
-    try {
-      info = await herdr("pane", "process-info", "--pane", p.pane_id);
-    } catch {
-      continue;
-    }
-    const procs = info?.result?.process_info?.foreground_processes ?? [];
-    if (procs.some((fp) => !isShellProc(fp))) return { alive: true, panes };
-  }
-  return { alive: false, panes };
-}
-
 // --- preflight: fleet.json is an artifact, the inventory is the source -------
 // Reading fleet.json alone cannot distinguish a current VM list from one frozen
 // at the last successful sync. Refuse to guess: if the inventory it is built
 // from isn't there, the list is unverifiable and a decommissioned VM in it will
-// be attached forever. This is the check whose absence hid the last repo move.
+// be saved forever. This is the check whose absence hid the last repo move.
 if (!NO_INV_CHECK && !existsSync(INVENTORY)) {
   die(
     `cannot find the ansible inventory at\n` +
@@ -207,7 +172,7 @@ if (!NO_INV_CHECK && !existsSync(INVENTORY)) {
 }
 
 // Host keys under the inventory's `vms: hosts:` block, minus any that opted out
-// of the launcher with `herdr_fleet: false` — mirroring roles/herdr_fleet's
+// of the fleet with `herdr_fleet: false` — mirroring roles/herdr_fleet's
 // fleet.json template. Deliberately a shallow read of a file whose shape we
 // own, not a YAML implementation: it returns null when the shape is anything
 // but the expected one, and callers then skip the comparison rather than act on
@@ -252,7 +217,7 @@ if (!Array.isArray(fleet) || fleet.length === 0) die(`${FLEET_PATH} is empty`);
 // --- drift: fleet.json vs the inventory it claims to come from ---------------
 // A successful sync makes these identical. Any difference means fleet.json
 // predates an inventory edit, so say which way it drifted and drop the hosts
-// that no longer exist rather than trying to SSH to them.
+// that no longer exist rather than saving them.
 let drift = null;
 if (!NO_INV_CHECK) {
   const invNames = inventoryVmNames(readFileSync(INVENTORY, "utf8"));
@@ -265,7 +230,7 @@ if (!NO_INV_CHECK) {
       if (stale.length)
         console.warn(`    gone from the inventory, skipping: ${stale.join(", ")}`);
       if (missing.length)
-        console.warn(`    in the inventory but not attached: ${missing.join(", ")}`);
+        console.warn(`    in the inventory but not in fleet.json: ${missing.join(", ")}`);
       console.warn(`  Regenerate with hf-sync:  ${SYNC_CMD}\n`);
       fleet = fleet.filter((v) => invNames.has(v.name));
       drift = { stale: stale.length, missing: missing.length };
@@ -277,129 +242,100 @@ if (fleet.length === 0) die(`no VMs left in ${FLEET_PATH} after the inventory ch
 if (only) fleet = fleet.filter((v) => only.has(v.name));
 if (fleet.length === 0) die("no VMs matched --only");
 
-// --- require a running herdr server ----------------------------------------
-// Every reason this call can fail used to collapse into "no running server",
-// which sends you looking for a server that is in fact running fine. Upgrading
-// the herdr binary under a live server is the common case: the CLI then refuses
-// on a protocol mismatch, and the remedy is a restart, not a start.
-const indent = (s) => String(s).split("\n").join("\n    ");
-let listed;
-try {
-  listed = await herdr("workspace", "list");
-} catch (e) {
-  if (e.herdrCode === "protocol_mismatch") {
-    die(
-      `the herdr CLI and the running server are different versions.\n` +
-        `  Upgrading the binary does not touch a server already running, so the\n` +
-        `  two have to be brought back in step. herdr's own instructions:\n\n` +
-        `    ${indent(e.herdrMessage)}\n`,
-    );
-  }
-  if (e.herdrCode && e.herdrCode !== "server_not_running") {
-    // An error herdr named but this script has no advice for. Print what herdr
-    // said rather than substituting a guess — the guess is what caused this.
-    die(`herdr refused \`workspace list\` (${e.herdrCode}):\n    ${indent(e.herdrMessage)}`);
-  }
-  die("no running herdr server — start herdr first, then run this inside it.");
-}
-const wsIdByLabel = new Map(
-  (listed?.result?.workspaces ?? []).map((w) => [w.label, w.workspace_id]),
-);
-const existing = new Set(wsIdByLabel.keys());
+// --- the catalog as herdr has it -------------------------------------------
+// Matched by SSH target, not label: the target is what the client dials and
+// what fleet.json owns; the label is cosmetic and fixed up below if it drifted.
+const catalog = await machineList();
+const byTarget = new Map(catalog.map((m) => [m.target, m]));
+const fleetTargets = new Set(fleet.map((v) => v.remote));
 
-// --- health-check all VMs in parallel --------------------------------------
-const checked = await Promise.all(
-  fleet.map(async (vm) => ({ vm, up: FORCE || (await reachable(vm.remote)) })),
-);
-
-// --- create a workspace per new, reachable VM ------------------------------
-let created = 0;
+// --- save every fleet VM that is not already a machine ----------------------
+let saved = 0;
 let present = 0;
 let down = 0;
-let reattached = 0;
-const cmdFor = (vm) => `herdr --remote ${vm.remote} --remote-keybindings server`;
-for (const { vm, up } of checked) {
-  if (existing.has(vm.name)) {
-    if (!REATTACH) {
-      console.log(`= ${vm.name} — workspace exists, leaving as-is`);
-      present++;
-      continue;
+let failed = 0;
+let relabelled = 0;
+for (const vm of fleet) {
+  const have = byTarget.get(vm.remote);
+  if (have) {
+    if (have.label !== vm.name) {
+      if (DRY) {
+        console.log(`~ ${vm.name} — would relabel "${have.label}" -> "${vm.name}"`);
+      } else {
+        const r = await herdrInteractive("machine", "rename", have.id, "--label", vm.name);
+        if (!r.ok) console.error(`! ${vm.name} — rename failed (exit ${r.code ?? r.error})`);
+        else console.log(`~ ${vm.name} — relabelled from "${have.label}"`);
+      }
+      relabelled++;
+    } else {
+      console.log(`= ${vm.name} — saved${have.enabled ? "" : " (disabled)"}, leaving as-is`);
     }
-    // --reattach: revive the workspace only if its remote session has died.
-    const workspaceId = wsIdByLabel.get(vm.name);
-    const { alive, panes } = await remoteAlive(workspaceId);
-    if (alive) {
-      console.log(`= ${vm.name} — remote session live, leaving as-is`);
-      present++;
-      continue;
-    }
-    if (!up) {
-      console.warn(
-        `x ${vm.name} — session dead but ${vm.remote} unreachable; skipping. Use --force to reattach anyway.`,
-      );
-      down++;
-      continue;
-    }
-    const targetPane = panes[0]?.pane_id;
-    if (!targetPane) {
-      console.error(`! ${vm.name} — no pane found in workspace ${workspaceId}; skipping.`);
-      continue;
-    }
-    const cmd = cmdFor(vm);
-    if (DRY) {
-      console.log(`~ ${vm.name} — would reattach dead session in ${targetPane}: ${cmd}`);
-      reattached++;
-      continue;
-    }
-    await herdr("pane", "run", targetPane, cmd);
-    console.log(`~ ${vm.name} — reattached dead session (${vm.remote}) in ${targetPane}`);
-    reattached++;
+    present++;
     continue;
   }
-  if (!up) {
+  if (!FORCE && !(await reachable(vm.remote))) {
     console.warn(
-      `x ${vm.name} — unreachable (${vm.remote}); skipping. Use --force to attach anyway.`,
+      `x ${vm.name} — unreachable (${vm.remote}); skipping. Re-run when it is awake, or --force.`,
     );
     down++;
     continue;
   }
-  const cmd = cmdFor(vm);
   if (DRY) {
-    console.log(`+ ${vm.name} — would create workspace and run: ${cmd}`);
-    created++;
+    console.log(`+ ${vm.name} — would run: herdr machine add ${vm.remote} --label ${vm.name}`);
+    saved++;
     continue;
   }
-  // --cwd $HOME, deliberately: herdr computes the sidebar's branch/git_status
-  // tokens locally, from each workspace's root-pane cwd. The pane here only
-  // hosts an SSH client (`herdr --remote`), so the local server can never see
-  // the VM's git state — but without --cwd the pane inherits the directory
-  // `hf` was run from (config's new_cwd = "follow"), and every VM row then
-  // reports that repo's branch and ahead/behind as if it were the VM's. $HOME
-  // is not a repo, so those tokens render empty and the rows show just the VM.
-  const res = await herdr(
-    "workspace",
-    "create",
-    "--label",
-    vm.name,
-    "--cwd",
-    homedir(),
-    "--no-focus",
-  );
-  const paneId = res?.result?.root_pane?.pane_id;
-  if (!paneId) {
-    console.error(`! ${vm.name} — created workspace but no pane id returned; skipping run.`);
+  const r = await herdrInteractive("machine", "add", vm.remote, "--label", vm.name);
+  if (!r.ok) {
+    console.error(
+      `! ${vm.name} — \`herdr machine add ${vm.remote}\` failed (exit ${r.code ?? r.error}).\n` +
+        `  If it needed an approval, run that command yourself in a terminal.`,
+    );
+    failed++;
     continue;
   }
-  await herdr("pane", "run", paneId, cmd);
-  console.log(
-    `+ ${vm.name} — attached (${vm.remote}) in workspace ${res.result.workspace.workspace_id}`,
-  );
-  created++;
+  console.log(`+ ${vm.name} — saved (${vm.remote})`);
+  saved++;
 }
 
-const reattachSummary = REATTACH ? `, ${reattached} reattached` : "";
+// --- fleet-shaped machines the fleet no longer knows -----------------------
+// A VM removed from the inventory leaves its machine behind, dialling a host
+// that may not exist. Only targets shaped like ours are considered, so a
+// machine saved by hand for some other box is never reported, let alone
+// removed. Removal is opt-in (--prune): the machine also stops being visible in
+// the sidebar, and a wrong guess about --only would otherwise hide a VM.
+const orphans = catalog.filter((m) => /-herdr$/.test(m.target) && !fleetTargets.has(m.target));
+let pruned = 0;
+if (orphans.length && only) {
+  // With --only the fleet in view is partial, so "not in the fleet" proves nothing.
+  console.warn(`\n! ${orphans.length} saved fleet machine(s) not in --only; not checked for pruning.`);
+} else {
+  for (const m of orphans) {
+    if (!PRUNE) {
+      console.warn(`? ${m.label} — saved machine for ${m.target} is not in the fleet; \`hf --prune\` removes it`);
+      continue;
+    }
+    if (DRY) {
+      console.log(`- ${m.label} — would run: herdr machine remove ${m.id}`);
+      pruned++;
+      continue;
+    }
+    const r = await herdrInteractive("machine", "remove", m.id);
+    if (!r.ok) console.error(`! ${m.label} — remove failed (exit ${r.code ?? r.error})`);
+    else {
+      console.log(`- ${m.label} — removed (${m.target})`);
+      pruned++;
+    }
+  }
+}
+
 console.log(
-  `\nherdr-fleet: ${created} attached${reattachSummary}, ${present} already present, ${down} unreachable.`,
+  `\nherdr-fleet: ${saved} saved, ${present} already present` +
+    (relabelled ? ` (${relabelled} relabelled)` : "") +
+    `, ${down} unreachable, ${failed} failed` +
+    (PRUNE ? `, ${pruned} pruned` : orphans.length && !only ? `, ${orphans.length} to prune` : "") +
+    (DRY ? " (dry run)" : "") +
+    ".",
 );
 // Repeat the drift warning under the summary: the one above scrolls off behind
 // a long fleet, and an unnoticed warning is how the stale list survived before.
@@ -408,3 +344,4 @@ if (drift) {
     `herdr-fleet: fleet.json is stale (${drift.stale} removed, ${drift.missing} missing). Run hf-sync.`,
   );
 }
+if (failed) process.exit(1);

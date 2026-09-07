@@ -239,7 +239,7 @@ herdr --version
 gh api repos/ogulcancelik/herdr/releases/latest -q .tag_name
 ```
 
-Note the asymmetry: the Mac gets herdr from Homebrew, the VMs from `curl https://herdr.dev/install.sh | sh` in the ansible role. They drift independently, and the VM path has no checksum.
+Note the asymmetry: the Mac bootstraps herdr once from the vendor installer into `~/.local/bin` (`nix-darwin/flake.nix`) and then self-updates on the **preview** channel (`[update]` in `herdr/.config/herdr/config.toml`); the VMs install the sha256-pinned build named in the ansible inventory, which follows the Mac onto the same preview tag (`make herdr-pin` there). A Mac/fleet version gap is therefore a pin that has not been bumped yet, not a finding — `herdr status` shows the protocol on each side, and the saved SSH machines show Attention until they match. The bootstrap's `curl | sh` is an accepted entry in `docs/security-baseline.md`; re-verify its bounds (runs as the login user, only when the binary is absent) rather than re-reporting it.
 
 **3e. Pinned network installers.** `remote/install.sh` pins the two installers it can — bun to an exact release tag, zoxide to its installer-script commit sha (herdr takes no version and cannot be pinned; that residual is accepted, see `docs/security-baseline.md`). Pinning is only safe if something notices when a pin falls behind a fix, so this pass measures the drift:
 
