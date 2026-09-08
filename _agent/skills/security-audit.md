@@ -177,7 +177,7 @@ nix flake metadata --json | node -e 'let s="";process.stdin.on("data",d=>s+=d).o
 
 Flag any input older than ~60 days as MEDIUM. `nix flake update` bumps them; rebuild with `compy`.
 
-**3b. Homebrew.** `nix-homebrew` runs with `onActivation.cleanup = "zap"`, so the declared list in `flake.nix` is the whole surface:
+**3b. Homebrew.** `nix-homebrew` runs with `onActivation.cleanup = "uninstall"` (undeclared casks are removed on every switch; their user data is left alone), so the declared list in `flake.nix` is the whole surface:
 
 ```sh
 brew outdated --greedy
@@ -218,7 +218,7 @@ Triage in three filters, cheapest first — the 2026-07-10 run went 47 flagged �
 
 What survives all three is usually real but modest: latest-nixpkgs core libraries (curl, openssl, openssh, sqlite, vim, jq…) trailing an upstream point release, vendor-rated Low–Medium, fix present upstream but not yet packaged. That is the standing tax of a stable channel, and its control is the staleness watch (3a/3e), not per-CVE panic. Do **not** report vulnix's raw count as "N criticals"; report the triaged residual with vendor severities.
 
-**Homebrew — no vulnerability feed exists.** OSV has no Homebrew ecosystem, and `brew` ships no CVE command. Nothing here can tell you whether an installed formula is vulnerable. Staleness (3b) is the only available signal and upgrade cadence is the only control. Say this out loud in the report: Homebrew is *unscanned*, not *clean*. Given `onActivation.cleanup = "zap"`, the declared list in `flake.nix` is the whole surface, which at least bounds it.
+**Homebrew — no vulnerability feed exists.** OSV has no Homebrew ecosystem, and `brew` ships no CVE command. Nothing here can tell you whether an installed formula is vulnerable. Staleness (3b) is the only available signal and upgrade cadence is the only control. Say this out loud in the report: Homebrew is *unscanned*, not *clean*. Given `onActivation.cleanup = "uninstall"`, the declared list in `flake.nix` is the whole surface, which at least bounds it.
 
 **One-off package queries.** When you need to check a specific package and version — something installed outside a lockfile — query OSV directly rather than guessing:
 
@@ -241,7 +241,7 @@ gh api repos/ogulcancelik/herdr/releases/latest -q .tag_name
 
 Note the asymmetry: the Mac bootstraps herdr once from the vendor installer into `~/.local/bin` (`nix-darwin/flake.nix`) and then self-updates on the **preview** channel (`[update]` in `herdr/.config/herdr/config.toml`); the VMs install the sha256-pinned build named in the ansible inventory, which follows the Mac onto the same preview tag (`make herdr-pin` there). A Mac/fleet version gap is therefore a pin that has not been bumped yet, not a finding — `herdr status` shows the protocol on each side, and the saved SSH machines show Attention until they match. The bootstrap's `curl | sh` is an accepted entry in `docs/security-baseline.md`; re-verify its bounds (runs as the login user, only when the binary is absent) rather than re-reporting it.
 
-**3e. Pinned network installers.** `remote/install.sh` pins the two installers it can — bun to an exact release tag, zoxide to its installer-script commit sha (herdr takes no version and cannot be pinned; that residual is accepted, see `docs/security-baseline.md`). Pinning is only safe if something notices when a pin falls behind a fix, so this pass measures the drift:
+**3e. Pinned network installers.** `remote/install.sh` pins the two installers it can — bun to an exact release tag, zoxide to its installer-script commit sha (herdr takes no version and cannot be pinned; that residual is accepted, see `docs/security-baseline.md`). The Mac's activation (`nix-darwin/flake.nix`) pins its three bun globals — claude-code, wrangler, vite — to exact npm versions, and `nix-darwin/scripts/impeccable-install.mjs` pins the impeccable skill bundle to a release tag with the asset's SHA-256 checked before anything is unpacked into `~/.claude/skills`. Pinning is only safe if something notices when a pin falls behind a fix, so this pass measures the drift across all of them:
 
 ```sh
 node scripts/audit-pins.mjs   # exit 0 current · 2 a pin is behind · 3 could not check

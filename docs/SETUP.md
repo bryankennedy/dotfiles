@@ -50,4 +50,4 @@ alias l c
 ```
 
 Notes:
-- `zsh/.zshrc` loads `profile.zsh` and `aliases.zsh` relative to the location of `~/.zshrc`, so this repo can live at `~/src/dotfiles` (or any other path) without editing hardcoded paths.
+- `zsh/.zprofile` loads `profile.zsh` (PATH and exports) for login shells, and `zsh/.zshrc` loads `aliases.zsh` and the interactive setup. Both resolve the repo relative to the location of the symlink in `~`, so this repo can live at `~/src/dotfiles` (or any other path) without editing hardcoded paths. `.zshrc` falls back to loading `profile.zsh` itself only when no login shell has already done so.

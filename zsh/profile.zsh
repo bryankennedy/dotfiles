@@ -1,3 +1,14 @@
+# Login-shell environment: PATH and exported variables, nothing interactive.
+# Sourced by .zprofile for every login shell, and by .zshrc only when no
+# ancestor shell has already run it (see DOTFILES_PROFILE_LOADED at the end),
+# so a nested shell inherits its environment instead of rebuilding it.
+#
+# Every block below prepends to PATH. -U makes the array unique (first
+# occurrence wins), so re-running this file — a login shell inside a login
+# shell, `source ~/.zshrc`, tmux — never duplicates an entry. Before this, a
+# fresh shell carried six entries two or three times each.
+typeset -U path PATH
+
 # Homebrew Setup
 # `brew` is a symlink into /nix/store (nix-homebrew), so it dangles until the
 # encrypted /nix volume mounts — which happens seconds after login, sometimes
@@ -9,8 +20,9 @@ elif [[ -d /opt/homebrew/bin ]]; then
     export PATH="/opt/homebrew/bin:/opt/homebrew/sbin:$PATH"
 fi
 
-# Path Configuration
-export PATH="$HOME/bin:$HOME/.local/bin:$PATH"
+# Path Configuration. Each line prepends, so the LAST one wins; the order
+# below ends up as: ~/.local/bin, ~/.bun/bin, nix, ~/go/bin, ~/bin, Homebrew.
+export PATH="$HOME/bin:$PATH"
 export PATH="$HOME/go/bin:$PATH"
 
 # Nix-darwin system packages. Like the Homebrew symlinks above, these dirs live
@@ -23,6 +35,17 @@ export PATH="$HOME/go/bin:$PATH"
 # for the life of the shell. On a non-nix machine these are just dead entries.
 export PATH="/run/current-system/sw/bin:$PATH"
 export PATH="$HOME/.nix-profile/bin:$PATH"
+
+# Bun global installs — claude, wrangler, vite (pinned in nix-darwin/flake.nix
+# postActivation). Ahead of the nix dirs so the bun-installed claude wins over
+# anything nixpkgs might ship under the same name. Completions load in .zshrc.
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# ~/.local/bin goes on last so it is first: herdr's direct preview-channel
+# install lives here (nix-darwin/flake.nix postActivation) and must win over
+# Homebrew and nix for the same name.
+export PATH="$HOME/.local/bin:$PATH"
 
 # Default editor (used by git, crontab, etc.)
 export EDITOR="vim"
@@ -40,3 +63,7 @@ export AGENTSVIEW_TELEMETRY_ENABLED=0
 if command -v fnm > /dev/null; then
   eval "$(fnm env)"
 fi
+
+# Marks the environment as built so .zshrc can skip this file in shells that
+# inherit it. Exported on purpose: the whole point is that children see it.
+export DOTFILES_PROFILE_LOADED=1

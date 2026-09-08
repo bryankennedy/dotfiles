@@ -1,8 +1,13 @@
 # Resolve this file's real directory so dotfiles can live anywhere.
 typeset -g DOTFILES_ZSH_DIR="${${(%):-%N}:A:h}"
 
-# Clean Profile (PATH, Environment)
-[ -f "$DOTFILES_ZSH_DIR/profile.zsh" ] && source "$DOTFILES_ZSH_DIR/profile.zsh"
+# Environment (PATH, exports) belongs to login shells: .zprofile sources
+# profile.zsh. Source it here only for a non-login interactive shell that no
+# login shell has already set up — one spawned straight from launchd, say — so
+# nested shells inherit the environment instead of rebuilding it each time.
+if [[ -z "$DOTFILES_PROFILE_LOADED" && -f "$DOTFILES_ZSH_DIR/profile.zsh" ]]; then
+  source "$DOTFILES_ZSH_DIR/profile.zsh"
+fi
 
 # Antigravity Terminal Fix
 # Prevents VS Code Shell Integration codes and interactive noise from breaking the agent.
@@ -109,16 +114,6 @@ setopt HIST_IGNORE_ALL_DUPS  # Delete old recorded entry if new entry is a dupli
 setopt HIST_FIND_NO_DUPS     # Do not display a line previously found.
 setopt HIST_SAVE_NO_DUPS     # Don't write duplicate entries in the history file.
 
-#
-# Bun - A better JavaScript runtime
-#
-# Add bun to PATH
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
-
-# Source bun completions
-[ -s "$BUN_INSTALL/_bun" ] && source "$BUN_INSTALL/_bun"
-
-
-# Added by Antigravity CLI installer
-export PATH="/Users/bk/.local/bin:$PATH"
+# Bun completions. BUN_INSTALL and the PATH entry are set in profile.zsh with
+# the rest of the environment; only the interactive half belongs here.
+[ -s "${BUN_INSTALL:-$HOME/.bun}/_bun" ] && source "${BUN_INSTALL:-$HOME/.bun}/_bun"

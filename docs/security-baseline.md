@@ -78,6 +78,17 @@ The finding was never "a string is public." It was "nobody decided." That is now
 
 ---
 
+## Accepted — Pass 2, agent supply chain
+
+### The Mac's user-level Claude Code permission mode is `auto`, set by activation
+*Accepted 2026-09-07.*
+
+`nix-darwin/flake.nix` merges `permissions.defaultMode = "auto"` into `~/.claude/settings.json` on every switch, so on the Mac an agent auto-approves tool calls in any project that does not set its own mode. This repo's tracked `.claude/settings.json` sets `default` for itself, which is the stricter mode for the public half of the instruction supply chain; the two files are different scopes, not a contradiction, and this entry exists so that a reader who sees one does not assume it describes the other. The fleet is not affected: `remote/install.sh` merges plugins and preferences into the same file but leaves the mode at Claude Code's own default.
+
+Why it is tolerable: auto mode amplifies an injection, it does not create one, and the controls that bound injection are the ones that matter here — the PR gate on this repo, the empty global `permissions.allow` list (finding 6), and the pinned agent-instruction inputs (impeccable, the marketplace plugin). The 2026-07-10 run log already names this as the reason those controls matter. Reassess if the allow-list grows, if the gate is loosened, or if a new unpinned skill or plugin source is added to activation.
+
+---
+
 ## Accepted — Pass 3, dependencies
 
 ### The Mac's herdr bootstrap pipes the vendor installer to a shell, once
@@ -98,6 +109,15 @@ The first full audit ran 2026-07-09. Its open findings are recorded in the **pri
 ## Resolved
 
 Decisions, not findings. A resolved item is deleted from the private list and recorded here, described rather than quoted, so that the fix has a rationale attached to it and the private list stays short enough to read.
+
+### The Mac's activation no longer installs moving refs into the agent's path
+*Resolved 2026-09-07. Surfaced by a repo review, not a numbered audit finding; same shape as finding 3.*
+
+`nix-darwin/flake.nix` ran four network installs on every `darwin-rebuild switch`, each at whatever version upstream served that minute and each wrapped in `|| true`: `bun install -g` for claude-code, wrangler and vite, and a wrapper that fetched the impeccable skill bundle from `impeccable.style/api/download/bundle/universal` with only a two-byte "is it a zip" check before unpacking it into `~/.claude/skills`. The last one is the serious case — the bundle *is* agent instructions, and the endpoint could have served anything. The fix follows finding 3's rule of pinning as far as each upstream allows: the three npm globals are pinned to exact versions (npm packages are immutable once published), and the impeccable bundle is fetched from an immutable GitHub release asset by tag, with its SHA-256 recorded in the script and verified before the CLI — itself now pinned — touches it. This is the tag-plus-digest shape the herdr Ansible role already uses, not the installer-script checksum finding 3 rejected: a release asset does not move, so the hash only breaks when the tag is bumped, which is when a person is already reading it.
+
+`|| true` became `|| echo … >&2` on every activation step, including stow and the tpm clone, so a failed or offline install is visible in the switch log instead of silently leaving whatever was there before. `scripts/audit-pins.mjs` now reads the flake and the impeccable script alongside `remote/install.sh`, so the new pins are watched the same way (pass 3e). The cost is that these tools no longer update themselves on rebuild; the audit's `BEHIND` line is the prompt to read release notes and bump.
+
+In the same change, `homebrew.onActivation.cleanup` went from `zap` to `uninstall`. Undeclared casks are still removed on every switch, so the declared list remains the whole surface (pass 3b); what changed is that their preferences and support files are no longer deleted with them, which mattered because `autoMigrate = true` means Homebrew can learn about casks this repo never declared.
 
 ### The deployment path from this repo to the fleet is now gated at both ends
 *Resolved 2026-07-09. Was the audit's only BLOCKER.*
