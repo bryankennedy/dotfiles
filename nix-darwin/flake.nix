@@ -105,8 +105,8 @@
       };
 
       # Second, independent AgentsView job: pushes this Mac's session index
-      # into the fleet's shared Postgres on bet (`pg push --watch`), so it
-      # shows up alongside every VM's at https://agents.bck.dev — additive
+      # into the fleet's shared Postgres (`pg push --watch`), so it
+      # shows up alongside every VM's on the fleet dashboard — additive
       # to agentsview-serve above, not a replacement for it. The connection
       # credential is deliberately NOT here (this repo is public); see
       # scripts/agentsview-pg-push.sh for where it comes from and what
