@@ -2,13 +2,13 @@
 # Launched by launchd.user.agents.agentsview-pg-push (nix-darwin/flake.nix).
 #
 # Pushes this Mac's local AgentsView session index into the fleet's shared
-# Postgres on bet, continuously (`pg push --watch`) — a second, independent
+# Postgres, continuously (`pg push --watch`) — a second, independent
 # job alongside agentsview-serve, which only shows this machine's own
-# sessions. This one contributes to the combined dashboard at
-# https://agents.bck.dev.
+# sessions. This one contributes to the combined fleet dashboard (tailnet only).
 #
-# The connection string (machine name + password + bet's address) is NOT in
-# this file, and never should be — this repo is public. It's rendered by
+# The connection string (machine name + password + the Postgres host's
+# address) is NOT in this file, and never should be — this repo is public.
+# It's rendered by
 # the private infrastructure repo's `make mac-agentsview-push`
 # (ansible/playbooks/mac-agentsview-push.yml) into
 # ~/.config/agentsview/pg-push.env, which this script only knows how to
