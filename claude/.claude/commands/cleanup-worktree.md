@@ -11,7 +11,7 @@ description: Safely tear down a git worktree after its PR has been merged — de
    Run `git status` first. If there are modified or untracked files that aren't captured in a commit, stop and ask the user what to do with them. Blowing away a worktree is irreversible.
 
 2. **The PR has not been merged (or doesn't exist).**
-   Run `gh pr list --head <branch> --state merged` to confirm. If the branch has an open PR, or no PR at all, stop and warn the user — they may be cleaning up the wrong worktree or cleaning up too early.
+   Confirm with the PR check in step 2 below. If the branch has an open PR, or no PR at all, stop and warn the user — they may be cleaning up the wrong worktree or cleaning up too early.
 
 ---
 
@@ -24,13 +24,20 @@ description: Safely tear down a git worktree after its PR has been merged — de
 
 2. **Safety checks**
    - Run `git -C <worktree-path> status --porcelain`. If output is non-empty, **stop** — uncommitted changes present.
-   - Run `gh pr list --head <branch> --state merged`. If the result is empty, **stop** — no merged PR found. Warn the user and ask them to confirm they want to proceed anyway (e.g. if the branch was merged without a PR, or via a direct push).
+   - Find the branch's merged PR where the repository lives, which `git remote get-url origin` tells you:
+     - **The forge** (`git.bck.dev`, where the owner's repositories live now; GitHub is only a mirror of them):
+       ```bash
+       tea pr list --login bck --state closed --fields index,head,state --limit 50 --output simple | awk -v b=<branch> '$2 == b && $3 == "merged"'
+       ```
+     - **GitHub** (a repository that never moved): `gh pr list --head <branch> --state merged`.
+
+     If the result is empty, **stop** — no merged PR found. Warn the user and ask them to confirm they want to proceed anyway (e.g. if the branch was merged without a PR, or via a direct push).
 
 3. **Delete the remote branch**
    ```bash
    git -C <repo-root> push origin --delete <branch>
    ```
-   If the remote branch is already gone (already deleted from GitHub after merge), this will fail harmlessly — note it and continue.
+   If the remote branch is already gone (the forge deletes a PR's branch when it merges), this will fail harmlessly — note it and continue.
 
 4. **Remove the worktree**
    ```bash

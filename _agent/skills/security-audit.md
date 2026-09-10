@@ -128,11 +128,11 @@ Re-derive this list from `remote/install.sh` and the `stow` line in `nix-darwin/
 **2b. Is the channel gated?** Because merged content becomes instructions, the default branch needs a review gate. Check the push side and the pull side, and write what you find to the private findings file:
 
 ```sh
-cd ~/src/dotfiles && gh api "repos/$(gh repo view --json nameWithOwner -q .nameWithOwner)/branches/main/protection" 2>&1 | head -3
+cd ~/src/dotfiles && tea api --login bck repos/bkennedy/dotfiles/branches/main | jq '{protected, user_can_push}'
 grep -rn 'version:' ~/src/infrastructure/ansible/roles/dotfiles/tasks/main.yml   # pinned ref, or moving branch?
 ```
 
-A 404 from the first means no protection rule. A moving ref in the second means the fleet adopts new commits without a deliberate bump. Either alone is a weakness; together they are a BLOCKER, because nothing stands between a merge and execution across the fleet.
+dotfiles lives on the forge at `git.bck.dev`; GitHub is a push mirror of it and deliberately has no branch protection (a rule there would reject the mirror's pushes), so do not check GitHub. The gate is the forge's rule on `main`, declared in `~/src/infrastructure/tofu/forgejo`. Expect `"protected": true` and `"user_can_push": false` (`tea` logs in as `agent`, which must not be able to push to `main`). `"protected": false` means no rule. A moving ref in the second command means the fleet adopts new commits without a deliberate bump. Either alone is a weakness; together they are a BLOCKER, because nothing stands between a merge and execution across the fleet.
 
 **2c. Network-to-execute.** Every `curl | sh` is an unauthenticated third party writing code that later runs as you. Enumerate them in both repos rather than trusting a list that may have gone stale:
 
