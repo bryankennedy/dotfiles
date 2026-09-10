@@ -262,6 +262,7 @@
           "raspberry-pi-imager"
           "shottr"
           "tailscale"
+          "tea"
           "visual-studio-code"
         ];
       };
