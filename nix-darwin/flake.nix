@@ -263,7 +263,7 @@
           "ollama-app"
           "raspberry-pi-imager"
           "shottr"
-          "tailscale"
+          "tailscale-app"
           "visual-studio-code"
         ];
       };
