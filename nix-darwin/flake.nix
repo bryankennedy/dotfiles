@@ -212,6 +212,8 @@
           "starship"
           # Link items in this repo into the home dir
           "stow"
+          # Gitea CLI - a formula; the "tea" cask is the unrelated pkgx GUI (ossapp)
+          "tea"
           # Puthon to Python
           "thefuck"
           # herdr (agent multiplexer) is deliberately NOT a brew any more. It
@@ -262,7 +264,6 @@
           "raspberry-pi-imager"
           "shottr"
           "tailscale"
-          "tea"
           "visual-studio-code"
         ];
       };
