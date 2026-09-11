@@ -148,6 +148,8 @@ Decisions, not findings. A resolved item is deleted from the private list and re
 
 `|| true` became `|| echo … >&2` on every activation step, including stow and the tpm clone, so a failed or offline install is visible in the switch log instead of silently leaving whatever was there before. `scripts/audit-pins.mjs` now reads the flake and the impeccable script alongside `remote/install.sh`, so the new pins are watched the same way (pass 3e). The cost is that these tools no longer update themselves on rebuild; the audit's `BEHIND` line is the prompt to read release notes and bump.
 
+The tpm clone was the one activation fetch this pass left unpinned. On 2026-09-11 it was **removed rather than pinned** (DOT-7), along with the tpm plugin block in `tmux/.tmux.conf`. Nothing on the Mac starts tmux any more, and a pin on tpm would not have pinned the plugins it clones. See `docs/decisions/DOT-7.md`.
+
 In the same change, `homebrew.onActivation.cleanup` went from `zap` to `uninstall`. Undeclared casks are still removed on every switch, so the declared list remains the whole surface (pass 3b); what changed is that their preferences and support files are no longer deleted with them, which mattered because `autoMigrate = true` means Homebrew can learn about casks this repo never declared.
 
 ### The deployment path from this repo to the fleet is now gated at both ends

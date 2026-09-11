@@ -398,7 +398,6 @@
         # is an update check (no-op when current). audit-pins.mjs watches the
         # skill tag like the npm pins above.
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun ${./scripts/impeccable-install.mjs} || echo "postActivation: impeccable install failed (offline, or the pinned bundle hash no longer matches)" >&2
-        /usr/bin/sudo -Hu bk sh -c 'test -d /Users/bk/.tmux/plugins/tpm || ${pkgs.git}/bin/git clone https://github.com/tmux-plugins/tpm /Users/bk/.tmux/plugins/tpm' || echo "postActivation: tpm clone failed (offline?)" >&2
         # herdr: direct install, bootstrapped once. Homebrew's herdr is
         # stable-only (`herdr channel set preview` refuses it), so the binary
         # lives in ~/.local/bin — ahead of /opt/homebrew/bin on PATH via
