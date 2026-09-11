@@ -34,8 +34,8 @@ Findings about that chain are **private**. Record them in `~/src/infrastructure/
 
 ## Severity
 
-- **BLOCKER** — a live secret, or private topology, in the public repo (worktree *or* history); or a path by which unreviewed content becomes agent instructions or executed code.
-- **HIGH** — a credible path to one of the above that requires another condition to fire.
+- **BLOCKER** — a live secret in the public repo (worktree *or* history); an open weakness described in public (an unfixed finding, a gap in a gate); or a path by which unreviewed content becomes agent instructions or executed code.
+- **HIGH** — a credible path to one of the above that requires another condition to fire. **Private topology in the public repo** (defined in Pass 1) is rated here, not as a BLOCKER. A host name or address gives no way in by itself; it helps only someone who already has one.
 - **MEDIUM** — weakens a boundary without breaching it; unpinned supply chain; a known-vulnerable dependency not on an exploitable path.
 - **LOW** — hygiene, stale docs, defence in depth.
 
@@ -45,7 +45,16 @@ Do not report a finding you have not confirmed by reading the file. A grep hit i
 
 ## Pass 1 — Exposure (public ↔ private boundary)
 
-The public repo must contain no credential and no fact about the private infrastructure: no real hostname, no login account, no inventory shape.
+The public repo must contain no credential, no private topology, and no description of an open weakness. "Private" is deliberately narrower than "anything about the lab" (`docs/decisions/DOT-9.md`). The lab is protected by who can reach it and how they authenticate, not by nobody knowing its names.
+
+- **Private topology.** Host names and addresses that do **not** resolve in public DNS: inventory host names, tailnet node names, LAN and tailnet IPs. Also the inventory's shape: which host runs which service, how the network is laid out, and what the private repo's runbooks say.
+- **Public identity, never a finding on its own:**
+  - **A name that resolves in public DNS.** DNS already publishes it, and so do certificate transparency logs if it serves TLS, so a tracked copy discloses nothing new. Check before rating: `dig +short <name> A @1.1.1.1`. An answer means public identity; no answer means private topology. The forge's name is in this group.
+  - **The owner's handles** on the forge and on GitHub, **the agent and reviewer accounts'** names and commit addresses, and the `Reviewed-on:` URLs the forge adds to every squash-merge message. The forge writes these as authorship on every merge, so no edit to the tree can hide them.
+  - **Login account names.** They are not credentials, because no host takes a password over SSH. The hosting provider's edge requires a registered key, and the home lab uses Tailscale SSH. Adding a new one to the tree is hygiene (LOW), not exposure.
+  - **Paths under `~/src/`**, including the private repo's directory layout.
+
+The accepted entry "Public DNS names and account handles are public identity" in `docs/security-baseline.md` lists the conditions that would end this. Re-verify those conditions; do not re-report a name that falls in the public group.
 
 **1a. Secrets, worktree and history.** No scanner is installed, but `nix` is, so fetch one on demand rather than hand-rolling entropy checks:
 
@@ -57,7 +66,7 @@ nix run nixpkgs#gitleaks -- dir . --redact   # worktree as it stands
 
 Subcommands are `git` and `dir` as of gitleaks 8.30. The older `detect` / `protect` verbs were removed — if you see them in a snippet, it predates the rename and will exit non-zero.
 
-**1b. Private topology in the public repo.** The terms to search for *are themselves the private data*, so this skill must not contain them — writing a deny-list of real hostnames into a public file publishes the very thing it defends. Derive the list at run time from the private inventory, which is already the source of truth for the fleet:
+**1b. Private topology in the public repo.** Most of the terms to search for *are themselves the private data*, so this skill must not contain them — writing a deny-list of real hostnames into a public file publishes the very thing it defends. Derive the list at run time from the private inventory, which is already the source of truth for the fleet:
 
 ```sh
 cd ~/src/dotfiles
@@ -81,11 +90,19 @@ Then check for the *shape* of the private data, independent of its values. These
 git grep -nEI 'ansible_host|ansible_user|inventory_hostname|gh_host' -- .
 ```
 
-**Known true negatives**, so you do not chase them. The hosting provider's domain appears in `README.md` and `remote/README.md` as a vendor name inside markdown anchor slugs; a slugified domain that happens to collide with an account name is not a disclosure of that account. And the `*-herdr` strings in `zsh/aliases-macos.zsh` are SSH *alias* names — the hostnames and accounts they resolve to live in `~/.ssh/config.d/`, generated from the private inventory and never tracked. Anything else is a finding.
+**Classify every hit against Pass 1's definition before you report it.** The deny-list is built from what the inventory holds, not from what is private, so it also carries public identity. The owner's forge handle, for example, is a login account on one host. A hit on public identity is not a finding, and a hit on private topology is HIGH. Short host names also match ordinary words in history, because `-S` is a substring search, so read the diff before counting a commit.
+
+**Known true negatives**, so you do not chase them:
+
+- The hosting provider's domain appears in `README.md` and `remote/README.md` as a vendor name inside markdown anchor slugs. A slugified domain that happens to collide with an account name is not a disclosure of that account.
+- The `*-herdr` strings in `zsh/aliases-macos.zsh`, the `progress*-space` aliases beside them, and the `ssh` commands in `tmux/.tmux.conf` are SSH *alias* names for two hosted VMs. The alias names match inventory host names, so this pass reports them. The hostnames and accounts they resolve to live in `~/.ssh/config.d/`, generated from the private inventory and never tracked.
+- The owner's forge handle appears in `.forgejo/CODEOWNERS` (a code-owner rule has to name its owner), in pass 2b's forge API call, and in the ghostty-font comments in `nix-darwin/flake.nix` and `ghostty/.config/ghostty/config`. In history, it also appears in every forge merge's `Reviewed-on:` trailer. All of it is public identity.
+
+Anything else is a lead: classify it, then rate it.
 
 Note the asymmetry the history search exposes: `git grep` clears the worktree, `git log -S` clears the *published record*. A term can be absent from one and present in the other, and only the second matters once a commit is pushed.
 
-**The history search returns hits for the fleet's login account, and always will.** That exposure was reviewed and accepted; `docs/security-baseline.md` records why, and the private findings file holds the commit coordinates. Do not re-open it, and do not teach this pass to skip those commits — a pickaxe with an exception list reports clean on the one thing it was pointed at. Instead, re-verify: the acceptance names three conditions that would void it, one of which is a hostname appearing in this repo. Check those, then move on. A hit here is expected; a hit here *plus* a hostname is a BLOCKER.
+**The history search returns hits for login account names, and always will.** The fleet's login account and the owner's forge handle are both in published history, and both were reviewed and accepted. `docs/security-baseline.md` records why, and the private findings file holds the commit coordinates. Do not re-open them, and do not teach this pass to skip those commits: a pickaxe with an exception list reports clean on the one thing it was pointed at. Instead, re-verify the conditions the acceptances name. SSH must still take no password, and the public names must still point where the public-identity entry says. The old trip-wire, "a hostname committed to this repo," fired in 2026-08 without anything becoming reachable. On 2026-09-11 it was replaced by those conditions, because reachability and authentication are what actually protect the hosts. A hit here is expected. A hit here, plus a host that accepts a password, is a BLOCKER.
 
 **1c. Things that must never be tracked.** `~/.ssh/config` is deliberately untracked and its `Host *-herdr` blocks are generated into `~/.ssh/config.d/` from the private inventory. Confirm nothing has pulled them in:
 

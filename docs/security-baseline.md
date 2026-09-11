@@ -18,7 +18,7 @@ A dated line per full audit, so a clean result is itself on the record — the p
 ### 2026-07-10 — full run (`all`), no new findings
 First fully clean pass. Every check either passed with evidence that it actually looked, or matched an accepted entry below that re-verified as still true; nothing new was found.
 
-- **Exposure** — gitleaks scanned 193 commits and the worktree with no leaks; the topology deny-list (14 terms from 9 hosts) hit only the accepted anchor-slug true-negative and finding 4's history; 0 symlinks escape the repo. Finding 4's void condition was re-checked and holds — **no fleet hostname appears anywhere in this repo, worktree or history**.
+- **Exposure** — gitleaks scanned 193 commits and the worktree with no leaks; the topology deny-list (14 terms from 9 hosts) hit only the accepted anchor-slug true-negative and finding 4's history; 0 symlinks escape the repo. Finding 4's void condition was re-checked and holds — **no fleet hostname appears anywhere in this repo, worktree or history**. *(Superseded. That claim stopped being true when a service host name reached published history on 2026-08-25, and again when the forge's public name reached the tree on 2026-09-10. Finding 4's conditions were re-decided on 2026-09-11; see its entry and "Public DNS names and account handles are public identity" below.)*
 - **Injection** — the gate is intact at both ends (this repo requires a PR with admin enforcement; the fleet pins a full commit sha, now `bc896bb`). The global `permissions.allow` list is empty (finding 6). Five Cloudflare plugin MCP servers remain the only injection surface, as baselined; no hooks.
 - **Dependencies** — npm (141 packages) scans clean; the nix closure is byte-identical to finding 7's triage (same 19 runtime leads, same versions), so that vendor-severity triage still stands; pins are current; nix inputs are 2–28 days old; 0 declared Homebrew formulae are stale.
 - **Stated unscanned, not clean** — Homebrew has no vulnerability feed; nix-closure vendor advisories were not re-fetched because the closure did not change; `defaultMode: auto` means agents auto-approve, which amplifies any injection vector and is why the gate and empty allow-list matter.
@@ -33,7 +33,7 @@ Entries are described, not quoted, wherever quoting would restate the private va
 *Accepted 2026-07-09.* Both hits are the vendor's name inside markdown anchor slugs. Slugifying the domain strips its dot, which makes it collide with an unrelated login account name — the collision is what the grep catches, not a disclosure. Naming your hosting provider is not a topology leak.
 
 ### The `*-herdr` SSH aliases in `zsh/aliases-macos.zsh`
-*Accepted 2026-07-09.* These are SSH **alias** names. The hostnames and login accounts they resolve to live in `~/.ssh/config.d/`, generated from the private ansible inventory and never tracked here. An alias name alone reveals only that hosts by that nickname exist, which is not worth the cost of obfuscating.
+*Accepted 2026-07-09. **Widened 2026-09-11** (DOT-9) to cover the `progress*-space` aliases beside them and the `ssh` commands in `tmux/.tmux.conf`. Those name two hosted VMs by alias, and pass 1b reports them now that it searches for inventory host names.* These are SSH **alias** names. The hostnames and login accounts they resolve to live in `~/.ssh/config.d/`, generated from the private ansible inventory and never tracked here. An alias name alone reveals only that hosts by that nickname exist, which is not worth the cost of obfuscating.
 
 ### ~~Git identity in `git/.gitconfig`~~
 *Accepted 2026-07-09. **Retired 2026-07-09**, second audit run.* It matched only because the inventory's `ansible_user` named a person rather than the login account. That field was wrong on every host — the fleet logs in as a service account — and correcting it removed the term from the deny-list, so this file no longer matches at all.
@@ -50,25 +50,56 @@ Those files no longer live in this repo at all. `--no-folding` stopped the agent
 Do not re-add this entry if the hits reappear. Their reappearance would mean a fold has returned, and that is a finding, not a baseline.
 
 ### A fleet login account name remains in this repo's published history
-*Accepted 2026-07-10, after the second audit run. This entry exists so the decision is not re-litigated; the commit coordinates are in the private findings file, deliberately not here.*
+*Accepted 2026-07-10, after the second audit run. **Conditions re-decided 2026-09-11** (DOT-9). This entry exists so the decision is not re-litigated; the commit coordinates are in the private findings file, deliberately not here.*
 
 An account name was committed here and later removed from the worktree. Removal does not unpublish: this repo is public, so every commit that ever carried the string is still fetchable. Confirmed by reading the diffs, not by trusting the pickaxe — one of the matching commits is a false positive, a slugified vendor domain in a markdown anchor.
 
 Accepted because the name is not a credential and, here, is not even knowledge:
 
 - SSH to the fleet is key-only. There is no password prompt for a username to be typed into.
-- The corresponding **hostnames were never committed**. A reader of this repo learns a username with nowhere to use it.
+- ~~The corresponding **hostnames were never committed**. A reader of this repo learns a username with nowhere to use it.~~ No longer true since 2026-08-25, and it turned out not to be what the acceptance rested on; see the conditions below.
 - The hosting edge maps *any* SSH username onto the same service account. An attacker who already had a hostname never needed the name.
 
 And the alternatives cost more than they buy. A history rewrite plus force-push does not expunge objects from GitHub — old SHAs stay reachable through the API, forks, and cached clones until a garbage collection you cannot trigger — while breaking every clone, including nine fleet checkouts pinned to a sha. Rotating the account is real work that the third point above renders close to worthless.
 
-**Re-verify, do not re-decide.** This acceptance rests on three conditions, and it expires with any of them. Re-raise as a live finding, not a baseline entry, if:
+**Re-verify, do not re-decide.** This acceptance rests on the conditions below, and it expires with any of them. Re-raise as a live finding, not a baseline entry, if:
 
-- a **hostname is ever committed to this repo** — the pair is meaningful even though neither half is;
+- ~~a **hostname is ever committed to this repo** — the pair is meaningful even though neither half is;~~ *Re-decided 2026-09-11.* This trip-wire fired twice: a service host name reached history in 2026-08, and the forge's public name reached the tree in 2026-09. Neither made any host reachable, because a name paired with an account was never what kept a stranger out. No password path over SSH (the last condition here) and the reachability conditions in "Public DNS names and account handles are public identity" do that, and they replace this condition;
 - the fleet moves to a provider whose edge does *not* collapse arbitrary usernames onto one account;
-- password or keyboard-interactive SSH auth is ever enabled on any host.
+- SSH auth that asks for a secret, whether a password or a keyboard-interactive prompt, is ever enabled on any host. Check from a machine with the fleet's SSH config: `ssh -n -o PubkeyAuthentication=no -o ControlPath=none -o BatchMode=yes <host> true` must be refused: `Permission denied`, or Tailscale's `tailnet policy does not permit you to SSH`. The hosting provider's edge lists `keyboard-interactive` among its methods, but only uses it to print "SSH keys are required" and disconnect (checked 2026-09-11). That listing alone does not void this entry; `password` in the list, or any prompt for a secret, does.
 
 The finding was never "a string is public." It was "nobody decided." That is now closed.
+
+### Public DNS names and account handles are public identity
+*Accepted 2026-09-11 (DOT-9). Rationale in `docs/decisions/DOT-9.md`. The rule this sets is Pass 1's definition in `_agent/skills/security-audit.md`.*
+
+The forge's name, `git.bck.dev`, is in this repo's tree. It is also in the published message of every forge merge, next to the owner's forge handle, `bkennedy`, which is a login account on the host behind that name. The agent account's name and commit address are on the same merges. The fleet dashboard's name, `agents.bck.dev`, has been in history since 2026-08 and resolves the same way. The forge writes the trailers and authorship on every squash merge, and history already has the rest, so none of this can be removed.
+
+Accepted because none of it gives an attacker something they lack or can use:
+
+- **Both names are public by design.** Each has a public DNS record, so clients can resolve it without the lab's own DNS, and each serves a TLS certificate that is in certificate transparency logs. A copy in this repo adds nothing to what `dig` and a certificate search already return.
+- **Both records point at a tailnet address,** which is unreachable from the internet. A name gives a stranger nothing to connect to.
+- **No host takes a password.** The hosted VMs sit behind the provider's edge, which requires a registered key. The forge host uses Tailscale SSH, which authorizes by tailnet identity and policy. A login name has no password prompt to be typed into.
+- **The handles are authorship.** They identify who wrote and merged a change; they grant nothing.
+
+The same rule makes the hosted VMs' names public identity, because they resolve in public DNS too. They point at the hosting provider's public SSH edge rather than a tailnet address, so for those names the whole weight rests on the edge requiring a registered key. The login-account entry above re-verifies that.
+
+**Not covered, and each still a finding:** a host name or address that does not resolve in public DNS (private topology, HIGH), the inventory's shape, credentials, and any description of an open weakness. The line is the public DNS answer: `dig +short <name> A @1.1.1.1`.
+
+**Re-verify, do not re-decide.** This expires, and the names become findings again, if:
+
+- `dig +short <name> A @1.1.1.1` for either name stops answering inside `100.64.0.0/10`, the record becomes proxied, or the service behind it becomes reachable from the internet some other way (a tunnel, a Tailscale Funnel, a port forward);
+- password or keyboard-interactive SSH auth is enabled on any host (the check is in the login-account entry above);
+- a handle or account name becomes part of a credential, or of an access rule that anyone off the tailnet can reach.
+
+### An internal host name and its role remain in this repo's published history
+*Accepted 2026-09-11 (DOT-9). Coordinates are in the private findings file.*
+
+Two commits in 2026-08 described the fleet's shared database by the internal host it runs on: that host's inventory name, and what it runs. The same commits named the fleet dashboard, which is public identity under the entry above and is not what this entry accepts. A later commit removed the host name and role from the worktree, but history keeps both. That is private topology in published history, rated HIGH.
+
+It is accepted, not rewritten, for the same reasons as the login account above. A force-push does not remove objects GitHub already serves, and it would break every sha-pinned fleet checkout. The name also reaches nothing: it is a bare name that resolves only on the lab's own networks, and the host behind it accepts SSH only through Tailscale SSH, which authorizes by tailnet identity and policy.
+
+**Re-verify, do not re-decide.** This expires if that host becomes reachable from off the tailnet, or if any host accepts password or keyboard-interactive SSH auth. It does not cover a *new* internal name or role committed to the worktree. That is a new HIGH finding, and since DOT-13 pass 1b searches for inventory host names, so it will be caught.
 
 ### The exposure pass matches its own source
 *Accepted 2026-07-09, first full audit.* `_agent/skills/security-audit.md` contains the grep patterns it runs, so passes 1b, 2c, and 2d each return hits on the skill file itself. Noise, not signal — but it does mean a real finding could hide next to a self-match. Read the file and line before dismissing.
@@ -102,7 +133,7 @@ Bounds: runs as `bk`, never root; only when the binary is missing, so an install
 
 ## Open
 
-The first full audit ran 2026-07-09. Its open findings are recorded in the **private** ansible repo at `docs/security-findings.md`, not here. See `docs/decisions/DOT-1.md` for why: a ranked list of a system's weaknesses does not belong in a public repo, however discoverable each item is on its own.
+The first full audit ran 2026-07-09. Its open findings are recorded in the **private** infrastructure repo (formerly the ansible repo) at `docs/security-findings.md`, not here. See `docs/decisions/DOT-1.md` for why: a ranked list of a system's weaknesses does not belong in a public repo, however discoverable each item is on its own.
 
 ---
 
