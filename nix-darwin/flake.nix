@@ -82,14 +82,17 @@
       # Runs `agentsview serve` as a persistent background service so the web
       # UI survives logout/reboot without needing a terminal open. Port 58080
       # (not the 8080 default) avoids colliding with common dev-server ports.
-      # Bound to 0.0.0.0 + --require-auth so it's also reachable over
-      # Tailscale (bearer token lives in ~/.agentsview/config.toml, never
-      # committed) — see scripts/agentsview-serve.sh for the port/host/auth
-      # setup. --no-update-check skips its self-update ping, and
+      # Bound to the Mac's Tailscale address + --require-auth, so it's reachable
+      # over the tailnet and from nowhere else (bearer token lives in
+      # ~/.agentsview/config.toml, never committed) — see
+      # scripts/agentsview-serve.sh for the port/host/auth setup, and for why
+      # it waits for Tailscale rather than falling back to loopback.
+      # --no-update-check skips its self-update ping, and
       # AGENTSVIEW_TELEMETRY_ENABLED=0 disables its PostHog usage-stats ping
       # (see LuLu prompt for agentsview connecting out to posthog/GitHub).
-      # KeepAlive restarts it if it crashes; RunAtLoad brings it back on every
-      # login, including after a restart.
+      # KeepAlive restarts it if it crashes, or if it exits because Tailscale
+      # isn't up yet; RunAtLoad brings it back on every login, including after
+      # a restart.
       launchd.user.agents.agentsview-serve = {
         serviceConfig = {
           Label = "com.bryan.agentsview-serve";
