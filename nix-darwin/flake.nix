@@ -375,6 +375,13 @@
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g @anthropic-ai/claude-code@2.1.263 || echo "postActivation: claude-code install failed (offline?)" >&2
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g wrangler@4.129.0 || echo "postActivation: wrangler install failed (offline?)" >&2
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g vite@8.2.2 || echo "postActivation: vite install failed (offline?)" >&2
+        # ghostty-font: live Ghostty font trials, A/B compare and Elo ranking.
+        # It lives on the forge (git.bck.dev/bkennedy/ghostty-font) and installs
+        # from its public GitHub mirror, so activation needs no forge
+        # credentials. Pinned to a commit rather than a tag, because a tag can
+        # be moved; audit-pins.mjs compares it to the newest tag's commit. The
+        # ghostty package's config includes the override file it writes.
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#8cfd2772c48fdb8aa64896dcd7d814af158565e9 || echo "postActivation: ghostty-font install failed (offline?)" >&2
         # Impeccable design skills (impeccable.style) for Claude Code, installed
         # into ~/.claude/skills/impeccable — a real directory in $HOME, not this
         # repo, so nothing lands in the public working tree. Goes through a

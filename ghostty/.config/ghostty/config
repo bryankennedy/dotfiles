@@ -7,6 +7,10 @@ command = /Users/bk/.local/bin/herdr
 # After lots of trial and error, I always come back to Monaco
 font-family = "Monaco"
 font-size = 16
+# Optional, untracked override written by `ghostty-font` for trying other fonts
+# live (git.bck.dev/bkennedy/ghostty-font, installed by nix-darwin/flake.nix).
+# Missing file = Monaco above.
+config-file = ?font.ghostty
 
 #
 # Themes

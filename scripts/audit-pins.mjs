@@ -8,7 +8,8 @@
 //   to the commit sha of its installer script (finding 3).
 //
 //   nix-darwin/flake.nix (the Mac) pins its bun globals — claude-code, wrangler,
-//   vite — to exact npm versions.
+//   vite — to exact npm versions, and ghostty-font to a commit of its GitHub
+//   mirror.
 //
 //   nix-darwin/scripts/impeccable-install.mjs pins the impeccable skill bundle
 //   to a GitHub release tag (with the asset's SHA-256 checked in the script)
@@ -53,6 +54,8 @@ const npmPins = Object.fromEntries(NPM_GLOBALS.map((p) => [p, npmPin(p)]));
 for (const [p, v] of Object.entries(npmPins)) {
   if (!v) die(`could not find an exact-version pin for ${p} in nix-darwin/flake.nix — did the bun install -g line change shape, or lose its pin?`);
 }
+const ghosttyFontPin = flake.match(/install -g github:bryankennedy\/ghostty-font#([0-9a-f]{40})/)?.[1];
+if (!ghosttyFontPin) die(`could not find the ghostty-font commit pin in nix-darwin/flake.nix — did the bun install -g line change shape, or pin a tag instead of a commit?`);
 
 const imp = read("nix-darwin/scripts/impeccable-install.mjs");
 const impSkillPin = imp.match(/SKILL_TAG\s*=\s*'skill-v([0-9]+\.[0-9]+\.[0-9]+)'/)?.[1];
@@ -110,6 +113,22 @@ const checks = [
     kind: "version",
   })),
   {
+    name: "ghostty-font",
+    where: "nix-darwin/flake.nix",
+    pinned: ghosttyFontPin.slice(0, 10),
+    async latest() {
+      // The newest release is the highest vX.Y.Z tag; compare the commit it
+      // names, since the pin is a commit. No tags yet reads as unknown.
+      const tags = await gh("https://api.github.com/repos/bryankennedy/ghostty-font/tags?per_page=100");
+      const semver = (t) => t.name.match(/^v(\d+)\.(\d+)\.(\d+)$/)?.slice(1).map(Number);
+      const newest = tags
+        .filter(semver)
+        .sort((x, y) => semver(y).reduce((d, n, i) => d || n - semver(x)[i], 0))[0];
+      return (newest?.commit?.sha || "").slice(0, 10);
+    },
+    kind: "commit",
+  },
+  {
     name: "impeccable-skill",
     where: "nix-darwin/scripts/impeccable-install.mjs",
     pinned: impSkillPin,
@@ -138,7 +157,7 @@ for (const c of checks) {
   try {
     latest = await c.latest();
     if (!latest) { status = "unknown"; unknown++; }
-    else status = latest === c.pinned ? "current" : "BEHIND"; // sha: any change = the script we run moved
+    else status = latest === c.pinned ? "current" : "BEHIND"; // sha/commit: any change = the code we run moved
     if (status === "BEHIND") behind++;
   } catch (e) {
     latest = `(${e.message})`;
