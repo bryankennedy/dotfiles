@@ -120,11 +120,15 @@ Decisions, not findings. A resolved item is deleted from the private list and re
 In the same change, `homebrew.onActivation.cleanup` went from `zap` to `uninstall`. Undeclared casks are still removed on every switch, so the declared list remains the whole surface (pass 3b); what changed is that their preferences and support files are no longer deleted with them, which mattered because `autoMigrate = true` means Homebrew can learn about casks this repo never declared.
 
 ### The deployment path from this repo to the fleet is now gated at both ends
-*Resolved 2026-07-09. Was the audit's only BLOCKER.*
+*Resolved 2026-07-09. Was the audit's only BLOCKER. **Push side moved to the forge 2026-09-10**; the GitHub rule described below is retired.*
 
 Content merged here becomes agent instructions and executed code on every machine in the lab, because `remote/install.sh` symlinks `_agent/` into the agent config directories and the fleet runs that script on each play. That is by design; what was missing was any gate between a merge and its execution.
 
-Two changes, one per end. **Push side:** this repo's default branch now requires a pull request and rejects direct pushes, enforced for admins — verified by attempting one and receiving `GH006`. Approvals are set to zero deliberately: a single maintainer cannot approve their own pull request, so requiring one would have locked the repo rather than protected it. The gate that matters is that the diff becomes visible before it becomes instructions.
+Two changes, one per end. ~~**Push side:** this repo's default branch now requires a pull request and rejects direct pushes, enforced for admins — verified by attempting one and receiving `GH006`. Approvals are set to zero deliberately: a single maintainer cannot approve their own pull request, so requiring one would have locked the repo rather than protected it. The gate that matters is that the diff becomes visible before it becomes instructions.~~
+
+**Push side, since 2026-09-10.** This repo's home is the Forgejo forge; GitHub is a push mirror of it and deliberately carries no branch rule, because a rule there rejects the mirror's pushes. The GitHub protection above was removed for that reason, so do not re-verify it — it is gone on purpose. The gate is the forge's rule on `main`, declared in the private repo's OpenTofu rather than set by hand: no account may push to `main`, and every change arrives by pull request. Pass 2b checks it with `tea api` and expects `protected: true` and `user_can_push: false`.
+
+What the move changed is who can merge. On GitHub the only writer was the maintainer. On the forge, agents open pull requests as a separate write account so that the code-owner rule has someone to request review *from* — Forgejo never asks a PR's own author. Approvals stay at zero for the reason given above, so the review has to come from `.forgejo/CODEOWNERS`. It claims every path in this repo, because nearly every file here is loaded as instructions or executed as the login user somewhere, and the forge rule blocks the merge until the requested review lands. The property this entry has always rested on — the diff becomes visible before it becomes instructions — now means visible *to the maintainer*, not merely published on a pull request.
 
 **Pull side:** the fleet pins an exact commit sha rather than tracking a branch, and the ansible role asserts that the pin is a 40-character sha, failing loudly on a branch name. Adopting new dotfiles is now a reviewed commit in the private repo, so the diff of what the fleet is about to run is the diff of that line.
 
@@ -186,8 +190,10 @@ Pass 1b derives the list of private strings to search for from the inventory. It
 
 `remote/install.sh` rewrote `~/.gitconfig` and moved every symlink aside on **every** run, so a config-management play reported `changed` forever and real drift was invisible in the noise — which is how hosts sat frozen on old commits while every play reported success. The installer now rewrites only when content differs and skips a relink when the symlink already resolves to its target. Verified on the fleet: the per-host `~/.dotfiles-backup/` directory counts are frozen at their pre-fix totals across multiple subsequent plays — before the fix, each play on each host minted a new one — which confirms both the gitconfig and the symlinks have stopped churning. (The historical backup directories remain as harmless cruft, available to clear separately.)
 
-### The private repo has no enforced branch protection, and that is accepted
-*Accepted 2026-07-10. Was LOW (finding 8).*
+### ~~The private repo has no enforced branch protection, and that is accepted~~
+*Accepted 2026-07-10. Was LOW (finding 8). **Retired 2026-09-10.** The rationale no longer applies; the entry is kept struck through so the change is visible rather than silent.*
+
+Two of the reassessment triggers below fired together. The private repo moved to the self-hosted forge, where branch protection is not a paid feature, and an agent account gained write access, so self-review no longer covers every change. Its `main` now carries the same forge rule as this repo, plus required CI and code-owner review, declared in its own OpenTofu. The entry is retired rather than re-accepted, because nothing is left to accept. Its original text follows.
 
 The public repo's `main` requires a pull request and rejects direct pushes; the private companion repo — which holds the inventory and the deploy pin, and whose `main` is therefore the other half of the repo-to-fleet gate — cannot have the same, because GitHub reserves branch protection on private repositories for paid plans and this account is on the free tier. Making the repo public to unlock it is not an option: publishing the inventory is the exact exposure the whole audit exists to prevent.
 

@@ -1,0 +1,21 @@
+# Every path in this repo is high blast radius, so the owner owns all of it.
+#
+# Almost nothing here is inert. _agent/ is loaded into every agent session,
+# remote/install.sh and nix-darwin/ run on every machine, the stow packages are
+# shell, editor and git config that execute as the login user, and
+# docs/security-baseline.md tells the security-audit skill what not to re-open.
+# A narrower list would have to be kept complete by hand, and the file it
+# forgot would be the one that mattered.
+#
+# Forgejo reads this file from the repo root, docs/, or .forgejo/. It lives in
+# .forgejo/ because GitHub mirrors this repo and also reads CODEOWNERS from the
+# root and docs/, where the forge owner's handle is not the owner's GitHub account.
+#
+# Each rule is a Go regular expression over the repo-relative path, not a
+# gitignore glob. A pull request that touches a match requests review from the
+# owner, and the forge's rule on main ("Block merge on official review
+# requests") holds the merge until it lands. Forgejo never requests a review
+# from a PR's own author, so this gates PRs opened by the agent account, not
+# the owner's own.
+
+^.*$    @bkennedy
