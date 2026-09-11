@@ -132,7 +132,7 @@ cd ~/src/dotfiles && tea api --login bck repos/bkennedy/dotfiles/branches/main |
 grep -rn 'version:' ~/src/infrastructure/ansible/roles/dotfiles/tasks/main.yml   # pinned ref, or moving branch?
 ```
 
-dotfiles lives on the forge at `git.bck.dev`; GitHub is a push mirror of it and deliberately has no branch protection (a rule there would reject the mirror's pushes), so do not check GitHub. The gate is the forge's rule on `main`, declared in `~/src/infrastructure/tofu/forgejo`. Expect `"protected": true` and `"user_can_push": false` (`tea` logs in as `agent`, which must not be able to push to `main`). `"protected": false` means no rule. A moving ref in the second command means the fleet adopts new commits without a deliberate bump. Either alone is a weakness; together they are a BLOCKER, because nothing stands between a merge and execution across the fleet.
+dotfiles lives on the forge at `git.bck.dev`; GitHub is a push mirror of it and deliberately has no branch protection (a rule there would reject the mirror's pushes), so do not check GitHub. The gate is the forge's rule on `main`, declared in `~/src/infrastructure/tofu/forgejo`. Expect `"protected": true` and `"user_can_push": false` (`tea` logs in as `talos`, which must not be able to push to `main`). `"protected": false` means no rule. A moving ref in the second command means the fleet adopts new commits without a deliberate bump. Either alone is a weakness; together they are a BLOCKER, because nothing stands between a merge and execution across the fleet.
 
 **2c. Network-to-execute.** Every `curl | sh` is an unauthenticated third party writing code that later runs as you. Enumerate them in both repos rather than trusting a list that may have gone stale:
 
