@@ -3,11 +3,10 @@
 #
 # Binds the Mac's Tailscale IPv4 and nothing else, on a high, uncommon port to
 # avoid colliding with typical dev servers clustered in the 3000-9000 range. It
-# used to bind 0.0.0.0, which also put the dashboard in front of every device on
-# whatever network the Mac had joined (a café's Wi-Fi as much as the home LAN),
-# with the bearer token as the only control. Binding the tailnet address puts
-# reachability in front of the token. Nothing on this Mac talks to the dashboard
-# over loopback, so open it at the Tailscale URL here too.
+# used to bind 0.0.0.0, which listened on every interface with the bearer token
+# as the only control. Binding the tailnet address puts reachability in front of
+# the token. Nothing on this Mac talks to the dashboard over loopback, so open it
+# at the Tailscale URL here too.
 #
 # A non-loopback bind needs --require-auth (agentsview refuses otherwise); the
 # bearer token it generates lives in ~/.agentsview/config.toml (auth_token),
