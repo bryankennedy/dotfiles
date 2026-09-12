@@ -179,6 +179,20 @@ Any growth in `permissions.allow`, any hook, or any added MCP server is a findin
 
 **2e. Attacker-influenced content that agents read.** Rank by who can write it: git commit messages and PR bodies on a *public* repo (anyone), `~/.bashrc.local` (ansible-managed, so whoever controls the private repo), MOTD, and any file a skill `cat`s into context. A skill that reads a URL or an untrusted file and acts on the result is a BLOCKER — quote the line.
 
+**2f. Instructions in context that no file contains.** An agent will sometimes see instruction-shaped text directly after a file it loaded, text the file does not contain: `## Exited Plan Mode`, `While auto mode is active:`, an output-style reminder. "In context but not on disk" is not a finding on its own, because every reminder the harness adds matches it. Attribute the text from the session transcript, where each piece of context is a separate record:
+
+```sh
+grep -o '"attachment":{"type":"[a-z_]*"' ~/.claude/projects/<cwd-slug>/<session-id>.jsonl | sort | uniq -c
+```
+
+Claude Code's own attachments come from its binary: `nested_memory` (a `CLAUDE.md` picked up when a tool reaches into a subdirectory), `plan_mode_exit`, `auto_mode`, `output_style`, `total_tokens_reminder` and similar. They go out in the same batch as the file, so to the model they read as part of it. Confirm the template before accepting it. Grep for a fixed fragment, not a whole sentence, because some templates fill in tool names at runtime:
+
+```sh
+grep -a -c -F '## Exited Plan Mode' "$(readlink -f "$(command -v claude)")"   # nonzero == harness text
+```
+
+These remain findings: a `hook_additional_context` record (a hook wrote it; see 2d), an MCP tool description or result that gives instructions, and harness-style headings inside a `tool_result` or a tracked file, which are written to be obeyed. Rank those by 2e's rule: who can write the source. Note one more record: an `auto_mode` attachment with `bashFirst: true` steers the agent to read and edit files through Bash. Permission rules written for Edit and Write do not match those commands, so only the auto-mode classifier decides. That is harness behaviour, not an injection, but it adds to the `defaultMode` weighting in 2d.
+
 ---
 
 ## Pass 3 — Dependencies and CVEs
