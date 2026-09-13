@@ -253,3 +253,9 @@ The check grepped `mcpServers` in the settings files, found none declared, and c
 ### The rule both failures share
 
 Each check printed exactly what a genuinely clean result prints. Before recording a check as passing, ask what it would have printed had it never run; if the answer is "the same thing," make it prove it looked — a package count, a positive control that must fail, a sample of what it saw.
+
+### Fixed 2026-09-12 — pass 2 could not tell harness text from injected text
+
+An agent saw two instruction-shaped sections directly after a project's `CLAUDE.md` that the file does not contain, and filed them as a possible injection. They were Claude Code's own plan-mode-exit and auto-mode attachments, sent in the same batch as the file. The audit had no way to settle it. "In context but not on disk" describes every reminder the harness adds, so a check built on it flags everything, and once readers learn to skim it, nothing.
+
+Pass 2f now attributes context by its transcript record type. It accepts known harness attachments after confirming the template in the binary, and still treats hook output, MCP content, and harness-style headings inside files or tool results as findings.
