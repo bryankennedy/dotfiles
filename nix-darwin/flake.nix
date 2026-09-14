@@ -57,6 +57,7 @@
       # from npm rather than waiting for the nixpkgs version bump.
       environment.systemPackages = [
         pkgs.bun
+        pkgs.gitleaks
         pkgs.google-cloud-sdk
         pkgs.imagemagick
         pkgs.mermaid-cli
