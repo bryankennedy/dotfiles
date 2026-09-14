@@ -139,6 +139,7 @@ Treat every file that reaches an agent's context as executable. The threat is no
 - `_agent/rules/global.md` → `~/.claude/CLAUDE.md`, auto-loaded into every session
 - `_agent/skills/*.md` → `~/.claude/commands/`, `~/.cursor/skills/*/SKILL.md`, `~/.gemini/antigravity/global_workflows/`
 - `claude/.claude/CLAUDE.md`, and any `.claude/settings.json` hooks
+- `CLAUDE.md` at the repo root and `.forgejo/review/prompt.md`: the criteria and prompt the forge's Claude PR review runs with, in a job that holds a Claude token and the reviewer account's token (`docs/claude-review.md`). The root `CLAUDE.md` is also loaded into any session opened in this repo
 
 Re-derive this list from `remote/install.sh` and the `stow` line in `nix-darwin/flake.nix` rather than trusting this one — a new stow package can widen it silently.
 

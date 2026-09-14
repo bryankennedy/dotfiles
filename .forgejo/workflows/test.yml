@@ -1,0 +1,32 @@
+name: test
+
+# `bun test tests/`: the invariants that hold the Claude review's security
+# properties in place, their canaries, and the review script's unit tests. No
+# secrets and no network beyond installing bun. See docs/claude-review.md.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: docker
+    # The same image as the review job, so the runner pulls one image, not two.
+    container:
+      image: node:22-trixie
+    timeout-minutes: 10
+    steps:
+      # Pinned to a commit, not a tag: a tag on the actions mirror can be moved.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          # Nothing later in this job talks to the forge, so leave no token in
+          # .git/config for a test to find.
+          persist-credentials: false
+
+      - name: Install the pinned toolchain
+        run: sh .forgejo/ci/install-tools.sh test
+
+      - name: Tests
+        run: bun test tests/

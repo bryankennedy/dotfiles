@@ -51,6 +51,12 @@ Stowing the packages together in one invocation lets Stow link into existing `~/
 
 - **`remote/`**: Lightweight bash-based dotfiles for headless Linux VMs. Has its own installer (`install.sh`) that symlinks shared configs (vim, tmux) and generates a safe gitconfig. See [Remote VM Setup](REMOTE.md).
 
+## Forge CI and PR review (not a stow package)
+
+- **`.forgejo/`**: The forge's view of this repo. `CODEOWNERS` puts every path behind the owner's approval. `workflows/claude-review.yml` has Claude review each PR as the `argus` account, and `workflows/test.yml` runs `bun test tests/`. See [Claude PR review](claude-review.md).
+- **`CLAUDE.md`**: The criteria that review applies. Claude Code also loads it into any session opened in this repo.
+- **`scripts/forgejo-review.mjs`** and **`tests/`**: The review's posting logic, and the tests that hold its security properties in place.
+
 ## App setup scripts (not a stow package)
 
 Some macOS applications store their configuration in `~/Library/Preferences` (via the `defaults` system) rather than dotfiles, so they can't be managed with Stow. The `scripts/` directory contains idempotent setup scripts for these apps.
