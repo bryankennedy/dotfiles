@@ -51,6 +51,10 @@ Stowing the packages together in one invocation lets Stow link into existing `~/
 
 - **`remote/`**: Lightweight bash-based dotfiles for headless Linux VMs. Has its own installer (`install.sh`) that symlinks shared configs (vim, tmux) and generates a safe gitconfig. See [Remote VM Setup](REMOTE.md).
 
+## Git hooks (not a stow package)
+
+- **`.githooks/`**: Hooks for this repo itself, not for `$HOME`. `pre-commit` runs gitleaks over staged changes and refuses the commit on a finding, or when gitleaks is missing. Git only runs them where `core.hooksPath` points here. The nix-darwin activation sets that for `~/src/dotfiles`. Fleet clones don't set it, so the hook doesn't run there.
+
 ## App setup scripts (not a stow package)
 
 Some macOS applications store their configuration in `~/Library/Preferences` (via the `defaults` system) rather than dotfiles, so they can't be managed with Stow. The `scripts/` directory contains idempotent setup scripts for these apps.

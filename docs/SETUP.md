@@ -21,6 +21,7 @@ Notes:
 - `darwin-rebuild switch` must be run as root on recent nix-darwin versions.
 - Flakes only see Git-tracked files; stage `flake.nix`/`flake.lock` before rebuilding.
 - The activation script stows all dotfile packages into `$HOME` for you — no separate Stow step is needed. To relink by hand, see [STRUCTURE.md](STRUCTURE.md#manual-stow-optional).
+- It also sets `core.hooksPath` for this checkout, so `.githooks/pre-commit` scans staged changes with gitleaks before every commit. A commit with a finding is refused. If you've read the finding and it's a false positive, `git commit --no-verify` overrides it.
 
 ## 3) Regenerate Antidote plugin bundle (required on a new machine)
 

@@ -344,6 +344,12 @@
         # is how ~/.claude/commands became an unmanaged fold into the repo. The
         # list is only a source of truth if it is complete.
         /usr/bin/sudo -Hu bk ${pkgs.stow}/bin/stow -R --no-folding -v -d /Users/bk/src/dotfiles -t /Users/bk ghostty wezterm karabiner zsh vim git starship aerospace gemini cursor tmux herdr claude nvim bin || echo "postActivation: stow reported a conflict; run it by hand to see which file" >&2
+        # Point this checkout's git hooks at the tracked .githooks/, whose
+        # pre-commit runs gitleaks (installed above) over staged changes. This
+        # repo is public, so a secret has to be stopped before it is committed,
+        # not after. core.hooksPath is per-clone config that git never tracks,
+        # so without this line the hook exists in the tree but never runs.
+        /usr/bin/sudo -Hu bk ${pkgs.git}/bin/git -C /Users/bk/src/dotfiles config core.hooksPath .githooks || echo "postActivation: could not set core.hooksPath; the gitleaks pre-commit hook is not active" >&2
         /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun -e "
           const { readFileSync, writeFileSync, mkdirSync } = require('fs');
           const dir = process.env.HOME + '/.claude';

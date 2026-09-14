@@ -1,0 +1,20 @@
+#!/bin/sh
+# Refuse a commit whose staged changes contain a secret. This repo is public,
+# and removing a secret after it is pushed does not unpublish it.
+#
+# Enabled per clone with `git config core.hooksPath .githooks`. The nix-darwin
+# activation sets that for ~/src/dotfiles and installs gitleaks alongside it.
+# Fails closed when gitleaks is missing, because a scan that silently skips
+# looks exactly like one that passed. To commit anyway after reading a
+# finding: `git commit --no-verify`.
+
+# Git GUIs and editors often run hooks without the login shell's PATH.
+PATH="$PATH:/run/current-system/sw/bin"
+
+if ! command -v gitleaks >/dev/null 2>&1; then
+  echo "pre-commit: gitleaks not found, so staged changes were not scanned for secrets." >&2
+  echo "pre-commit: on the Mac, darwin-rebuild switch installs it; elsewhere, install gitleaks." >&2
+  exit 1
+fi
+
+exec gitleaks git --pre-commit --staged --redact --no-banner --verbose --log-level warn
