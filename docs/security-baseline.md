@@ -101,6 +101,21 @@ It is accepted, not rewritten, for the same reasons as the login account above. 
 
 **Re-verify, do not re-decide.** This expires if that host becomes reachable from off the tailnet, or if any host accepts password or keyboard-interactive SSH auth. It does not cover a *new* internal name or role committed to the worktree. That is a new HIGH finding, and since DOT-13 pass 1b searches for inventory host names, so it will be caught.
 
+### The Mac's host name remains in this repo's published history
+*Accepted 2026-09-14 (DOT-17). Rationale in `docs/decisions/DOT-17.md`. Coordinates go in the private findings file, not here.*
+
+`nix-darwin/flake.nix` declared the Mac's computer name, host name and local host name until DOT-17 removed them from the worktree. History keeps the name, in the same file that describes what the Mac runs: the AgentsView dashboard on its tailnet address, and a job that pushes its session index into the fleet's shared database. The name is bare and resolves nowhere public, so beside that description it is private topology in published history, rated HIGH.
+
+It is accepted, not rewritten, for the same reasons as the internal host entry above. A force-push does not remove objects GitHub already serves, and it would break every sha-pinned fleet checkout. The name also reaches nothing:
+
+- It resolves only on the Mac's own LAN and, as its Tailscale node name, inside the tailnet.
+- The Mac takes no SSH at all. Remote Login is off, so port 22 is refused on loopback and on the LAN address, and Tailscale SSH is not enabled (`RunSSH` is `false` in `tailscale debug prefs`). Checked 2026-09-14.
+- The dashboard listens only on the tailnet address and requires a bearer token (DOT-4), checked the same day. The database credential was never in this repo.
+
+**Re-verify, do not re-decide.** This expires if the Mac becomes reachable from off the tailnet (a port forward, a Tailscale Funnel, or the dashboard binding anything but its tailnet address), or if it accepts SSH that asks for a secret. Check on the Mac: `nc -z -G 2 "$(ipconfig getifaddr en0)" 22` fails, or if Remote Login is ever turned on, `ssh -n -o PubkeyAuthentication=no -o BatchMode=yes <LAN address> true` is refused. `tailscale debug prefs` shows `RunSSH` as `false` or Tailscale's policy refuses the connection. `lsof -nP -iTCP:58080 -sTCP:LISTEN` lists only a `100.x` address.
+
+It does not cover the name returning to the worktree; that is a new HIGH finding. **Pass 1b will not catch it.** Its deny-list is derived from the private inventory, and the Mac's name is not among the terms (checked 2026-09-14). Until that changes, check by hand that `git grep -nE 'networking\.(computerName|hostName|localHostName)' -- nix-darwin` returns nothing.
+
 ### The exposure pass matches its own source
 *Accepted 2026-07-09, first full audit.* `_agent/skills/security-audit.md` contains the grep patterns it runs, so passes 1b, 2c, and 2d each return hits on the skill file itself. Noise, not signal — but it does mean a real finding could hide next to a self-match. Read the file and line before dismissing.
 

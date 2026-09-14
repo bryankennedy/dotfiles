@@ -41,10 +41,14 @@
       nix.enable = false;
       system.primaryUser = "bk";
 
-      # Computer name
-      networking.computerName = "Aleph";
-      networking.hostName = "aleph";
-      networking.localHostName = "aleph";
+      # The machine's name (networking.computerName, hostName, localHostName)
+      # is deliberately not declared here. This repo is public, and a bare
+      # host name that resolves nowhere public is private topology, the more
+      # so beside the services this file says the Mac runs — see
+      # docs/decisions/DOT-17.md. macOS keeps the name already set, and nothing
+      # in this flake reads it (the configuration is `.#simple`, not the host
+      # name). On a new machine, set it once by hand with
+      # `sudo scutil --set ComputerName|HostName|LocalHostName <name>`.
 
       # List packages installed in system profile.
       # Note: claude-code is intentionally NOT installed via nix — it's
