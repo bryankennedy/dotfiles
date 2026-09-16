@@ -256,6 +256,27 @@
           # conflict with the manual install; grab updates from Docker instead.
           # Backup CLI
           "duplicacy-cli"
+          # Monospace fonts to try in Ghostty with ghostty-font (installed in
+          # postActivation below). They have to be declared: in September 2026
+          # they were brew-installed by hand, and the next switch's cleanup
+          # uninstalled every one, so Ghostty fell back to its built-in font on
+          # the next restart. JetBrains Mono needs no cask; Ghostty embeds it.
+          "font-0xproto"
+          "font-cascadia-code"
+          "font-commit-mono"
+          "font-dejavu"
+          "font-fira-code"
+          "font-geist-mono"
+          "font-hack"
+          "font-ibm-plex-mono"
+          "font-inconsolata"
+          "font-intel-one-mono"
+          "font-iosevka"
+          "font-maple-mono"
+          "font-martian-mono"
+          "font-monaspace"
+          "font-source-code-pro"
+          "font-victor-mono"
           "ghostty"
           "google-chrome"
           "keycastr"
