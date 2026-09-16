@@ -409,7 +409,31 @@
         # credentials. Pinned to a commit rather than a tag, because a tag can
         # be moved; audit-pins.mjs compares it to the newest tag's commit. The
         # ghostty package's config includes the override file it writes.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b || echo "postActivation: ghostty-font install failed (offline?)" >&2
+        #
+        # Bun will not install this package name at a new git ref over an old
+        # one: it reads the two resolutions as a dependency loop and fails with
+        # DependencyLoop (bun 1.3.13), which is precisely what bumping the pin
+        # asks of it, and --force does not help. Clearing the stale global entry
+        # and installing again is the way through — but only for that error.
+        # `bun remove` needs no network and would succeed, so retrying on any
+        # failure would throw away a working install whenever the switch ran
+        # offline, leaving the machine with no ghostty-font at all. Branch on
+        # the error text so an offline switch keeps the copy it already has.
+        if out=$(/usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b 2>&1); then
+          printf '%s\n' "$out"
+        else
+          printf '%s\n' "$out" >&2
+          case "$out" in
+            *DependencyLoop*)
+              /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun remove -g ghostty-font \
+                && /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b \
+                || echo "postActivation: ghostty-font reinstall after clearing the stale pin failed" >&2
+              ;;
+            *)
+              echo "postActivation: ghostty-font install failed (offline?)" >&2
+              ;;
+          esac
+        fi
         # Impeccable design skills (impeccable.style) for Claude Code, installed
         # into ~/.claude/skills/impeccable — a real directory in $HOME, not this
         # repo, so nothing lands in the public working tree. Goes through a
