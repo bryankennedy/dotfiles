@@ -409,7 +409,7 @@
         # credentials. Pinned to a commit rather than a tag, because a tag can
         # be moved; audit-pins.mjs compares it to the newest tag's commit. The
         # ghostty package's config includes the override file it writes.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#8cfd2772c48fdb8aa64896dcd7d814af158565e9 || echo "postActivation: ghostty-font install failed (offline?)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b || echo "postActivation: ghostty-font install failed (offline?)" >&2
         # Impeccable design skills (impeccable.style) for Claude Code, installed
         # into ~/.claude/skills/impeccable — a real directory in $HOME, not this
         # repo, so nothing lands in the public working tree. Goes through a
