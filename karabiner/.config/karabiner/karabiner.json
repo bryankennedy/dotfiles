@@ -4,7 +4,7 @@
             "complex_modifications": {
                 "rules": [
                     {
-                        "description": "Hex: Middle Mouse to F15 (hold duration handled by Hex)",
+                        "description": "Hex: Middle Mouse to F17 (hold duration handled by Hex)",
                         "manipulators": [
                             {
                                 "type": "basic",
@@ -12,12 +12,12 @@
                                     "pointing_button": "button3",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "key_code": "f15" }]
+                                "to": [{ "key_code": "f17" }]
                             }
                         ]
                     },
                     {
-                        "description": "Hex: Fn key to F15 (MacBook trigger)",
+                        "description": "Hex: Fn key to F17 (MacBook trigger)",
                         "manipulators": [
                             {
                                 "type": "basic",
@@ -25,7 +25,28 @@
                                     "key_code": "fn",
                                     "modifiers": { "optional": ["any"] }
                                 },
-                                "to": [{ "key_code": "f15" }]
+                                "to": [{ "key_code": "f17" }]
+                            }
+                        ]
+                    },
+                    {
+                        "description": "Hex: Varmilo Pause key (and F15) to F17, so macOS does not treat it as brightness up",
+                        "manipulators": [
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "key_code": "pause",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "f17" }]
+                            },
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "key_code": "f15",
+                                    "modifiers": { "optional": ["any"] }
+                                },
+                                "to": [{ "key_code": "f17" }]
                             }
                         ]
                     }
