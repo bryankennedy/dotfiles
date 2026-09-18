@@ -127,11 +127,15 @@ It does not cover the name returning to the worktree; that is a new HIGH finding
 ## Accepted — Pass 2, agent supply chain
 
 ### The Mac's user-level Claude Code permission mode is `auto`, set by activation
-*Accepted 2026-09-07.*
+*Accepted 2026-09-07. Reopened and re-accepted 2026-09-18 (DOT-18); rationale in `docs/decisions/DOT-18.md`, assessment in the private findings file.*
 
 `nix-darwin/flake.nix` merges `permissions.defaultMode = "auto"` into `~/.claude/settings.json` on every switch, so on the Mac an agent auto-approves tool calls in any project that does not set its own mode. This repo's tracked `.claude/settings.json` sets `default` for itself, which is the stricter mode for the public half of the instruction supply chain; the two files are different scopes, not a contradiction, and this entry exists so that a reader who sees one does not assume it describes the other. The fleet is not affected: `remote/install.sh` merges plugins and preferences into the same file but leaves the mode at Claude Code's own default.
 
-Why it is tolerable: auto mode amplifies an injection, it does not create one, and the controls that bound injection are the ones that matter here — the PR gate on this repo, the empty global `permissions.allow` list (finding 6), and the pinned agent-instruction inputs (impeccable, the marketplace plugin). The 2026-07-10 run log already names this as the reason those controls matter. Reassess if the allow-list grows, if the gate is loosened, or if a new unpinned skill or plugin source is added to activation.
+Why it is tolerable: auto mode amplifies an injection, it does not create one, and the controls that bound injection are the ones that matter here. Two carry this acceptance: the PR gate on this repo, and the pinned agent-instruction inputs (impeccable, the marketplace plugin). The 2026-07-10 run log already names this as the reason those controls matter.
+
+The empty global `permissions.allow` list (finding 6) is a condition of the acceptance, not a third control. Until DOT-18 this entry listed it beside the other two as if it were the same kind of thing, and a review read it that way. An empty list pre-approves nothing, for any tool, and that is all this acceptance takes from it. It was never a control on one tool's calls: the user-level file holds no `allow`, `ask` or `deny` rule and no hook (checked 2026-09-18), this repo tracks none, and activation writes none. The gate and the pinned inputs carry the acceptance; the empty list only confirms that no rule widens what the mode already does.
+
+**Re-verify, do not re-decide.** Pass 2d's `node -e` check prints `allow entries: 0` and `hooks: none`. Reassess if the allow-list grows, if the gate is loosened, if a new unpinned skill or plugin source is added to activation, or if a permission rule for a single tool is ever counted on as a control here. Assess such a rule against the private findings file before relying on it.
 
 ---
 
