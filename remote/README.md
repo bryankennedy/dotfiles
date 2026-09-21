@@ -12,7 +12,7 @@ git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/re
 
 # Update after pulling changes
 cd ~/.dotfiles && git pull        # symlinked files update automatically
-~/.dotfiles/remote/install.sh     # re-run to regenerate .gitconfig
+~/.dotfiles/remote/install.sh     # re-run to regenerate .gitconfig.dotfiles
 
 # Set git identity
 git config --global user.name "Your Name"
@@ -29,5 +29,5 @@ git config --global user.email "you@example.com"
 ## What lives where
 
 - **Shared with mac** (symlinked, not duplicated): `vim/.vimrc`, `tmux/.tmux.conf`, `git/.gitignore_global`, `zsh/aliases-core.zsh`, `_agent/rules/global.md`, `_agent/skills/*.md`
-- **Generated at install** (to strip personal data): `~/.gitconfig`
+- **Generated at install** (to strip personal data): `~/.gitconfig.dotfiles`, which `~/.gitconfig` includes
 - **Per-VM overrides** (not checked in): `~/.bashrc.local`, `~/.gitconfig.local`
