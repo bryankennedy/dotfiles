@@ -15,11 +15,13 @@ Rules:
 
 A dated line per full audit, so a clean result is itself on the record — the point of the baseline is that silence is legible, and "we ran it and nothing new surfaced" is a claim worth being able to point to.
 
+An entry records what was true on its date. It is not a standing claim: those live in the accepted and resolved entries below, which every run re-verifies. When a later change makes a run-log statement untrue, the statement is annotated as superseded, not rewritten.
+
 ### 2026-07-10 — full run (`all`), no new findings
 First fully clean pass. Every check either passed with evidence that it actually looked, or matched an accepted entry below that re-verified as still true; nothing new was found.
 
 - **Exposure** — gitleaks scanned 193 commits and the worktree with no leaks; the topology deny-list (14 terms from 9 hosts) hit only the accepted anchor-slug true-negative and finding 4's history; 0 symlinks escape the repo. Finding 4's void condition was re-checked and holds — **no fleet hostname appears anywhere in this repo, worktree or history**. *(Superseded. That claim stopped being true when a service host name reached published history on 2026-08-25, and again when the forge's public name reached the tree on 2026-09-10. Finding 4's conditions were re-decided on 2026-09-11; see its entry and "Public DNS names and account handles are public identity" below.)*
-- **Injection** — the gate is intact at both ends (this repo requires a PR with admin enforcement; the fleet pins a full commit sha, now `bc896bb`). The global `permissions.allow` list is empty (finding 6). Five Cloudflare plugin MCP servers remain the only injection surface, as baselined; no hooks.
+- **Injection** — the gate is intact at both ends (this repo requires a PR with admin enforcement; the fleet pins a full commit sha, now `bc896bb`). The global `permissions.allow` list is empty (finding 6). Five Cloudflare plugin MCP servers remain the only injection surface, as baselined; no hooks. *(Push side superseded. The GitHub rule with admin enforcement was retired on 2026-09-10, when this repo moved to the forge; the gate is now the forge's rule on `main`. See "The deployment path from this repo to the fleet is now gated at both ends" below. The sha is the fleet's pin on this run's date, not a standing value.)*
 - **Dependencies** — npm (141 packages) scans clean; the nix closure is byte-identical to finding 7's triage (same 19 runtime leads, same versions), so that vendor-severity triage still stands; pins are current; nix inputs are 2–28 days old; 0 declared Homebrew formulae are stale.
 - **Stated unscanned, not clean** — Homebrew has no vulnerability feed; nix-closure vendor advisories were not re-fetched because the closure did not change; `defaultMode: auto` means agents auto-approve, which amplifies any injection vector and is why the gate and empty allow-list matter.
 
