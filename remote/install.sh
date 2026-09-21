@@ -12,8 +12,9 @@
 #   2. Symlinks vim, tmux, and bash configs into ~
 #   3. Ensures the tmux-256color terminfo entry exists (ncurses-term)
 #   4. Installs a lightweight .bashrc that sources core aliases
-#   5. Generates a .gitconfig from the shared git/.gitconfig, stripping
-#      personal identity and adding [include] for local overrides
+#   5. Generates ~/.gitconfig.dotfiles from the shared git/.gitconfig, stripping
+#      personal identity and adding [include] for local overrides, and makes
+#      ~/.gitconfig include it. Everything else in ~/.gitconfig is left alone
 #
 # Safe to re-run — backs up existing files before overwriting.
 
@@ -103,26 +104,81 @@ else
 fi
 
 # --- Git ------------------------------------------------------------------
-# Generate .gitconfig from the shared git/.gitconfig, stripping the [user]
-# block (contains personal identity) and appending [include] for local overrides.
+# Generate ~/.gitconfig.dotfiles from the shared git/.gitconfig, stripping the
+# [user] block (contains personal identity) and appending [include] for local
+# overrides. ~/.gitconfig itself only has to [include] that file.
+#
+# The script used to own ~/.gitconfig outright and compare it, [user] stripped,
+# against the managed text. Everything else that writes there goes through
+# `git config --global` (configuration management sets the identity and a
+# credential helper that way), so the file grew sections the comparison did not
+# know about, it never matched again, and every run regenerated the file without
+# them (docs/decisions/DOT-28.md). Two files, one owner each: this script
+# overwrites ~/.gitconfig.dotfiles freely and never rewrites a ~/.gitconfig that
+# already includes it, whatever else that file holds.
 green "\nGit"
 STRIP_USER='/^\[user\]/,/^\[/{ /^\[user\]/d; /^\[/!d; }'
+GITCONFIG_MANAGED="$HOME/.gitconfig.dotfiles"
+# Literal on purpose: git expands the leading ~/ itself when it reads the path.
+# shellcheck disable=SC2088
+GITCONFIG_INCLUDE='~/.gitconfig.dotfiles'
 gitconfig_managed=$(
   sed "$STRIP_USER" "$DOTFILES_DIR/git/.gitconfig"
   printf '\n[include]\n\tpath = ~/.gitconfig.local\n'
 )
-# Rewrite only when the managed part actually differs, and compare the EXISTING
-# file with its [user] block stripped. Configuration management adds that block
-# after this script runs (ansible's git_identity role does), so comparing the
-# whole file always differs and we would clobber the identity on every play —
-# which is what used to happen. git_identity then restored it and reported
-# "changed" forever, so `changed` stopped meaning anything and real drift hid in
-# the noise. Stripping [user] from both sides asks the only question that
-# matters: is the part this script owns already correct?
-if [ -f "$HOME/.gitconfig" ] && [ "$(sed "$STRIP_USER" "$HOME/.gitconfig")" = "$gitconfig_managed" ]; then
-  dim "  .gitconfig already current (preserving [user])"
+if [ -f "$GITCONFIG_MANAGED" ] && [ "$(cat "$GITCONFIG_MANAGED")" = "$gitconfig_managed" ]; then
+  dim "  .gitconfig.dotfiles already current"
 else
-  printf '%s\n' "$gitconfig_managed" | backup_and_write "$HOME/.gitconfig"
+  # No backup: nothing but this script writes here, and the source is in the repo.
+  printf '%s\n' "$gitconfig_managed" > "$GITCONFIG_MANAGED.tmp"
+  mv -f "$GITCONFIG_MANAGED.tmp" "$GITCONFIG_MANAGED"
+  green "  generated .gitconfig.dotfiles"
+fi
+
+if [ -f "$HOME/.gitconfig" ] &&
+   git config --file "$HOME/.gitconfig" --get-all include.path 2>/dev/null | grep -Fxq "$GITCONFIG_INCLUDE"; then
+  dim "  .gitconfig already includes .gitconfig.dotfiles"
+else
+  # First run, or a ~/.gitconfig from when this script generated the whole file.
+  # Put the include first, so everything already in the file still overrides
+  # the managed defaults, and carry the rest across minus the lines the managed
+  # file now supplies. Line by line rather than section by section: a key
+  # somebody added to [core] by hand is theirs, and survives. Built before
+  # backup_and_write runs, because that moves the file this reads.
+  gitconfig_kept=""
+  if [ -f "$HOME/.gitconfig" ]; then
+    gitconfig_kept=$(awk '
+      function trim(s) { gsub(/^[ \t]+|[ \t]+$/, "", s); return s }
+      function flush(   i) {
+        if (header == "") return
+        if (!dropped) { printf "%s", raw; return }
+        if (nkept == 0) return
+        print header
+        for (i = 1; i <= nkept; i++) print kept[i]
+      }
+      NR == FNR {
+        if ($0 ~ /^[ \t]*\[/) section = trim($0)
+        else if (trim($0) != "") managed[section SUBSEP trim($0)] = 1
+        next
+      }
+      /^[ \t]*\[/ {
+        flush()
+        header = $0; section = trim($0); raw = $0 "\n"; nkept = 0; dropped = 0
+        next
+      }
+      header == "" { if (trim($0) != "") print; next }
+      {
+        raw = raw $0 "\n"
+        if ((section SUBSEP trim($0)) in managed) dropped = 1
+        else if (trim($0) != "") kept[++nkept] = $0
+      }
+      END { flush() }
+    ' "$GITCONFIG_MANAGED" "$HOME/.gitconfig")
+  fi
+  {
+    printf '[include]\n\tpath = %s\n' "$GITCONFIG_INCLUDE"
+    if [ -n "$gitconfig_kept" ]; then printf '%s\n' "$gitconfig_kept"; fi
+  } | backup_and_write "$HOME/.gitconfig"
 fi
 backup_and_link "$DOTFILES_DIR/git/.gitignore_global" "$HOME/.gitignore_global"
 

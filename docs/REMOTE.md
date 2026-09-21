@@ -16,7 +16,8 @@ git clone https://github.com/bryankennedy/dotfiles ~/.dotfiles && ~/.dotfiles/re
 | `~/.vimrc` | `vim/.vimrc` | Symlinked (shared with mac) |
 | `~/.vim/colors/` | `vim/.vim/colors/` | Symlinked (Tomorrow-Night color scheme) |
 | `~/.tmux.conf` | `tmux/.tmux.conf` | Symlinked (shared with mac) |
-| `~/.gitconfig` | `git/.gitconfig` | **Generated** — strips `[user]` block, adds `[include]` for local overrides |
+| `~/.gitconfig.dotfiles` | `git/.gitconfig` | **Generated** — strips `[user]` block, adds `[include]` for local overrides |
+| `~/.gitconfig` | — | Gets an `[include]` of `~/.gitconfig.dotfiles`, once. Everything else in it is yours |
 | `~/.gitignore_global` | `git/.gitignore_global` | Symlinked (shared with mac) |
 | `~/.claude/CLAUDE.md` | `_agent/rules/global.md` | Symlinked (shared with mac) |
 | `~/.claude/commands/*.md` | `_agent/skills/*.md` | Symlinked (shared with mac) |
@@ -44,13 +45,15 @@ Most configs are symlinked, so pulling new changes applies them immediately:
 cd ~/.dotfiles && git pull
 ```
 
-The one exception is `~/.gitconfig` — it’s generated (not symlinked) to avoid leaking your mac identity. Re-run the installer to regenerate it after changing `git/.gitconfig`:
+The one exception is `~/.gitconfig.dotfiles` — it’s generated (not symlinked) to avoid leaking your mac identity. Re-run the installer to regenerate it after changing `git/.gitconfig`:
 
 ```sh
 ~/.dotfiles/remote/install.sh
 ```
 
 The installer is safe to re-run. It backs up any existing files to `~/.dotfiles-backup/<timestamp>/` before overwriting.
+
+`~/.gitconfig` is not the installer's file. Your identity, credential helpers and anything else `git config --global` writes live there, after the `[include]`, so they override the shared defaults. The installer rewrites it only when the include is missing: on a first install, or once on a VM whose `~/.gitconfig` the old installer generated whole. That one rewrite keeps every line the shared config does not supply and backs up the original ([DOT-28](decisions/DOT-28.md)).
 
 ## Per-VM customization
 

@@ -55,7 +55,7 @@ Stowing the packages together in one invocation lets Stow link into existing `~/
 
 - **`.forgejo/`**: The forge's view of this repo. `CODEOWNERS` puts every path behind the owner's approval. `workflows/claude-review.yml` has Claude review each PR as the `argus` account, and `workflows/test.yml` runs `bun test tests/`. See [Claude PR review](claude-review.md).
 - **`CLAUDE.md`**: The criteria that review applies. Claude Code also loads it into any session opened in this repo.
-- **`scripts/forgejo-review.mjs`** and **`tests/`**: The review's posting logic, and the tests that hold its security properties in place.
+- **`scripts/forgejo-review.mjs`** and **`tests/`**: The review's posting logic, and the tests that hold its security properties in place. `tests/remote/` runs `remote/install.sh` against a throwaway home.
 
 ## App setup scripts (not a stow package)
 
