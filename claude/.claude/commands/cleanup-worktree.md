@@ -17,48 +17,50 @@ description: Safely tear down a git worktree after its PR has been merged — de
 
 ## Steps
 
+**Quote every value you substitute.** A branch name or path is data, and the commands below put it on a shell command line. Git allows `;`, `|`, `&`, `$(…)`, backticks and `'` in a branch name, so an unquoted name can run as a second command. Wrap each `<branch>`, `<worktree-path>` and `<repo-root>` in single quotes, as the templates show. Single quotes cannot hold a single quote, so if a branch name contains any character outside `A-Za-z0-9._/-`, or a path contains a `'`, **stop** and ask the user before running anything with it.
+
 1. **Identify the worktree**
    - Determine the worktree branch name and its path on disk.
    - Run `git worktree list` from the repo root to get both values.
    - If invoked from inside the worktree, the current branch is the target. If invoked from the main repo, ask the user which worktree to remove if there is more than one.
 
 2. **Safety checks**
-   - Run `git -C <worktree-path> status --porcelain`. If output is non-empty, **stop** — uncommitted changes present.
+   - Run `git -C '<worktree-path>' status --porcelain`. If output is non-empty, **stop** — uncommitted changes present.
    - Find the branch's merged PR where the repository lives, which `git remote get-url origin` tells you:
      - **The forge** (`git.bck.dev`, where the owner's repositories live now; GitHub is only a mirror of them):
        ```bash
-       tea pr list --login bck --state closed --fields index,head,state --limit 50 --output simple | awk -v b=<branch> '$2 == b && $3 == "merged"'
+       tea pr list --login bck --state closed --fields index,head,state --limit 50 --output simple | awk -v b='<branch>' '$2 == b && $3 == "merged"'
        ```
-     - **GitHub** (a repository that never moved): `gh pr list --head <branch> --state merged`.
+     - **GitHub** (a repository that never moved): `gh pr list --head '<branch>' --state merged`.
 
      If the result is empty, **stop** — no merged PR found. Warn the user and ask them to confirm they want to proceed anyway (e.g. if the branch was merged without a PR, or via a direct push).
 
 3. **Delete the remote branch**
    ```bash
-   git -C <repo-root> push origin --delete <branch>
+   git -C '<repo-root>' push origin --delete '<branch>'
    ```
    If the remote branch is already gone (the forge deletes a PR's branch when it merges), this will fail harmlessly — note it and continue.
 
 4. **Remove the worktree**
    ```bash
-   git -C <repo-root> worktree remove <worktree-path>
+   git -C '<repo-root>' worktree remove '<worktree-path>'
    ```
    If this fails with "contains modified or untracked files", use `--force` **only after confirming with the user** that the files are disposable (e.g. session artifacts like `settings.local.json` that were re-dirtied after the last commit).
 
 5. **Delete the local branch ref**
    ```bash
-   git -C <repo-root> branch -D <branch>
+   git -C '<repo-root>' branch -D '<branch>'
    ```
    Use `-D` (force), not `-d` — squash merges don't leave a merged ancestry chain, so `-d` will refuse even for cleanly merged branches.
 
 6. **Sync local main with remote**
    ```bash
-   git -C <repo-root> fetch origin
-   git -C <repo-root> reset --hard origin/main
+   git -C '<repo-root>' fetch origin
+   git -C '<repo-root>' reset --hard origin/main
    ```
    A plain `git pull` will fail after a squash merge because the squash commit is a new SHA not present in local history, causing git to see divergent branches. `reset --hard` is the correct sync strategy here.
 
 7. **Confirm**
-   - Run `git -C <repo-root> worktree list` — should show only the main worktree.
-   - Run `git -C <repo-root> log --oneline -3` — confirm the squash merge commit is the HEAD of main.
+   - Run `git -C '<repo-root>' worktree list` — should show only the main worktree.
+   - Run `git -C '<repo-root>' log --oneline -3` — confirm the squash merge commit is the HEAD of main.
    - Report the final state to the user.
