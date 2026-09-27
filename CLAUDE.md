@@ -43,12 +43,24 @@ WezTerm's Lua, Ghostty's `command`.
 
 - A secret or PII anywhere. This repo is public and mirrored to GitHub, and
   deleting a secret in a later commit does not unpublish it.
-- Private topology: a host name or address that does not resolve in public DNS
-  (tailnet node names, `100.x` or LAN addresses, inventory host names), or the
-  inventory's shape (which host runs what). Public DNS names and account handles
-  are public identity, not findings. The ones already confirmed are named in
-  `docs/security-baseline.md`; any other lab host name is a finding. The Mac's
-  own name belongs nowhere in the tree (`docs/decisions/DOT-17.md`).
+- Private topology: an address (`100.x` tailnet or LAN), how the network is
+  laid out, a map of several hosts and what each runs, or which host holds
+  credentials or secrets.
+- An internal host name (one with no public DNS record) added to the tree, a
+  commit message or the PR text. It is not a secret, so rate it LOW, but ask
+  for "a nightly job" rather than the host that runs it. A name with what that
+  host runs is HIGH. Across the owner's public repositories, published history
+  already pairs three internal hosts with their roles (accepted in
+  `docs/security-baseline.md` and INFRA-141), so any new pair extends a map of
+  the fleet. The Mac's own name belongs nowhere in the tree. In
+  `nix-darwin/flake.nix` it is HIGH in any hunk, because that file says what
+  the Mac runs (`docs/decisions/DOT-17.md`). Rate the text as written. Whether
+  any host is reachable off the tailnet, or takes SSH that asks for a secret,
+  cannot be checked from a PR, so the owner's audit re-verifies it. A change in
+  the diff that would break either condition is an open weakness in its own
+  right (`docs/decisions/INFRA-141.md`). Public DNS names and account handles
+  are public identity, not findings; the ones already confirmed are named in
+  `docs/security-baseline.md`.
 - A description of an open weakness. Findings are recorded in the private
   infrastructure repo, never here (`docs/decisions/DOT-1.md`).
 - A network install that is not pinned, on a path that runs unattended: `curl |

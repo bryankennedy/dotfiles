@@ -86,7 +86,7 @@ Accepted because none of it gives an attacker something they lack or can use:
 
 The same rule makes the hosted VMs' names public identity, because they resolve in public DNS too. They point at the hosting provider's public SSH edge rather than a tailnet address, so for those names the whole weight rests on the edge requiring a registered key. The login-account entry above re-verifies that.
 
-**Not covered, and each still a finding:** a host name or address that does not resolve in public DNS (private topology, HIGH), the inventory's shape, credentials, and any description of an open weakness. The line is the public DNS answer: `dig +short <name> A @1.1.1.1`.
+**Not covered, and each still a finding:** an address, how the network is laid out, a map of several hosts and what each runs, or which host holds credentials or secrets (private topology, HIGH); the private repo's runbooks; credentials; and any description of an open weakness. A newly added host name that does not resolve in public DNS is a LOW hygiene finding (INFRA-141). With a statement of what that host runs, it is HIGH. The public record across the owner's public repositories already pairs three internal hosts with their roles (the two host-name-in-history entries below, and the review-kit sync merges accepted under INFRA-141), and published history cannot shrink. The LOW is LOW only while the conditions below hold for every host, including a new one. If any fails, it is HIGH. The line between public identity and that LOW is the public DNS answer: `dig +short <name> A @1.1.1.1`.
 
 **Re-verify, do not re-decide.** This expires, and the names become findings again, if:
 
@@ -95,18 +95,18 @@ The same rule makes the hosted VMs' names public identity, because they resolve 
 - a handle or account name becomes part of a credential, or of an access rule that anyone off the tailnet can reach.
 
 ### An internal host name and its role remain in this repo's published history
-*Accepted 2026-09-11 (DOT-9). Coordinates are in the private findings file.*
+*Accepted 2026-09-11 (DOT-9). Coordinates are in the private findings file. Re-checked 2026-09-25 (INFRA-141): a host name with its role is still HIGH private topology. Still accepted, and still not re-reported.*
 
-Two commits in 2026-08 described the fleet's shared database by the internal host it runs on: that host's inventory name, and what it runs. The same commits named the fleet dashboard, which is public identity under the entry above and is not what this entry accepts. A later commit removed the host name and role from the worktree, but history keeps both. That is private topology in published history, rated HIGH.
+Two commits in 2026-08 described the fleet's shared database by the internal host it runs on: that host's inventory name, and what it runs. The same commits named the fleet dashboard, which is public identity under the entry above and is not what this entry accepts. A later commit removed the host name and role from the worktree, but history keeps both. That is private topology in published history, rated HIGH. It stays HIGH under INFRA-141, because it pairs a host with its role.
 
 It is accepted, not rewritten, for the same reasons as the login account above. A force-push does not remove objects GitHub already serves, and it would break every sha-pinned fleet checkout. The name also reaches nothing: it is a bare name that resolves only on the lab's own networks, and the host behind it accepts SSH only through Tailscale SSH, which authorizes by tailnet identity and policy.
 
-**Re-verify, do not re-decide.** This expires if that host becomes reachable from off the tailnet, or if any host accepts password or keyboard-interactive SSH auth. It does not cover a *new* internal name or role committed to the worktree. That is a new HIGH finding, and since DOT-13 pass 1b searches for inventory host names, so it will be caught.
+**Re-verify, do not re-decide.** This expires if that host becomes reachable from off the tailnet, or if any host accepts password or keyboard-interactive SSH auth. It does not cover a *new* internal name or role committed to the worktree. A bare name is a new LOW finding, and a name with its role is HIGH because the public record is already a map (INFRA-141), and since DOT-13 pass 1b searches for inventory host names, so it will be caught.
 
 ### The Mac's host name remains in this repo's published history
-*Accepted 2026-09-14 (DOT-17). Rationale in `docs/decisions/DOT-17.md`. Coordinates go in the private findings file, not here.*
+*Accepted 2026-09-14 (DOT-17). Rationale in `docs/decisions/DOT-17.md`. Coordinates go in the private findings file, not here. Re-checked 2026-09-25 (INFRA-141): the name with its role is still HIGH private topology. Still accepted.*
 
-`nix-darwin/flake.nix` declared the Mac's computer name, host name and local host name until DOT-17 removed them from the worktree. History keeps the name, in the same file that describes what the Mac runs: the AgentsView dashboard on its tailnet address, and a job that pushes its session index into the fleet's shared database. The name is bare and resolves nowhere public, so beside that description it is private topology in published history, rated HIGH.
+`nix-darwin/flake.nix` declared the Mac's computer name, host name and local host name until DOT-17 removed them from the worktree. History keeps the name, in the same file that describes what the Mac runs: the AgentsView dashboard on its tailnet address, and a job that pushes its session index into the fleet's shared database. The name is bare and resolves nowhere public, so beside that description it is private topology in published history, rated HIGH. It stays HIGH under INFRA-141.
 
 It is accepted, not rewritten, for the same reasons as the internal host entry above. A force-push does not remove objects GitHub already serves, and it would break every sha-pinned fleet checkout. The name also reaches nothing:
 
@@ -116,7 +116,7 @@ It is accepted, not rewritten, for the same reasons as the internal host entry a
 
 **Re-verify, do not re-decide.** This expires if the Mac becomes reachable from off the tailnet (a port forward, a Tailscale Funnel, or the dashboard binding anything but its tailnet address), or if it accepts SSH that asks for a secret. Check on the Mac: `nc -z -G 2 "$(ipconfig getifaddr en0)" 22` fails, or if Remote Login is ever turned on, `ssh -n -o PubkeyAuthentication=no -o BatchMode=yes <LAN address> true` is refused. `tailscale debug prefs` shows `RunSSH` as `false` or Tailscale's policy refuses the connection. `lsof -nP -iTCP:58080 -sTCP:LISTEN` lists only a `100.x` address.
 
-It does not cover the name returning to the worktree; that is a new HIGH finding. **Pass 1b will not catch it.** Its deny-list is derived from the private inventory, and the Mac's name is not among the terms (checked 2026-09-14). Until that changes, check by hand that `git grep -nE 'networking\.(computerName|hostName|localHostName)' -- nix-darwin` returns nothing.
+It does not cover the name returning to the worktree. That is a new HIGH finding, because the same file says what the Mac runs (INFRA-141). **Pass 1b will not catch it.** Its deny-list is derived from the private inventory, and the Mac's name is not among the terms (checked 2026-09-14). Until that changes, check by hand that `git grep -nE 'networking\.(computerName|hostName|localHostName)' -- nix-darwin` returns nothing.
 
 ### The exposure pass matches its own source
 *Accepted 2026-07-09, first full audit.* `_agent/skills/security-audit.md` contains the grep patterns it runs, so passes 1b, 2c, and 2d each return hits on the skill file itself. Noise, not signal — but it does mean a real finding could hide next to a self-match. Read the file and line before dismissing.

@@ -35,9 +35,9 @@ Findings about that chain are **private**. Record them in `~/src/infrastructure/
 ## Severity
 
 - **BLOCKER** — a live secret in the public repo (worktree *or* history); an open weakness described in public (an unfixed finding, a gap in a gate); or a path by which unreviewed content becomes agent instructions or executed code.
-- **HIGH** — a credible path to one of the above that requires another condition to fire. **Private topology in the public repo** (defined in Pass 1) is rated here, not as a BLOCKER. A host name or address gives no way in by itself; it helps only someone who already has one.
+- **HIGH** — a credible path to one of the above that requires another condition to fire. **Private topology in the public repo** (defined in Pass 1) is rated here, not as a BLOCKER, and so is **an internal host name with what that host runs** (defined in Pass 1). An address gives no way in by itself; it helps only someone who already has one.
 - **MEDIUM** — weakens a boundary without breaching it; unpinned supply chain; a known-vulnerable dependency not on an exploitable path.
-- **LOW** — hygiene, stale docs, defence in depth.
+- **LOW** — hygiene, stale docs, defence in depth. **A newly added internal host name on its own** (defined in Pass 1) is rated here.
 
 Do not report a finding you have not confirmed by reading the file. A grep hit is a lead, not a finding. State the file and line.
 
@@ -45,11 +45,15 @@ Do not report a finding you have not confirmed by reading the file. A grep hit i
 
 ## Pass 1 — Exposure (public ↔ private boundary)
 
-The public repo must contain no credential, no private topology, and no description of an open weakness. "Private" is deliberately narrower than "anything about the lab" (`docs/decisions/DOT-9.md`). The lab is protected by who can reach it and how they authenticate, not by nobody knowing its names.
+The public repo must contain no credential, no private topology, and no description of an open weakness. "Private" is deliberately narrower than "anything about the lab" (`docs/decisions/DOT-9.md`, and `docs/decisions/INFRA-141.md` for host names). The lab is protected by who can reach it and how they authenticate, not by nobody knowing its names.
 
-- **Private topology.** Host names and addresses that do **not** resolve in public DNS: inventory host names, tailnet node names, LAN and tailnet IPs. Also the inventory's shape: which host runs which service, how the network is laid out, and what the private repo's runbooks say.
+- **Private topology.** Addresses: LAN and tailnet IPs, and any other address a host is reached at. Also how the network is laid out (subnets, routes, which hosts can reach which); **a map of the fleet**, meaning several hosts each paired with what they run (a table, an inventory dump, a runbook's host list); **where credentials or secrets live** (which host holds a vault, a secret store or a CA); and what the private repo's runbooks say.
+- **Internal host names (LOW, hygiene).** A host name that does **not** resolve in public DNS (an inventory host name, a tailnet node name, the Mac's name), newly added to the tree, a commit message or a PR body. It is not a secret, but the owner wants public text not to name hosts, so write "a nightly job", not the host that runs it. A name already in published history is accepted and not re-reported. This lowers DOT-9's HIGH for a bare name (`docs/decisions/INFRA-141.md`). DOT-17 still stands: the flake says what the Mac runs, so the Mac's name there would be a name with its role.
+  - **A name with its role: HIGH.** A statement of what an internal host runs, newly added to a public repository, is HIGH private topology. The public record, across all of the owner's public repositories, already pairs three internal hosts with their roles. Published history cannot shrink, so that count never falls, and any new pair extends a map of the fleet (`docs/decisions/INFRA-141.md` has the reasoning).
+  - **LOW only while the fleet-wide conditions hold.** The rating rests on two conditions. No host is reachable from off the tailnet except through the provider's key-only SSH edge. No host accepts SSH that asks for a secret. Re-verify both on every run, across every inventory host, including any added since the last run. Use the checks in the baseline's login-account entry and its "Public DNS names and account handles are public identity" entry. If either fails, internal host names and roles are HIGH until it is fixed. The failure is a finding in its own right.
+  - **A change that opens a path is rated on its own**, whatever it names: a port forward, a Tailscale Funnel, a service bound off its tailnet address, password or keyboard-interactive SSH. That is an open weakness, not a name.
 - **Public identity, never a finding on its own:**
-  - **A name that resolves in public DNS.** DNS already publishes it, and so do certificate transparency logs if it serves TLS, so a tracked copy discloses nothing new. Check before rating: `dig +short <name> A @1.1.1.1`. An answer means public identity; no answer means private topology. The forge's name is in this group.
+  - **A name that resolves in public DNS.** DNS already publishes it, and so do certificate transparency logs if it serves TLS, so a tracked copy discloses nothing new. Check before rating: `dig +short <name> A @1.1.1.1`. An answer means public identity; no answer means an internal host name (LOW). The forge's name is in this group.
   - **The owner's handles** on the forge and on GitHub, **the agent and reviewer accounts'** names and commit addresses, and the `Reviewed-on:` URLs the forge adds to every squash-merge message. The forge writes these as authorship on every merge, so no edit to the tree can hide them.
   - **Login account names.** They are not credentials, because no host takes a password over SSH. The hosting provider's edge requires a registered key, and the home lab uses Tailscale SSH. Adding a new one to the tree is hygiene (LOW), not exposure.
   - **Paths under `~/src/`**, including the private repo's directory layout.
@@ -90,7 +94,7 @@ Then check for the *shape* of the private data, independent of its values. These
 git grep -nEI 'ansible_host|ansible_user|inventory_hostname|gh_host' -- .
 ```
 
-**Classify every hit against Pass 1's definition before you report it.** The deny-list is built from what the inventory holds, not from what is private, so it also carries public identity. The owner's forge handle, for example, is a login account on one host. A hit on public identity is not a finding, and a hit on private topology is HIGH. Short host names also match ordinary words in history, because `-S` is a substring search, so read the diff before counting a commit.
+**Classify every hit against Pass 1's definition before you report it.** The deny-list is built from what the inventory holds, not from what is private, so it also carries public identity. The owner's forge handle, for example, is a login account on one host. A hit on public identity is not a finding, a newly added internal host name is LOW, a new name with its role is HIGH, and a hit on private topology (an address, a fleet map, where secrets live) is HIGH. Short host names also match ordinary words in history, because `-S` is a substring search, so read the diff before counting a commit.
 
 **Known true negatives**, so you do not chase them:
 
