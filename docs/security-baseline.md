@@ -275,8 +275,10 @@ The check grepped `mcpServers` in the settings files, found none declared, and c
 
 Each check printed exactly what a genuinely clean result prints. Before recording a check as passing, ask what it would have printed had it never run; if the answer is "the same thing," make it prove it looked — a package count, a positive control that must fail, a sample of what it saw.
 
-### Fixed 2026-09-12 — pass 2 could not tell harness text from injected text
+### Narrowed 2026-09-12 — pass 2 could not tell harness text from injected text
 
 An agent saw two instruction-shaped sections directly after a project's `CLAUDE.md` that the file does not contain, and filed them as a possible injection. They were Claude Code's own plan-mode-exit and auto-mode attachments, sent in the same batch as the file. The audit had no way to settle it. "In context but not on disk" describes every reminder the harness adds, so a check built on it flags everything, and once readers learn to skim it, nothing.
 
-Pass 2f now attributes context by its transcript record type. It accepts known harness attachments after confirming the template in the binary, and still treats hook output, MCP content, and harness-style headings inside files or tool results as findings.
+Pass 2f now attributes context by its transcript record type. It accepts a known harness attachment when a record attributes the text to one and the binary contains the template, and still treats hook output, MCP content, and harness-style headings inside files or tool results as findings.
+
+*Corrected 2026-09-28 (DOT-19); the residual is open.* The entry first said **Fixed**, and 2f annotated its binary grep `# nonzero == harness text`. The grep proves only that the binary contains the fragment. That holds on every run, so it cannot attribute anything, and a heading copied into a file or a tool result passed it. 2f now says the record type decides and the grep only confirms a template for text a record has already attributed. The residual stays: harness text can be told from injected text only when a transcript record exists for it. Where there is none, the text is a finding.

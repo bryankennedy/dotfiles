@@ -1,0 +1,7 @@
+### DOT-19 — Pass 2f attributes by record type; the binary grep only confirms a template
+
+**Decision.** In `_agent/skills/security-audit.md`, pass 2f now says which of its two rules wins. The transcript record type attributes instruction-shaped text. The grep of the `claude` binary only confirms a template for text a record has already attributed to a harness attachment. Its inline comment now says what a nonzero count proves: the binary contains the fragment, not that the text the auditor saw came from it. Text in a tracked file, a `tool_result`, MCP content, or the body of a `nested_memory` record (a file's text) stays a finding whatever the binary contains.
+
+**What prompted it.** The nightly review found that the grep prints the same nonzero count on every run, whatever the auditor is looking at. A heading copied from a harness template into a tracked file or a tool result passed it, and the old comment, `# nonzero == harness text`, said that passing cleared the text. The paragraph below it said the opposite for the same input, and nothing said which rule won. The skill's own test, "ask what it would have printed had it never run", fails this check.
+
+**Baseline.** The 2026-09-12 entry under "Known gaps in the audit itself" was headed **Fixed**, so a later run would treat the gap as closed. It is now headed **Narrowed** and names the residual: harness text can be told from injected text only when a transcript record exists for it. Where there is none, the text is a finding. This tightens the entry and loosens nothing.

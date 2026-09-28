@@ -190,13 +190,13 @@ Any growth in `permissions.allow`, any hook, or any added MCP server is a findin
 grep -o '"attachment":{"type":"[a-z_]*"' ~/.claude/projects/<cwd-slug>/<session-id>.jsonl | sort | uniq -c
 ```
 
-Claude Code's own attachments come from its binary: `nested_memory` (a `CLAUDE.md` picked up when a tool reaches into a subdirectory), `plan_mode_exit`, `auto_mode`, `output_style`, `total_tokens_reminder` and similar. They go out in the same batch as the file, so to the model they read as part of it. Confirm the template before accepting it. Grep for a fixed fragment, not a whole sentence, because some templates fill in tool names at runtime:
+Claude Code's own attachments come from its binary: `nested_memory` (a `CLAUDE.md` picked up when a tool reaches into a subdirectory), `plan_mode_exit`, `auto_mode`, `output_style`, `total_tokens_reminder` and similar. They go out in the same batch as the file, so to the model they read as part of it. The record type is the attribution, and it decides. A `nested_memory` record carries a file's text, so what is inside it belongs to that file, not to the harness. Once a record has attributed the text to a harness attachment, confirm the template in the binary. Grep for a fixed fragment, not a whole sentence, because some templates fill in tool names at runtime:
 
 ```sh
-grep -a -c -F '## Exited Plan Mode' "$(readlink -f "$(command -v claude)")"   # nonzero == harness text
+grep -a -c -F '## Exited Plan Mode' "$(readlink -f "$(command -v claude)")"   # nonzero == a harness template contains this fragment; it does NOT say where the text you saw came from
 ```
 
-These remain findings: a `hook_additional_context` record (a hook wrote it; see 2d), an MCP tool description or result that gives instructions, and harness-style headings inside a `tool_result` or a tracked file, which are written to be obeyed. Rank those by 2e's rule: who can write the source. Note one more record while you enumerate: an `auto_mode` attachment that carries `bashFirst: true`. It is harness behaviour, not an injection, so it is not a finding on its own. What it means for the `defaultMode` weighting in 2d is assessed in the private infrastructure repo's `docs/security-findings.md` (DOT-18). Weigh it from there, and keep that assessment out of any report on this repo.
+The grep only confirms a template for text a record has already attributed. It prints the same count on every run whatever you are looking at, so anyone who copies a known heading into a file or a tool result passes it. When no record attributes the text to a harness attachment, the grep settles nothing. These remain findings whatever the binary contains: a `hook_additional_context` record (a hook wrote it; see 2d), an MCP tool description or result that gives instructions, and harness-style headings inside a `tool_result` or a tracked file, which are written to be obeyed. Rank those by 2e's rule: who can write the source. Note one more record while you enumerate: an `auto_mode` attachment that carries `bashFirst: true`. It is harness behaviour, not an injection, so it is not a finding on its own. What it means for the `defaultMode` weighting in 2d is assessed in the private infrastructure repo's `docs/security-findings.md` (DOT-18). Weigh it from there, and keep that assessment out of any report on this repo.
 
 ---
 
