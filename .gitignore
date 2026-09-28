@@ -1,3 +1,8 @@
+# Local environment secrets and overrides — never committed (house rule)
+.env
+.env.local
+.env.*.local
+
 # MacOS
 .DS_Store
 
