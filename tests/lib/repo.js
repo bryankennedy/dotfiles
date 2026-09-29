@@ -147,3 +147,50 @@ export function deadCodeownersRules(rules, files) {
     return r.owners.length === 0 || !files.some((f) => re.test(f));
   });
 }
+
+// --- The commit-time secret check -----------------------------------------
+
+/**
+ * Ways .githooks/pre-commit could let a commit through unscanned: no guard
+ * that refuses when gitleaks is missing, an `exit 0` or swallowed failure
+ * anywhere, or a final scan that is not gitleaks over the staged change. A
+ * hook that skips silently looks exactly like one that passed.
+ */
+export function hookFailsOpen(body) {
+  const bad = [];
+  const code = String(body ?? "").split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+  const guard = /^\s*if\s+!\s*command\s+-v\s+gitleaks\b[^\n]*\n([\s\S]*?)^\s*fi\s*$/m.exec(code);
+  if (!guard) bad.push("no `if ! command -v gitleaks` guard");
+  else if (!/^\s*exit\s+[1-9]\d*\s*$/m.test(guard[1])) bad.push("the missing-gitleaks guard does not exit non-zero");
+  if (/\bexit\s+0\b|\bexit\s*$/m.test(code)) bad.push("exits 0 somewhere");
+  if (/\|\|\s*(true|:)\b/.test(code)) bad.push("swallows a failure with || true");
+  const lines = code.split("\n").filter((l) => l.trim());
+  if (!/^\s*exec\s+gitleaks\s+git\b(?=.*\s--pre-commit\b)(?=.*\s--staged\b)/.test(lines.at(-1) ?? "")) {
+    bad.push("does not end by exec-ing `gitleaks git --pre-commit --staged`");
+  }
+  return bad;
+}
+
+/** The body of nix-darwin's postActivation script, or "" if it is not found. */
+export const postActivation = (flake) =>
+  /postActivation\.text\s*=\s*''\n([\s\S]*?)^\s*'';\s*$/m.exec(String(flake ?? ""))?.[1] ?? "";
+
+/**
+ * Problems with how activation arms the hook: gitleaks not installed, or
+ * core.hooksPath not set for ~/src/dotfiles on an uncommented postActivation
+ * line with the house `|| echo "postActivation: …" >&2` fallback. Without the
+ * setting the hook sits in the tree and never runs.
+ */
+export function hooksPathActivation(flake) {
+  const bad = [];
+  const live = (text) => text.split("\n").filter((l) => !/^\s*#/.test(l));
+  if (!live(String(flake ?? "")).some((l) => /^\s*pkgs\.gitleaks\s*$/.test(l))) bad.push("pkgs.gitleaks is not installed");
+  const line = live(postActivation(flake)).find((l) =>
+    /\bgit\b.*\s-C\s+\/Users\/bk\/src\/dotfiles\s+config\s+core\.hooksPath\s+\.githooks\b/.test(l)
+  );
+  if (!line) bad.push("postActivation no longer sets core.hooksPath to .githooks for ~/src/dotfiles");
+  else if (!/\|\|\s*echo\s+"postActivation: [^"]+"\s*>&2\s*$/.test(line)) {
+    bad.push(`core.hooksPath line lacks the || echo "postActivation: …" >&2 fallback: ${line.trim()}`);
+  }
+  return bad;
+}

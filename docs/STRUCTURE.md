@@ -57,6 +57,10 @@ Stowing the packages together in one invocation lets Stow link into existing `~/
 - **`CLAUDE.md`**: The criteria that review applies. Claude Code also loads it into any session opened in this repo.
 - **`scripts/forgejo-review.mjs`** and **`tests/`**: The review's posting logic, and the tests that hold its security properties in place. `tests/remote/` runs `remote/install.sh` against a throwaway home.
 
+## Git hooks (not a stow package)
+
+- **`.githooks/`**: Hooks for this repo itself, not for `$HOME`. `pre-commit` runs gitleaks over staged changes and refuses the commit on a finding, or when gitleaks is missing. Git only runs them where `core.hooksPath` points here. The nix-darwin activation sets that for `~/src/dotfiles`. Fleet clones don't set it, so the hook doesn't run there.
+
 ## App setup scripts (not a stow package)
 
 Some macOS applications store their configuration in `~/Library/Preferences` (via the `defaults` system) rather than dotfiles, so they can't be managed with Stow. The `scripts/` directory contains idempotent setup scripts for these apps.

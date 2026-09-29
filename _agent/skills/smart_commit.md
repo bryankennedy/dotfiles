@@ -8,7 +8,7 @@ description: Review uncommitted changes, break them into logical chunks, and cre
    - Run `git diff` (and `git diff --cached`) to examine the specific code changes.
 
 2. **Security Check**
-   - **CRITICAL**: Scan the `git diff` output for any potential secrets, API keys, passwords, tokens, or PII.
+   - **CRITICAL**: Scan the `git diff` output for any potential secrets, API keys, passwords, tokens, or PII. Read it yourself even though step 4 runs gitleaks: the scanner knows credential formats, not PII or a secret with no recognizable shape.
    - **IF A SECRET IS DETECTED**:
      - **STOP IMMEDIATELY**. Do not proceed to stage or commit.
      - **WARN THE USER**: Explicitly identify the suspected secret and file.
@@ -23,12 +23,17 @@ description: Review uncommitted changes, break them into logical chunks, and cre
 4. **Execute Commits**
    - *Repeat this step for each logical chunk:*
      a. **Stage Files**: Run `git add <files>` for the current chunk.
-     b. **Draft Message**: Create a commit message following the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
+     b. **Scan Staged Changes**: Run `gitleaks git --pre-commit --staged --redact --no-banner --verbose`.
+        - **Exit 0**: continue.
+        - **Non-zero exit**: **STOP**, exactly as for a secret found in step 2. gitleaks either found a secret or could not scan. Show the user the file, line, and rule it reports (the output is redacted), and do not commit.
+        - **`gitleaks` not installed**: tell the user the automated scan did not run. Do not treat that as a pass; continue only if they say to.
+     c. **Draft Message**: Create a commit message following the [Conventional Commits](https://www.conventionalcommits.org/en/v1.0.0/) specification.
         - **Format**: `type(scope): subject`
         - **Types**: `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore`, `revert`.
         - **Subject**: Concise summary in imperative mood, no capitalization (unless proper noun), no period at end (e.g., "fix: resolve race condition in user loader").
         - **Body**: Explain the context (why was this change needed?), the solution (what did you do?), and any side effects.
-     c. **Commit**: Run `git commit -m "Subject" -m "Body"`.
+     d. **Commit**: Run `git commit -m "Subject" -m "Body"`.
+        - **Never bypass hooks**: Do NOT pass `--no-verify`. If a pre-commit hook fails, show the user its output and stop.
         - **No attribution**: Do NOT add any `Co-Authored-By` trailers or Claude/AI attribution of any kind to commit messages.
 
 5. **Verify**

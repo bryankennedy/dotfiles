@@ -9,6 +9,7 @@ import { test, expect, describe } from "bun:test";
 import {
   workflowSteps, secretsOnPullRequest, unpinnedUses, credentialedCheckouts, runsTouchingPr,
   symlinkStripStep, unverifiedDownloads, codeownersRules, deadCodeownersRules,
+  hookFailsOpen, hooksPathActivation,
 } from "../lib/repo.js";
 
 describe("canary: the Forgejo CI rules reject the shapes they exist for", () => {
@@ -66,5 +67,32 @@ describe("canary: the Forgejo CI rules reject the shapes they exist for", () => 
   test("a gitignore-style CODEOWNERS glob, a broken regex, and an ownerless rule", () => {
     const rules = codeownersRules("# c\n/nix-darwin/ @bkennedy\n^nix-darwin/.*$ @bkennedy\n^(unclosed @bkennedy\n^CLAUDE\\.md$\n");
     expect(deadCodeownersRules(rules, ["nix-darwin/flake.nix", "CLAUDE.md"]).map((r) => r.line)).toEqual([2, 4, 5]);
+  });
+});
+
+describe("canary: the commit-time secret check rejects a hook or activation that fails open", () => {
+  const guard = "if ! command -v gitleaks >/dev/null 2>&1; then\n  echo missing >&2\n  exit 1\nfi\n";
+  const scan = "exec gitleaks git --pre-commit --staged --redact\n";
+  const hook = "#!/bin/sh\n# exit 0 in a comment is fine\n" + guard + scan;
+
+  test("a hook that skips, swallows or scans the wrong thing", () => {
+    expect(hookFailsOpen(hook)).toEqual([]);
+    expect(hookFailsOpen(hook.replace("exit 1", "exit 0")).length).toBeGreaterThan(0);
+    expect(hookFailsOpen(hook.replace(guard, ""))).toEqual(["no `if ! command -v gitleaks` guard"]);
+    expect(hookFailsOpen(hook.replace(scan, "gitleaks git --pre-commit --staged || true\n")).length).toBe(2);
+    expect(hookFailsOpen(hook.replace(" --staged", ""))).toHaveLength(1);
+    expect(hookFailsOpen(hook + "exit 0\n").length).toBe(2);
+  });
+
+  test("activation that drops gitleaks, the hooksPath line, or its fallback", () => {
+    const set = "/usr/bin/sudo -Hu bk ${pkgs.git}/bin/git -C /Users/bk/src/dotfiles config core.hooksPath .githooks";
+    const ok = "environment.systemPackages = [\n  pkgs.gitleaks\n];\npostActivation.text = ''\n" +
+      set + " || echo \"postActivation: hook not active\" >&2\n'';\n";
+    expect(hooksPathActivation(ok)).toEqual([]);
+    expect(hooksPathActivation(ok.replace("  pkgs.gitleaks", "  # pkgs.gitleaks"))).toHaveLength(1);
+    expect(hooksPathActivation(ok.replace(set, "# " + set))).toHaveLength(1);
+    expect(hooksPathActivation(ok.replace(/ \|\| echo .*>&2/, " || true"))).toHaveLength(1);
+    // Set outside postActivation does not count: it would never run on a switch.
+    expect(hooksPathActivation(set + "\n" + ok.replace(set + " ", "true "))).toHaveLength(1);
   });
 });
