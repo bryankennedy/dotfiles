@@ -7,6 +7,9 @@ name: test
 on:
   push:
     branches: [main]
+  # Runs the PR's own code, unlike claude-review.yml. Kept on purpose: a PR
+  # runs its own copy of this file, so removing the trigger here would stop
+  # nothing. Why, and where it is assessed: docs/decisions/DOT-21.md.
   pull_request:
   workflow_dispatch:
 

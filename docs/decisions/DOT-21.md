@@ -1,0 +1,13 @@
+### DOT-21 — `test.yml` keeps running PR code; the boundary is written down, not moved
+
+**Decision.** `.forgejo/workflows/test.yml` keeps its `pull_request` trigger, so a PR's own test files still run on the forge's runner. `docs/claude-review.md` now says so as trust boundary 8: the `test` job is the one place PR content is executed, and the review job's "data, never executed" rule does not cover it. A comment above the trigger in `test.yml` points here. No entry was added to `docs/security-baseline.md`.
+
+**What prompted it.** The nightly review of 2026-09-15 pointed out that `claude-review.yml` is built around never executing PR content, while `test.yml` was added in the same commit and executes it. Nothing said which rule applied to the other file. The review proposed two fixes: accept the behaviour in the baseline, or narrow the trigger to `push` and `workflow_dispatch`.
+
+**Why the trigger stays.** Narrowing the trigger closes nothing. On `pull_request`, Forgejo runs the workflow as it exists on the PR branch, which trust boundary 1 already relies on and which the private infrastructure repo measured on this forge (INFRA-107). A PR can put the trigger back in its own copy of `test.yml`, or add a new workflow file, and it runs anyway. Removing the trigger would only remove the check on honest PRs. `CLAUDE.md` calls `bun test tests/` the CI suite, and what it holds in place is the review's own sandbox.
+
+**Why there is no baseline entry.** The review asked for an acceptance that names the runner-isolation conditions it depends on: a fresh container per job, no Docker API reachable from the job, and no state shared between jobs. Those conditions are properties of the runner. The runner is configured in the private infrastructure repo, so this repo cannot re-verify them, and a baseline entry that the audit cannot re-verify is not an acceptance in this file's sense ("re-verified, not re-reported"). They are assessed in the private repo (INFRA-122). Under `docs/decisions/DOT-1.md`, that assessment stays there.
+
+**What this repo does hold, and re-verifies.** The `test` job references no secret, which the `secretsOnPullRequest` invariant enforces on `main`, and its checkout sets `persist-credentials: false`. Both are properties of the base branch's files. They do not constrain a PR's own copy.
+
+**Reassess** if a secret is ever needed on a `pull_request` trigger in this repo. The invariant will refuse it, and that refusal should not be worked around. Reassess also if Forgejo gains a way to run the base branch's copy of a test workflow against PR code, or an approval gate narrower than per-repository.

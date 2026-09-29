@@ -77,6 +77,17 @@ flowchart TB
    reviewer token and the job token only in Post, which runs no model.
 7. **The reviewer can post and nothing else.** `argus` has Read access to this
    repo, so it cannot push, and its review can neither approve nor block.
+8. **The `test` job is the one place PR content is executed.** Rules 1 to 6
+   cover the review job only. `test.yml` triggers on `pull_request`, checks out
+   the PR at the workspace root and runs `bun test tests/`, so a PR's own test
+   files, install script and copy of `test.yml` run on the forge's runner
+   before anyone reads the diff. It holds no secret: the invariants fail the
+   build if any job on a `pull_request` trigger names one, and its checkout
+   keeps no token. Dropping the trigger would close nothing, because a
+   `pull_request` run uses the branch's copy of the workflow, as rule 1 says,
+   and a PR can add the trigger back or bring a workflow of its own. How far a
+   job can reach from the runner is the runner's property, and it is assessed
+   in the private infrastructure repo, not here (`docs/decisions/DOT-21.md`).
 
 What none of this prevents: a PR written to make the review wrong or quiet. That
 is why the review is advisory and the owner's approval is the gate.
