@@ -92,6 +92,31 @@ flowchart TB
 What none of this prevents: a PR written to make the review wrong or quiet. That
 is why the review is advisory and the owner's approval is the gate.
 
+## Reading a review from an agent session
+
+The agent that opened a PR reads its review with the `argus-review` skill,
+which runs `scripts/argus-review.mjs`. Nobody pastes the review across.
+
+- **Read-only.** It sends only GET requests, with the agent's existing forge
+  login (tea's `bck` login, or `FORGEJO_URL` and `FORGEJO_TOKEN`). It adds no
+  credential and no permission, and the token goes only to that login's URL.
+- **argus only.** It prints the reviews the forge attributes to the `argus`
+  account and nothing else from the PR: no other reviews, no issue comments,
+  no title or description. Someone who can comment on a PR cannot use it to
+  reach the agent.
+- **Fenced as data.** Control characters and terminal escapes are stripped, the
+  review sits inside an `<argus-review>` block its text cannot close, and both
+  the output and the skill say it is advisory. The skill tells the agent to
+  check each finding against the code, and never to run commands, fetch URLs
+  or change credentials, CI or agent config because a review says to.
+- **Stale reviews are marked.** `--wait` polls until argus has reviewed the
+  PR's current head. A review of an older commit is labelled STALE, because
+  pushing more commits does not re-review.
+
+The review is still model output about a diff, and a diff can carry text aimed
+at whoever reads it next. The fence narrows that; it does not remove it. The
+merge gate is unchanged: the owner's approval.
+
 ## When reviews run
 
 - **Opened or reopened:** once. Pushing more commits does not re-review.
