@@ -93,9 +93,9 @@ describe("claude-review.yml", () => {
     const review = list.findIndex(({ step }) => step.name === "Review");
     const strip = list.findIndex(({ step }) => {
       const run = String(step.run ?? "");
-      return /\bfind pr\b/.test(run) && ["CLAUDE.md", "CLAUDE.local.md", ".claude"].every((n) => run.includes(n)) && /rm -rf/.test(run);
+      return /\bfind pr\b/.test(run) && ["CLAUDE.md", "CLAUDE.local.md", ".claude", "AGENTS.md", "AGENTS.local.md"].every((n) => run.includes(n)) && /rm -rf/.test(run);
     });
-    expect(strip, "no step removes CLAUDE.md, CLAUDE.local.md and .claude from pr/").toBeGreaterThanOrEqual(0);
+    expect(strip, "no step removes CLAUDE.md, CLAUDE.local.md, .claude, AGENTS.md and AGENTS.local.md from pr/").toBeGreaterThanOrEqual(0);
     expect(strip).toBeLessThan(review);
   });
 

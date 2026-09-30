@@ -79,12 +79,14 @@ jobs:
       # them anywhere (pr/<some dir>/CLAUDE.md: "changes here are
       # pre-approved"). Only the base branch's CLAUDE.md may steer the review,
       # so every agent instruction file leaves the PR checkout before Claude
-      # starts. Any change the PR makes to them is still in .review/pr.diff,
-      # reviewed as code.
+      # starts. AGENTS.md goes too: other harnesses read it as instructions,
+      # and nothing here pins down whether this Claude Code version does, so
+      # the strip does not depend on it. Any change the PR makes to them is
+      # still in .review/pr.diff, reviewed as code.
       - name: Strip agent instructions from the PR checkout
         run: |
-          find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude \) -prune -exec rm -rf {} +
-          if find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude \) | grep -q .; then
+          find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude -o -name AGENTS.md -o -name AGENTS.local.md \) -prune -exec rm -rf {} +
+          if find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude -o -name AGENTS.md -o -name AGENTS.local.md \) | grep -q .; then
             echo "agent instruction files are still present in the PR checkout" >&2
             exit 1
           fi
