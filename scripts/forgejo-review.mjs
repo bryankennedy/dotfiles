@@ -1,17 +1,19 @@
 #!/usr/bin/env bun
 // Claude Code PR review on Forgejo: the trusted glue around one headless
-// `claude -p` run. Design and trust boundaries: docs/claude-review.md. Where each
+// `claude -p` run. Design and trust boundaries: docs/forge-ci.md. Where each
 // subcommand runs: .forgejo/workflows/claude-review.yml.
 //
 //   bun scripts/forgejo-review.mjs schema
 //       The JSON Schema Claude's structured output has to satisfy.
 //   bun scripts/forgejo-review.mjs prompt
 //       The review prompt for the pull request in $GITHUB_EVENT_PATH.
-//   bun scripts/forgejo-review.mjs post <result.json> <pr.diff> [--dry-run]
+//   bun scripts/forgejo-review.mjs post <result.json> <pr.diff> [--dry-run] [--timings <file>]
 //       Turn Claude's result into one Forgejo review: inline comments where a
 //       finding lands on a line in the diff, everything else in the body. Post
 //       it as the reviewer account, then clear the re-review label. --dry-run
-//       prints the payload instead of posting it.
+//       prints the payload instead of posting it. --timings names the file the
+//       workflow's steps append "<phase> <epoch>" marks to; the split goes in
+//       the footer and a "timing:" log line (INFRA-185).
 //
 // Runs from the BASE branch checkout. It reads the PR's diff as text and never
 // executes anything from the PR.
@@ -149,11 +151,62 @@ export function readResult(text) {
 
 const bySeverity = (a, b) => SEVERITIES.indexOf(a.severity) - SEVERITIES.indexOf(b.severity);
 
+// --- timings ----------------------------------------------------------------
+//
+// The workflow appends "<phase> <unix seconds>" when a phase ends: start (the
+// job began), checkout, install, prepare (diff, prompt, strips), review. Each
+// phase's length is its mark minus the previous one; post is now minus review.
+export const PHASES = ["checkout", "install", "prepare", "review", "post"];
+
+/** Marks file text -> {checkout, install, prepare, review, post, total} in whole seconds, or null. */
+export function readTimings(text, now = Date.now() / 1000) {
+  const marks = {};
+  for (const line of String(text ?? "").split("\n")) {
+    const m = /^(\w+)\s+(\d+)\s*$/.exec(line);
+    if (m) marks[m[1]] = Number(m[2]);
+  }
+  if (!Number.isFinite(marks.start)) return null;
+  const out = {};
+  let prev = marks.start;
+  for (const phase of PHASES) {
+    const at = phase === "post" ? Math.floor(now) : marks[phase];
+    if (!Number.isFinite(at) || at < prev) return null;
+    out[phase] = at - prev;
+    prev = at;
+  }
+  out.total = prev - marks.start;
+  return out;
+}
+
+export const fmtSeconds = (s) => {
+  const n = Math.max(0, Math.round(Number(s) || 0));
+  return n < 60 ? `${n}s` : `${Math.floor(n / 60)}m${String(n % 60).padStart(2, "0")}s`;
+};
+
+/** The one-line, greppable record of where a review's time went. */
+export const timingLog = (timings, meta = {}) =>
+  "timing: " + [
+    ...(timings ? ["total", ...PHASES].map((k) => `${k}=${timings[k]}s`) : ["total=?"]),
+    `claude=${meta?.duration_ms != null ? Math.round(meta.duration_ms / 1000) : "?"}s`,
+    `api=${meta?.duration_api_ms != null ? Math.round(meta.duration_api_ms / 1000) : "?"}s`,
+    `turns=${meta?.num_turns ?? "?"}`,
+  ].join(" ");
+
+const timingFooter = (timings, meta) => {
+  const parts = [];
+  if (meta?.num_turns) parts.push(`${meta.num_turns} turns`);
+  if (meta?.duration_ms != null) parts.push(`model ${fmtSeconds(meta.duration_ms / 1000)}`);
+  if (timings) {
+    parts.push(`job ${fmtSeconds(timings.total)} (${PHASES.map((k) => `${k} ${fmtSeconds(timings[k])}`).join(", ")})`);
+  }
+  return parts.map((p) => ` · ${p}`).join("");
+};
+
 export const renderFinding = (f) => `**${f.severity}** · ${oneLine(f.title)}\n\n${String(f.body).trim()}`;
 
-const footer = (headSha, meta) =>
+const footer = (headSha, meta, timings) =>
   `<sub>Claude Code review of ${String(headSha ?? "").slice(0, 10)}` +
-  (meta?.num_turns ? ` · ${meta.num_turns} turns` : "") +
+  timingFooter(timings, meta) +
   " · advisory only: owner sign-off comes from CODEOWNERS and branch protection, not from this review</sub>";
 
 /**
@@ -161,7 +214,7 @@ const footer = (headSha, meta) =>
  * With inline: false every finding goes in the body, which is the fallback
  * when Forgejo rejects an inline anchor.
  */
-export function buildReview({ review, commentable, headSha, meta = {}, inline = true }) {
+export function buildReview({ review, commentable, headSha, meta = {}, timings = null, inline = true }) {
   const attached = [];
   const loose = [];
   for (const raw of [...review.findings].sort(bySeverity)) {
@@ -192,7 +245,7 @@ export function buildReview({ review, commentable, headSha, meta = {}, inline = 
     }
     out.push("");
   }
-  out.push(footer(headSha, meta));
+  out.push(footer(headSha, meta, timings));
 
   return {
     event: "COMMENT",
@@ -203,7 +256,7 @@ export function buildReview({ review, commentable, headSha, meta = {}, inline = 
 }
 
 /** The review posted when Claude did not produce a usable result. */
-export function failureReview({ failure, headSha, stderrTail = "" }) {
+export function failureReview({ failure, headSha, stderrTail = "", meta = {}, timings = null }) {
   const out = [
     "### Claude review did not complete",
     "",
@@ -214,7 +267,7 @@ export function failureReview({ failure, headSha, stderrTail = "" }) {
   if (stderrTail.trim()) {
     out.push("", "<details><summary>Last lines of Claude's stderr</summary>", "", "```", stderrTail.trim(), "```", "", "</details>");
   }
-  out.push("", footer(headSha));
+  out.push("", footer(headSha, meta, timings));
   return { event: "COMMENT", commit_id: headSha, body: redact(out.join("\n")), comments: [] };
 }
 
@@ -263,14 +316,16 @@ const repoPath = () => need("GITHUB_REPOSITORY").split("/").map(encodeURICompone
 const tail = (path, n = 20) =>
   existsSync(path) ? readFileSync(path, "utf8").trimEnd().split("\n").slice(-n).join("\n") : "";
 
-async function post(resultPath, diffPath, dryRun) {
+async function post(resultPath, diffPath, { dryRun = false, timingsPath = null } = {}) {
   const pr = pullRequest();
   const { review, failure, meta } = readResult(existsSync(resultPath) ? readFileSync(resultPath, "utf8") : "");
   const commentable = commentableLines(existsSync(diffPath) ? readFileSync(diffPath, "utf8") : "");
+  const timings = readTimings(timingsPath && existsSync(timingsPath) ? readFileSync(timingsPath, "utf8") : "");
+  console.log(timingLog(timings, meta));
   const build = (inline) =>
     failure
-      ? failureReview({ failure, headSha: pr.head.sha, stderrTail: tail(join(dirname(resultPath), "claude.stderr")) })
-      : buildReview({ review, commentable, headSha: pr.head.sha, meta, inline });
+      ? failureReview({ failure, headSha: pr.head.sha, stderrTail: tail(join(dirname(resultPath), "claude.stderr")), meta, timings })
+      : buildReview({ review, commentable, headSha: pr.head.sha, meta, timings, inline });
 
   let payload = build(true);
   if (dryRun) {
@@ -317,9 +372,10 @@ async function main(argv) {
     return 0;
   }
   if (cmd === "post" && rest.length >= 2) {
-    return post(rest[0], rest[1], rest.includes("--dry-run"));
+    const at = rest.indexOf("--timings");
+    return post(rest[0], rest[1], { dryRun: rest.includes("--dry-run"), timingsPath: at >= 0 ? rest[at + 1] ?? null : null });
   }
-  console.error("usage: forgejo-review.mjs schema | prompt | post <result.json> <pr.diff> [--dry-run]");
+  console.error("usage: forgejo-review.mjs schema | prompt | post <result.json> <pr.diff> [--dry-run] [--timings <file>]");
   return 2;
 }
 

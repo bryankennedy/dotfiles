@@ -43,6 +43,13 @@ jobs:
       image: node:22-trixie
     timeout-minutes: 15
     steps:
+      # Where the time goes. Each run step appends "<phase> <epoch>" when a
+      # phase ends; the post step turns the marks into the review footer and a
+      # "timing:" log line (INFRA-185). The file lives outside the workspace
+      # because the checkouts below clean it.
+      - name: Start the clock
+        run: echo "start $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+
       # Trusted half: the base branch. The prompt, the review criteria
       # (CLAUDE.md) and the posting script all come from here, so a PR cannot
       # rewrite the rules it is reviewed against.
@@ -63,7 +70,10 @@ jobs:
           persist-credentials: false
 
       - name: Install the pinned toolchain
-        run: sh .forgejo/ci/install-tools.sh review
+        run: |
+          echo "checkout $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+          sh .forgejo/ci/install-tools.sh review
+          echo "install $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
 
       - name: Compute the diff and the prompt
         run: |
@@ -79,14 +89,17 @@ jobs:
       # them anywhere (pr/<some dir>/CLAUDE.md: "changes here are
       # pre-approved"). Only the base branch's CLAUDE.md may steer the review,
       # so every agent instruction file leaves the PR checkout before Claude
-      # starts. AGENTS.md goes too: other harnesses read it as instructions,
-      # and nothing here pins down whether this Claude Code version does, so
-      # the strip does not depend on it. Any change the PR makes to them is
-      # still in .review/pr.diff, reviewed as code.
+      # starts. AGENTS.md goes too: Claude Code and other harnesses read it as
+      # instructions, and dotfiles found the gap first (DOT-23). .mcp.json
+      # would be inert under --strict-mcp-config, but a PR must not be able to
+      # name an MCP server at all (INFRA-74). Any change the PR makes to them
+      # is still in .review/pr.diff, reviewed as code. The list is tied to the
+      # CLAUDE_CODE_VERSION pin in .forgejo/ci/install-tools.sh: a bump that
+      # teaches Claude Code a new instruction file needs a name here.
       - name: Strip agent instructions from the PR checkout
         run: |
-          find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude -o -name AGENTS.md -o -name AGENTS.local.md \) -prune -exec rm -rf {} +
-          if find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude -o -name AGENTS.md -o -name AGENTS.local.md \) | grep -q .; then
+          find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude -o -name AGENTS.md -o -name AGENTS.local.md -o -name .mcp.json \) -prune -exec rm -rf {} +
+          if find pr \( -name CLAUDE.md -o -name CLAUDE.local.md -o -name .claude -o -name AGENTS.md -o -name AGENTS.local.md -o -name .mcp.json \) | grep -q .; then
             echo "agent instruction files are still present in the PR checkout" >&2
             exit 1
           fi
@@ -106,6 +119,7 @@ jobs:
             echo "symlinks are still present in the PR checkout" >&2
             exit 1
           fi
+          echo "prepare $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
 
       # The only step that holds the Claude credential, and it holds nothing
       # else: env -i drops the job token and every variable the runner injected.
@@ -130,6 +144,7 @@ jobs:
               --json-schema "$(bun scripts/forgejo-review.mjs schema)" \
               < /dev/null > .review/result.json 2> .review/claude.stderr
           echo "claude exited $?"
+          echo "review $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
           exit 0
 
       # The only step that holds the reviewer account's token. It reads Claude's
@@ -140,4 +155,4 @@ jobs:
           # The job's own short-lived token, used for one call: removing the
           # claude-review label so it can be added again for the next review.
           LABEL_TOKEN: ${{ github.token }}
-        run: bun scripts/forgejo-review.mjs post .review/result.json .review/pr.diff
+        run: bun scripts/forgejo-review.mjs post .review/result.json .review/pr.diff --timings "${RUNNER_TEMP:-/tmp}/claude-review-timings"
