@@ -18,6 +18,10 @@
 # mean pinning every transitive dependency too.
 set -eu
 
+CLAUDE_TGZ_SHA256=010258658ab7a0aa09ea992cb2a314689e25ce42854c57d6993e3136097039d5
+CLAUDE_BIN_SHA256=0399c793ff571d5946ef923d80b4f330d05ac4b6842a6b0775468f5d389403c0
+CLAUDE_CACHE_DIR=/usr/local/lib/claude-code
+
 BUN_VERSION=1.3.13
 BUN_SHA256=79c0771fa8b92c33aae41e15a0e0d307ea99d0e2f00317c71c6c53237a78e25a
 CLAUDE_CODE_VERSION=2.1.267
@@ -48,7 +52,21 @@ install_bun() {
 # and bun does not run lifecycle scripts for dependencies it has not been told
 # to trust.
 install_claude() {
-  npm install --global --no-fund --no-audit --loglevel=error "@anthropic-ai/claude-code@${CLAUDE_CODE_VERSION}"
+  cached="$CLAUDE_CACHE_DIR/claude"
+  if [ -f "$cached" ] && echo "$CLAUDE_BIN_SHA256  $cached" | sha256sum -c --quiet - 2>/dev/null; then
+    echo "claude ${CLAUDE_CODE_VERSION}: restored from the runner cache, digest verified"
+  else
+    if [ -e "$CLAUDE_CACHE_DIR" ]; then
+      echo "restored claude binary failed its digest check: discarding it and downloading fresh" >&2
+      rm -rf "$CLAUDE_CACHE_DIR"
+    fi
+    fetch "https://registry.npmjs.org/@anthropic-ai/claude-code-linux-x64/-/claude-code-linux-x64-${CLAUDE_CODE_VERSION}.tgz" \
+      "$CLAUDE_TGZ_SHA256" "$tmp/claude.tgz"
+    tar -xzf "$tmp/claude.tgz" -C "$tmp" package/claude
+    echo "$CLAUDE_BIN_SHA256  $tmp/package/claude" | sha256sum -c --quiet -
+    install -D -m 0755 "$tmp/package/claude" "$cached"
+  fi
+  install -m 0755 "$cached" /usr/local/bin/claude
   claude --version
 }
 

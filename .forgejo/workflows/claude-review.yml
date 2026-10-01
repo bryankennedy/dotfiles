@@ -69,11 +69,42 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
+      - name: Mark the end of the checkouts
+        run: echo "checkout $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+
+      # Claude Code, one ~220 MB native binary, comes from the runner's cache
+      # instead of the registry on every run: the install was the whole
+      # one-minute floor of a review (INFRA-185). The key is the digest of the
+      # install script, so bumping a pin starts a fresh entry. The cache is
+      # shared with pull_request jobs of test.yml, which execute unreviewed
+      # cached path holds exactly one file, install-tools.sh copies it to PATH
+      # only after it matches CLAUDE_BIN_SHA256, and nothing ever runs from
+      # the cached directory itself: a poisoned entry has nowhere to put
+      # anything that would be used.
+      - name: Restore the review toolchain
+        id: tools
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: /usr/local/lib/claude-code
+          key: review-tools-${{ hashFiles('.forgejo/ci/install-tools.sh') }}
+
       - name: Install the pinned toolchain
         run: |
-          echo "checkout $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
           sh .forgejo/ci/install-tools.sh review
           echo "install $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+
+      # Saving here is safe where test.yml gates its save to push runs: this
+      # workflow runs only base-branch code (pull_request_target), so what it
+      # saves is what the reviewed script fetched and verified. Skipped on a
+      # hit. An entry is immutable, so a restore that fails its digest check
+      # means a fresh download every run until the pin, and with it the key,
+      # changes; the install log says so each time.
+      - name: Save the review toolchain
+        if: steps.tools.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: /usr/local/lib/claude-code
+          key: review-tools-${{ hashFiles('.forgejo/ci/install-tools.sh') }}
 
       - name: Compute the diff and the prompt
         run: |
