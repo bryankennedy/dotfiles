@@ -390,6 +390,9 @@
           // Standard plugins enabled on every machine. The official marketplace
           // is registered explicitly (mirrors the cloudflare plugin setup) so a
           // fresh install can resolve the plugin without a prior /plugin install.
+          // Not pinned to a commit: Claude Code cannot pin a marketplace source.
+          // Accepted in docs/security-baseline.md (DOT-24); a change to this source
+          // or the plugin list fails tests/invariants/plugin-sources.test.js.
           cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};
           cfg.extraKnownMarketplaces['claude-plugins-official'] = { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } };
           cfg.enabledPlugins = cfg.enabledPlugins || {};

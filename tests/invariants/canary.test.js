@@ -9,7 +9,7 @@ import { test, expect, describe } from "bun:test";
 import {
   workflowSteps, secretsOnPullRequest, unpinnedUses, credentialedCheckouts, runsTouchingPr,
   symlinkStripStep, unverifiedDownloads, codeownersRules, deadCodeownersRules,
-  hookFailsOpen, hooksPathActivation,
+  hookFailsOpen, hooksPathActivation, unacceptedPluginSources,
 } from "../lib/repo.js";
 
 describe("canary: the Forgejo CI rules reject the shapes they exist for", () => {
@@ -94,5 +94,29 @@ describe("canary: the commit-time secret check rejects a hook or activation that
     expect(hooksPathActivation(ok.replace(/ \|\| echo .*>&2/, " || true"))).toHaveLength(1);
     // Set outside postActivation does not count: it would never run on a switch.
     expect(hooksPathActivation(set + "\n" + ok.replace(set + " ", "true "))).toHaveLength(1);
+  });
+});
+
+describe("canary: the plugin-source rule rejects what the baseline did not accept", () => {
+  const accepted = { marketplaces: { m: "{ source: { source: 'github', repo: 'o/m' } }" }, plugins: ["p@m"] };
+  const ok = [
+    "    cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};",
+    "    cfg.extraKnownMarketplaces['m'] = { source: { source: 'github', repo: 'o/m' } };",
+    "    // cfg.enabledPlugins['commented@out'] = true;",
+    "    cfg.enabledPlugins = cfg.enabledPlugins || {};",
+    "    cfg.enabledPlugins['p@m'] = true;",
+  ].join("\n");
+
+  test("a new marketplace, a changed source, a new plugin, or an unreadable shape", () => {
+    expect(unacceptedPluginSources(ok, accepted)).toEqual([]);
+    expect(unacceptedPluginSources(ok + "\ncfg.extraKnownMarketplaces['x'] = { source: { source: 'github', repo: 'e/x' } };", accepted)).toHaveLength(1);
+    expect(unacceptedPluginSources(ok.replace("'o/m'", "'evil/m'"), accepted)).toHaveLength(1);
+    expect(unacceptedPluginSources(ok + "\ncfg.enabledPlugins['q@m'] = true;", accepted)).toHaveLength(1);
+    expect(unacceptedPluginSources(ok + "\nObject.assign(cfg.enabledPlugins, { 'q@x': true });", accepted)).toHaveLength(1);
+  });
+
+  test("an accepted entry that disappears is reported, so the baseline is retired with it", () => {
+    expect(unacceptedPluginSources(ok.replace("cfg.enabledPlugins['p@m'] = true;", ""), accepted)).toHaveLength(1);
+    expect(unacceptedPluginSources("", accepted)).toHaveLength(2);
   });
 });

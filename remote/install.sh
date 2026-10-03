@@ -268,6 +268,9 @@ if [ -n "$CLAUDE_JS_RUNTIME" ]; then
     const file = dir + '/settings.json';
     let cfg = {};
     try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch (_) {}
+    // Not pinned to a commit: Claude Code cannot pin a marketplace source.
+    // Accepted in docs/security-baseline.md (DOT-24); a change to this source
+    // or the plugin list fails tests/invariants/plugin-sources.test.js.
     cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};
     cfg.extraKnownMarketplaces['claude-plugins-official'] = { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } };
     cfg.enabledPlugins = cfg.enabledPlugins || {};
