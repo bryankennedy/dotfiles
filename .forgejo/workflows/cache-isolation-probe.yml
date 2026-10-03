@@ -1,0 +1,76 @@
+name: cache-isolation-probe
+
+# TEMPORARY (DOT-33). Proves or disproves one claim about the forge's runner:
+# a cache entry written by a pull_request run cannot be restored by a push,
+# workflow_dispatch or pull_request_target run. The fleet's caches in jobs
+# that hold secrets rest on that claim. Removed once the result is recorded.
+#
+# A pull_request run saves one marker file under a key every other event also
+# computes. Every other event only tries to restore it: a hit means unreviewed
+# PR code could plant an entry a trusted run reads, and fails the run.
+#
+# No secrets, and nothing here runs code from a pull request on
+# pull_request_target: that run checks out the base branch (the default ref
+# for the event) only to hash the nonce.
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  pull_request_target:
+  workflow_dispatch:
+
+jobs:
+  probe:
+    runs-on: docker
+    container:
+      image: node:22-trixie
+    timeout-minutes: 5
+    steps:
+      # Pinned to a commit, not a tag: a tag on the actions mirror can be moved.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          persist-credentials: false
+
+      # An exact key and no restore-keys, like every other cache in the fleet.
+      - name: Restore the probe entry
+        id: probe
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: /root/.cache/cache-isolation-probe
+          key: cache-isolation-probe-${{ hashFiles('.forgejo/probe/nonce') }}
+
+      - name: Write the marker
+        if: github.event_name == 'pull_request' && steps.probe.outputs.cache-hit != 'true'
+        env:
+          EVENT: ${{ github.event_name }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          mkdir -p /root/.cache/cache-isolation-probe
+          printf 'written by event=%s run=%s\n' "$EVENT" "$RUN_ID" > /root/.cache/cache-isolation-probe/marker
+
+      # Only a pull_request run ever saves. A trusted run that saved would
+      # make a later hit meaningless.
+      - name: Save the probe entry
+        if: github.event_name == 'pull_request' && steps.probe.outputs.cache-hit != 'true'
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: /root/.cache/cache-isolation-probe
+          key: cache-isolation-probe-${{ hashFiles('.forgejo/probe/nonce') }}
+
+      - name: Verdict
+        env:
+          EVENT: ${{ github.event_name }}
+          HIT: ${{ steps.probe.outputs.cache-hit }}
+        run: |
+          [ "$HIT" = true ] || HIT=false
+          if [ "$EVENT" = pull_request ]; then
+            echo "PROBE pull_request hit=$HIT"
+            exit 0
+          fi
+          if [ "$HIT" = true ]; then
+            cat /root/.cache/cache-isolation-probe/marker || true
+            echo "PROBE ISOLATION BROKEN event=$EVENT"
+            exit 1
+          fi
+          echo "PROBE ISOLATION HOLDS event=$EVENT"
