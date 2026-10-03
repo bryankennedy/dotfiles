@@ -1,0 +1,11 @@
+### DOT-26 — The Mac's dated permission-rule check lives in the private findings file
+
+**Decision.** The auto-mode entry in `docs/security-baseline.md` and the DOT-18 rationale no longer say what the Mac's user-level settings file holds, or when that was checked. Each keeps the half that is about this repo: it tracks no permission rule or hook, and activation writes none. The machine-state check stays in the private infrastructure repo's `docs/security-findings.md`, under DOT-18, where it was already recorded in full.
+
+**What prompted it.** The nightly review of 2026-09-19 rated the sentence MEDIUM. The baseline already accepts publishing that activation sets `defaultMode: auto` and that the global `allow` list is empty. DOT-18 widened that to every permission-rule type and hooks, and added a date. The tree then stated the full set of permission rules and hooks on a named machine that auto-approves tool calls, with the date it was confirmed. A dated claim invites less doubt than a stale one. That is the same pairing the 2026-09-14 review rated HIGH: DOT-18 removed the mechanism half and widened the state half.
+
+**Why the argument survives the cut.** The acceptance takes one thing from the empty `allow` list: no rule pre-approves anything. The public text still says that. Whether the machine has `ask` or `deny` rules or hooks does not change it, because the entry never counts on any of them. The detail only shows that nothing else was being counted on, and that is an assessment of one machine's state, which DOT-1 keeps in the private repo.
+
+**Editing DOT-18's file.** Decision files are normally superseded from the new action's file rather than edited, which keeps parallel agents from colliding. This edit removes a disclosure rather than revising a decision. A note here would leave the sentence in the tree, which is the problem the finding names. The decision DOT-18 records is unchanged; only one sentence of its evidence moved.
+
+**Not done here.** No history rewrite. The sentence stays in published history at the DOT-18 merge, for the reasons the baseline gives for its other history entries. The `defaultMode` line and the pass 2d re-verify line, whose `allow entries: 0` output is the accepted disclosure, are left as they were.
