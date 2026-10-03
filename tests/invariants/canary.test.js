@@ -7,7 +7,7 @@
 // quietly defangs a predicate fails here rather than going unnoticed.
 import { test, expect, describe } from "bun:test";
 import {
-  workflowSteps, secretsOnPullRequest, unpinnedUses, credentialedCheckouts, runsTouchingPr,
+  workflowSteps, secretsOnPullRequest, cacheInCredentialedWorkflow, unpinnedUses, credentialedCheckouts, runsTouchingPr,
   symlinkStripStep, unverifiedDownloads, codeownersRules, deadCodeownersRules,
   hookFailsOpen, hooksPathActivation, unacceptedPluginSources,
 } from "../lib/repo.js";
@@ -19,6 +19,17 @@ describe("canary: the Forgejo CI rules reject the shapes they exist for", () => 
     expect(secretsOnPullRequest({ on: ["push", "pull_request"], jobs })).toEqual(["pull_request"]);
     expect(secretsOnPullRequest({ on: { pull_request_target: {} }, jobs })).toEqual([]);
     expect(secretsOnPullRequest({ on: { pull_request: {} }, jobs: { t: { steps: [{ run: "bun test tests/" }] } } })).toEqual([]);
+  });
+
+  test("a runner-cache step in a credentialed workflow is caught; one in a secret-less job is not", () => {
+    const restore = { name: "r", uses: "actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830", with: { path: "/x", key: "k" } };
+    const steps = [restore, { name: "s", uses: "actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830" }];
+    const names = (wf) => cacheInCredentialedWorkflow(wf).map(({ step }) => step.name);
+    expect(names({ on: { pull_request_target: {} }, jobs: { r: { steps } } })).toEqual(["r", "s"]);
+    expect(names({ on: { push: {} }, jobs: { r: { steps: [restore, { env: { T: "${{ secrets.T }}" }, run: "echo" }] } } })).toEqual(["r"]);
+    expect(names({ on: { push: {} }, jobs: { r: { steps: [restore, { env: { T: "${{ github.token }}" }, run: "echo" }] } } })).toEqual(["r"]);
+    expect(names({ on: { pull_request_target: {} }, jobs: { r: { steps: [{ name: "api", run: 'curl "$ACTIONS_CACHE_URL"' }] } } })).toEqual(["api"]);
+    expect(names({ on: { pull_request: {}, push: {} }, jobs: { t: { steps: [restore, { run: "bun test tests/" }] } } })).toEqual([]);
   });
 
   test("a tag-pinned action and a checkout that keeps its token", () => {

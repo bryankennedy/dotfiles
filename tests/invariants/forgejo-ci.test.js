@@ -5,7 +5,7 @@ import { test, expect, describe } from "bun:test";
 import { join } from "node:path";
 import {
   ROOT, read, walk, exists, workflowTriggers, workflowSteps, stepsUsingSecret,
-  secretsOnPullRequest, unpinnedUses, credentialedCheckouts, runsTouchingPr,
+  secretsOnPullRequest, cacheInCredentialedWorkflow, unpinnedUses, credentialedCheckouts, runsTouchingPr,
   symlinkStripStep, unverifiedDownloads, codeownersRules, deadCodeownersRules,
 } from "../lib/repo.js";
 
@@ -51,6 +51,14 @@ for (const f of workflowFiles) {
 
     test("never exposes a secret to a pull_request run", () => {
       expect(secretsOnPullRequest(parse(f))).toEqual([]);
+    });
+
+    test("restores nothing from the runner cache if it holds a credential", () => {
+      expect(
+        cacheInCredentialedWorkflow(parse(f)).map(({ job, step }) => `${job}: ${step.name ?? step.uses}`),
+        "pull_request jobs can write the runner cache, and a restore extracts anywhere\n" +
+        "  before a digest check runs. See docs/decisions/DOT-33.md."
+      ).toEqual([]);
     });
   });
 }

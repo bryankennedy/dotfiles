@@ -56,6 +56,20 @@ export const secretsOnPullRequest = (wf) =>
     ? workflowTriggers(wf).filter((t) => t === "pull_request")
     : [];
 
+/**
+ * Runner-cache use in a workflow that holds a credential: any secret, the job
+ * token, or a pull_request_target trigger. pull_request jobs run a PR's own
+ * code and can write the runner cache, and a restore extracts a tar archive
+ * anywhere the job can write before anything checks it, so a poisoned entry
+ * runs in the credentialed job. Returns the offending steps.
+ */
+export const cacheInCredentialedWorkflow = (wf) =>
+  /\bsecrets\.|\bgithub\.token\b/.test(JSON.stringify(wf?.jobs ?? {})) || workflowTriggers(wf).includes("pull_request_target")
+    ? workflowSteps(wf).filter(
+        ({ step }) => /(^|\/)cache(\/(restore|save))?@/.test(step.uses ?? "") || /\bACTIONS_(CACHE|RESULTS)_URL\b/.test(String(step.run ?? ""))
+      )
+    : [];
+
 /** `uses:` refs not pinned to a 40-hex commit; a tag can be moved. Local ./ actions are exempt. */
 export const unpinnedUses = (wf) =>
   workflowSteps(wf)
