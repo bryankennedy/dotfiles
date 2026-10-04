@@ -152,6 +152,19 @@ Bounds: `tests/invariants/plugin-sources.test.js` fails CI if either script regi
 
 ---
 
+### The review job restores the runner cache (accepted 2026-10-03)
+
+`.forgejo/workflows/claude-review.yml`'s `review` job holds `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_REVIEW_TOKEN` and the job token, and restores two caches: `review-tools-<hashFiles of .forgejo/ci/install-tools.sh>` and `ci-downloads-review-<same hash>`. `test.yml`'s `test` job restores `ci-downloads-bun-<same hash>` and holds no secret.
+
+Accepted because the forge's runner isolates cache entries written by `pull_request` runs: unreviewed code cannot plant an entry that a `pull_request_target`, `push` or `workflow_dispatch` run restores. This was measured in this repository on 2026-10-03 (PRs #86 and #87, DOT-33). The fleet rule, its four conditions and the probe result are in `bkennedy/infrastructure`: `docs/house-standards.md` section 7 and `docs/decisions/INFRA-203.md`.
+
+**Re-verify, do not re-decide.** Report again only if:
+
+- `claude-review.yml`, or any workflow that holds a secret, gains a `pull_request` trigger;
+- a cache step uses `restore-keys` or a key not derived from `hashFiles`;
+- a workflow runs code from an account without write access on an event other than `pull_request`;
+- the runner moves to a new major version and INFRA-203 records no probe result for it.
+
 ## Accepted — Pass 3, dependencies
 
 ### The Mac's herdr bootstrap pipes the vendor installer to a shell, once
