@@ -29,9 +29,9 @@ jobs:
           persist-credentials: false
 
       # bun's release zip from the runner cache when it is there: GitHub's
-      # release CDN serves bet at ~1 MB/s. install-tools.sh's fetch() checks
-      # a restored zip against BUN_SHA256 exactly as it checks a download,
-      # and saving is for main's runs only (INFRA-193).
+      # release CDN serves the runner at ~1 MB/s. install-tools.sh's fetch()
+      # checks a restored zip against BUN_SHA256 exactly as it checks a
+      # download, and saving is for main's runs only (INFRA-193).
       - name: Restore the bun download
         id: bun-download
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0

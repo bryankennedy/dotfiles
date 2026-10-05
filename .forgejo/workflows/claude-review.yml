@@ -75,12 +75,18 @@ jobs:
       # Claude Code, one ~220 MB native binary, comes from the runner's cache
       # instead of the registry on every run: the install was the whole
       # one-minute floor of a review (INFRA-185). The key is the digest of the
-      # install script, so bumping a pin starts a fresh entry. The cache is
-      # shared with pull_request jobs of test.yml, which execute unreviewed
-      # cached path holds exactly one file, install-tools.sh copies it to PATH
-      # only after it matches CLAUDE_BIN_SHA256, and nothing ever runs from
-      # the cached directory itself: a poisoned entry has nowhere to put
-      # anything that would be used.
+      # install script, so bumping a pin starts a fresh entry.
+      #
+      # This job holds secrets, and what keeps a forged entry out of it is the
+      # runner, not a digest check. The runner tags every cache write from a
+      # pull_request run with an isolation key (refs/pull/<n>/head) that a
+      # workflow cannot set, and this job, on pull_request_target, reads only
+      # entries written without one: a PR's copy of test.yml can save this
+      # key and the review never sees it.
+      # The digest check in install-tools.sh catches a corrupt entry; it would
+      # not contain a forged one, since a restore unpacks a tar archive that
+      # can write anywhere in the container. The owner accepted the cache on
+      # that footing (RNQ-32, MSPT-102).
       - name: Restore the review toolchain
         id: tools
         uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
@@ -89,9 +95,9 @@ jobs:
           key: review-tools-${{ hashFiles('.forgejo/ci/install-tools.sh') }}
 
       # bun's release zip, as fetch() left it in DOWNLOAD_CACHE_DIR (INFRA-192).
-      # Same trust rule as the Claude binary above: fetch() uses a restored
-      # file only after its copy matches BUN_SHA256, and nothing runs from the
-      # cached directory. Its own key, apart from test.yml's, so neither
+      # Same barrier as the Claude binary above, the runner's write isolation;
+      # fetch() checks a restored file against BUN_SHA256 all the same, which
+      # catches a corrupt one. Its own key, apart from test.yml's, so neither
       # workflow's first save claims an entry the other then never fills.
       - name: Restore the toolchain downloads
         id: downloads
