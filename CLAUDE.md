@@ -81,6 +81,8 @@ WezTerm's Lua, Ghostty's `command`.
   that reads `pr/`, the removal of `CLAUDE.md`, `.claude/` or symlinks from `pr/`
   dropped or moved after the Review step, or the Claude step losing
   `--restricted` or `env -i`.
+- A cache step with `restore-keys` or a key not derived from `hashFiles`. The
+  runner cache is accepted for exact keys only (INFRA-203).
 - Weakening the commit-time secret check: `.githooks/pre-commit` exiting 0 when
   gitleaks is missing, or activation no longer setting `core.hooksPath`.
 - A baseline entry added or loosened in `docs/security-baseline.md`. Review it as
