@@ -232,7 +232,7 @@
           # on PATH behind ~/.local/bin and confuse `herdr update`.
           # (Tried the herdr-mx fork for its multi-remote single-sidebar view,
           # but its only build predates the upstream cursor-flicker fixes —
-          # ogulcancelik/herdr #930/#967 — so reverted to upstream. Re-trial mx
+          # herdrdev/herdr #930/#967 — so reverted to upstream. Re-trial mx
           # once it rebases on >=0.7.3, or when native multi-remote lands: #334.)
           "tmux"
           # Show files in a directory in a tree

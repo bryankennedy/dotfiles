@@ -272,8 +272,10 @@ Cross-check anything reported against whether the package is actually reachable 
 
 ```sh
 herdr --version
-gh api repos/ogulcancelik/herdr/releases/latest -q .tag_name
+gh api repos/herdrdev/herdr/releases/latest -q .tag_name
 ```
+
+`herdrdev/herdr` is the vendor's namespace, the same one the pinned release asset comes from (`docs/security-baseline.md`). The project used to live under another account; that name only redirects, and a renamed account's old name can be claimed by someone else, so never query it. Checked 2026-10-05.
 
 Note the asymmetry: the Mac bootstraps herdr once from the vendor installer into `~/.local/bin` (`nix-darwin/flake.nix`) and then self-updates on the **preview** channel (`[update]` in `herdr/.config/herdr/config.toml`); the VMs install the sha256-pinned build named in the ansible inventory, which follows the Mac onto the same preview tag (`make herdr-pin` there). A Mac/fleet version gap is therefore a pin that has not been bumped yet, not a finding — `herdr status` shows the protocol on each side, and the saved SSH machines show Attention until they match. The bootstrap's `curl | sh` is an accepted entry in `docs/security-baseline.md`; re-verify its bounds (runs as the login user, only when the binary is absent) rather than re-reporting it.
 
