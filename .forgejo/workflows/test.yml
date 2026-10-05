@@ -18,7 +18,7 @@ jobs:
     runs-on: docker
     # The same image as the review job, so the runner pulls one image, not two.
     container:
-      image: node:22-trixie
+      image: node:22-trixie@sha256:072889700aecef94c5cee46c6e60107cc2aaad9aa9e418ce05abaa1e85752ee3
     timeout-minutes: 10
     steps:
       # Pinned to a commit, not a tag: a tag on the actions mirror can be moved.

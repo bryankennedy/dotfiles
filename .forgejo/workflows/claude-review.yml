@@ -40,7 +40,7 @@ jobs:
        (!github.event.label && contains(github.event.pull_request.labels.*.name, 'claude-review')))
     runs-on: docker
     container:
-      image: node:22-trixie
+      image: node:22-trixie@sha256:072889700aecef94c5cee46c6e60107cc2aaad9aa9e418ce05abaa1e85752ee3
     timeout-minutes: 15
     steps:
       # Where the time goes. Each run step appends "<phase> <epoch>" when a
