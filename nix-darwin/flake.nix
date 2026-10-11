@@ -37,6 +37,24 @@
         };
         cargoHash = "sha256-JMRmVMHjpeOGi7DcUxY9n78UdPIY5AQ1/IM1ca20L1E=";
       };
+
+      # bun at the version CI installs (INFRA-154). pkgs.bun follows
+      # nixpkgs-unstable, so a flake.lock bump would move the Mac's bun off
+      # that version without anyone choosing it. This is nixpkgs' own
+      # derivation rebuilt from the release zip at bunVersion, checked against
+      # a literal hash. bunVersion must equal BUN_VERSION in
+      # .forgejo/ci/install-tools.sh; infrastructure's runtime-pins check
+      # compares them. To bump: change bunVersion, and paste the SRI form
+      # (sha256-<base64>) of bun-darwin-aarch64.zip's sha256 from the
+      # release's SHASUMS256.txt after hashing the zip yourself.
+      bunVersion = "1.3.13";
+      bun = pkgs.bun.overrideAttrs (_: {
+        version = bunVersion;
+        src = pkgs.fetchurl {
+          url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
+          hash = "sha256-VGfj9l26Umuf6pjwzOBO+vwMY+Fpcz7Ce4dqOtMtoZA=";
+        };
+      });
     in {
       nix.enable = false;
       system.primaryUser = "bk";
@@ -56,7 +74,7 @@
       # in the activation script below so we always get the latest release
       # from npm rather than waiting for the nixpkgs version bump.
       environment.systemPackages = [
-        pkgs.bun
+        bun
         pkgs.gitleaks
         pkgs.google-cloud-sdk
         pkgs.imagemagick
@@ -371,7 +389,7 @@
         # not after. core.hooksPath is per-clone config that git never tracks,
         # so without this line the hook exists in the tree but never runs.
         /usr/bin/sudo -Hu bk ${pkgs.git}/bin/git -C /Users/bk/src/dotfiles config core.hooksPath .githooks || echo "postActivation: could not set core.hooksPath; the gitleaks pre-commit hook is not active" >&2
-        /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun -e "
+        /usr/bin/sudo -Hu bk ${bun}/bin/bun -e "
           const { readFileSync, writeFileSync, mkdirSync } = require('fs');
           const dir = process.env.HOME + '/.claude';
           const file = dir + '/settings.json';
@@ -400,7 +418,7 @@
           mkdirSync(dir, { recursive: true });
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "
-        /usr/bin/sudo -Hu bk ${pkgs.bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
+        /usr/bin/sudo -Hu bk ${bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
         # npm globals via bun, not nix: claude-code, wrangler and vite ship
         # faster than nixpkgs packages them. Each is pinned to an exact version
         # so a rebuild installs code that was chosen, not whatever npm served
@@ -410,9 +428,9 @@
         # one falls behind. Bump here, deliberately. `|| echo … >&2`, not
         # `|| true`, so an offline or failed install shows in the switch log
         # instead of silently leaving the old version in place.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g @anthropic-ai/claude-code@2.1.263 || echo "postActivation: claude-code install failed (offline?)" >&2
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g wrangler@4.129.0 || echo "postActivation: wrangler install failed (offline?)" >&2
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g vite@8.2.2 || echo "postActivation: vite install failed (offline?)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g @anthropic-ai/claude-code@2.1.267 || echo "postActivation: claude-code install failed (offline?)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g wrangler@4.129.0 || echo "postActivation: wrangler install failed (offline?)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g vite@8.2.2 || echo "postActivation: vite install failed (offline?)" >&2
         # ghostty-font: live Ghostty font trials, A/B compare and Elo ranking.
         # It lives on the forge (git.bck.dev/bkennedy/ghostty-font) and installs
         # from its public GitHub mirror, so activation needs no forge
@@ -429,14 +447,14 @@
         # failure would throw away a working install whenever the switch ran
         # offline, leaving the machine with no ghostty-font at all. Branch on
         # the error text so an offline switch keeps the copy it already has.
-        if out=$(/usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b 2>&1); then
+        if out=$(/usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b 2>&1); then
           printf '%s\n' "$out"
         else
           printf '%s\n' "$out" >&2
           case "$out" in
             *DependencyLoop*)
-              /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun remove -g ghostty-font \
-                && /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b \
+              /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun remove -g ghostty-font \
+                && /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g github:bryankennedy/ghostty-font#733bfdbdb73b6eab3cf11ea710c92e99101e5f6b \
                 || echo "postActivation: ghostty-font reinstall after clearing the stale pin failed" >&2
               ;;
             *)
@@ -456,7 +474,7 @@
         # for the pins, the bump procedure and the install flags. Re-running
         # is an update check (no-op when current). audit-pins.mjs watches the
         # skill tag like the npm pins above.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${pkgs.bun}/bin/bun ${./scripts/impeccable-install.mjs} || echo "postActivation: impeccable install failed (offline, or the pinned bundle hash no longer matches)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun ${./scripts/impeccable-install.mjs} || echo "postActivation: impeccable install failed (offline, or the pinned bundle hash no longer matches)" >&2
         # herdr: direct install, bootstrapped once. Homebrew's herdr is
         # stable-only (`herdr channel set preview` refuses it), so the binary
         # lives in ~/.local/bin — ahead of /opt/homebrew/bin on PATH via

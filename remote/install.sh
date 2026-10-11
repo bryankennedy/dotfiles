@@ -238,16 +238,65 @@ elif ! command -v unzip &> /dev/null; then
   red "  skipped bun: 'unzip' not found (install it, then re-run)"
 else
   green "  installing bun..."
-  # Pre-export so the installer sees its bin dir on PATH and skips
-  # appending exports to ~/.bashrc (a symlink into this repo)
-  export BUN_INSTALL="$HOME/.bun"
-  export PATH="$BUN_INSTALL/bin:$PATH"
-  # Pinned version: the installer's first positional arg is a specific release tag
-  # (it downloads releases/download/<tag>/…), so the payload is deterministic
-  # rather than latest-at-bootstrap. `herdr --remote` does not gate bun, so unlike
-  # herdr this version is the one the VM actually keeps. Bump the tag deliberately.
-  curl -fsSL https://bun.sh/install | bash -s "bun-v1.3.14" 2>&1 | tail -n 3
-  green "  installed bun"
+  # The bun CI installs (INFRA-154): the same release zip, checked against a
+  # literal digest the way .forgejo/ci/install-tools.sh checks it, rather than
+  # the bun.sh installer, which checks nothing. BUN_VERSION and the x64 digest
+  # must equal BUN_VERSION and BUN_SHA256 in install-tools.sh; infrastructure's
+  # runtime-pins check compares them. `herdr --remote` does not gate bun, so
+  # unlike herdr this version is the one the VM keeps. To bump: change all four
+  # lines, after hashing each zip yourself and comparing with the release's
+  # SHASUMS256.txt.
+  BUN_VERSION=1.3.13
+  BUN_SHA256_X64=79c0771fa8b92c33aae41e15a0e0d307ea99d0e2f00317c71c6c53237a78e25a
+  BUN_SHA256_X64_BASELINE=9d8a24292a7068090205daac0a5a223f5f69736f5287e37bf88d3b4031edc750
+  BUN_SHA256_AARCH64=70bae41b3908b0a120e1e58c5c8af30e74afae3b8d11b0d3fdd8e787ddfb4b22
+  # The build the bun.sh installer would pick: baseline x64 on a CPU without
+  # AVX2. Nothing on musl (Alpine): this pins no musl build, so it says so.
+  bun_build=""
+  bun_sha256=""
+  if [ -f /etc/alpine-release ]; then
+    :
+  elif [ "$(uname -m)" = x86_64 ]; then
+    if grep -qw avx2 /proc/cpuinfo 2>/dev/null; then
+      bun_build=x64
+      bun_sha256=$BUN_SHA256_X64
+    else
+      bun_build=x64-baseline
+      bun_sha256=$BUN_SHA256_X64_BASELINE
+    fi
+  elif [ "$(uname -m)" = aarch64 ] || [ "$(uname -m)" = arm64 ]; then
+    bun_build=aarch64
+    bun_sha256=$BUN_SHA256_AARCH64
+  fi
+  if [ -z "$bun_build" ]; then
+    red "  skipped bun: no pinned build for $(uname -m) on this libc"
+  else
+    # Under ~/.bun, not /tmp: --version runs the binary before it is
+    # installed, and a noexec /tmp would fail that check on a good binary.
+    mkdir -p "$HOME/.bun"
+    bun_tmp="$(mktemp -d "$HOME/.bun/.install.XXXXXX")"
+    # --version before install: a binary this CPU cannot run never lands where
+    # the "already installed" check above would keep it.
+    if curl -fsSL --retry 3 -o "$bun_tmp/bun.zip" \
+         "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${bun_build}.zip" \
+       && echo "${bun_sha256}  $bun_tmp/bun.zip" | sha256sum -c --quiet - \
+       && unzip -q -o "$bun_tmp/bun.zip" -d "$bun_tmp" \
+       && "$bun_tmp/bun-linux-${bun_build}/bun" --version >/dev/null \
+       && mkdir -p "$HOME/.bun/bin" \
+       && install -m 0755 "$bun_tmp/bun-linux-${bun_build}/bun" "$HOME/.bun/bin/bun" \
+       && ln -sf bun "$HOME/.bun/bin/bunx"; then
+      # On PATH for the steps below; remote/bashrc puts it there for later shells.
+      export PATH="$HOME/.bun/bin:$PATH"
+      green "  installed bun $BUN_VERSION ($bun_build)"
+      rm -rf "$bun_tmp"
+    else
+      # Fatal, as the old installer pipe was under pipefail: a VM left
+      # without bun fails later steps in ways that are harder to read.
+      rm -rf "$bun_tmp"
+      red "  bun install failed: download, digest or run check (bun-v$BUN_VERSION, $bun_build)"
+      exit 1
+    fi
+  fi
 fi
 
 # --- Claude Code settings --------------------------------------------------

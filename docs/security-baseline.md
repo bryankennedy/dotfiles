@@ -231,7 +231,7 @@ The decision this records is not the one update but the posture: a lock this old
 
 What each upstream actually permits differs, and the fix follows that rather than pretending it is uniform:
 
-- **bun** takes a release tag as its first argument, so it is pinned to an exact version — the payload the VM keeps is deterministic.
+- **bun** takes a release tag as its first argument, so it is pinned to an exact version — the payload the VM keeps is deterministic. *Since INFRA-154 (2026-10-11) it no longer goes through the installer at all: `remote/install.sh` downloads the release zip and checks it against a literal digest for the VM's architecture, at the same version and x64 digest CI pins.*
 - **zoxide**'s installer has no version flag; it always fetches the latest release. So the pin is the *installer script's commit sha* instead of the `main` branch — it fixes the code piped into the shell, not the binary version, which is the part that could turn hostile between runs.
 - **herdr** no longer pipes anything to a shell. ~~It could be pinned neither way, and binary checksumming was declined.~~ The role now reads herdr's release manifest itself and hands Ansible the two values the vendor installer was using anyway: an immutable `github.com/herdrdev/herdr/releases/download/v<version>/` asset URL, and that asset's SHA-256, verified before the file is placed. The residual was accepted on the premise that neither pinning nor verification was available; both are, so it is retired rather than re-accepted.
 

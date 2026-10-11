@@ -4,10 +4,10 @@
 // Three files pin code that is fetched over the network and run or unpacked
 // into an agent's path:
 //
-//   remote/install.sh (the fleet) pins bun to an exact release tag and zoxide
+//   remote/install.sh (the fleet) pins bun to an exact release (BUN_VERSION) and zoxide
 //   to the commit sha of its installer script (finding 3).
 //
-//   nix-darwin/flake.nix (the Mac) pins its bun globals — claude-code, wrangler,
+//   nix-darwin/flake.nix (the Mac) pins bun itself (bunVersion) and its bun globals — claude-code, wrangler,
 //   vite — to exact npm versions, and ghostty-font to a commit of its GitHub
 //   mirror.
 //
@@ -42,7 +42,7 @@ const die = (m) => { console.error(`audit-pins: ${m}`); process.exit(1); };
 // here — a second copy is a second thing to forget to update. If a shape
 // changes, fail loudly instead of silently reporting a stale pin as current.
 const sh = read("remote/install.sh");
-const bunPin = sh.match(/bash\s+-s\s+"bun-v([0-9]+\.[0-9]+\.[0-9]+)"/)?.[1];
+const bunPin = sh.match(/^\s*BUN_VERSION=([0-9]+\.[0-9]+\.[0-9]+)\s*$/m)?.[1];
 const zoxidePin = sh.match(/zoxide\/([0-9a-f]{40})\/install\.sh/)?.[1];
 if (!bunPin) die(`could not find the bun version pin in remote/install.sh — did the install line change shape?`);
 if (!zoxidePin) die(`could not find the zoxide installer-sha pin in remote/install.sh — did the install line change shape?`);
@@ -54,6 +54,8 @@ const npmPins = Object.fromEntries(NPM_GLOBALS.map((p) => [p, npmPin(p)]));
 for (const [p, v] of Object.entries(npmPins)) {
   if (!v) die(`could not find an exact-version pin for ${p} in nix-darwin/flake.nix — did the bun install -g line change shape, or lose its pin?`);
 }
+const macBunPin = flake.match(/^\s*bunVersion = "([0-9]+\.[0-9]+\.[0-9]+)";\s*$/m)?.[1];
+if (!macBunPin) die(`could not find bunVersion in nix-darwin/flake.nix — did the bun pin change shape?`);
 const ghosttyFontPin = flake.match(/install -g github:bryankennedy\/ghostty-font#([0-9a-f]{40})/)?.[1];
 if (!ghosttyFontPin) die(`could not find the ghostty-font commit pin in nix-darwin/flake.nix — did the bun install -g line change shape, or pin a tag instead of a commit?`);
 
@@ -84,17 +86,16 @@ const npmLatest = async (pkg) => {
 // Each check returns a line for stdout and whether it is behind. A network failure
 // is reported as "unknown", never as "current" — an unchecked pin must not read as
 // a fresh one.
+// Both bun pins follow BUN_VERSION in .forgejo/ci/install-tools.sh, the fleet's
+// one bun pin (INFRA-154). A BEHIND bun is bumped there first, then here, never
+// in one file alone; infrastructure's runtime-pins check lists every line.
+const bunLatest = async () => {
+  const rel = await gh("https://api.github.com/repos/oven-sh/bun/releases/latest");
+  return (rel.tag_name || "").replace(/^bun-v/, "");
+};
 const checks = [
-  {
-    name: "bun",
-    where: "remote/install.sh",
-    pinned: bunPin,
-    async latest() {
-      const rel = await gh("https://api.github.com/repos/oven-sh/bun/releases/latest");
-      return (rel.tag_name || "").replace(/^bun-v/, "");
-    },
-    kind: "version",
-  },
+  { name: "bun", where: "remote/install.sh", pinned: bunPin, latest: bunLatest, kind: "version" },
+  { name: "bun (Mac)", where: "nix-darwin/flake.nix", pinned: macBunPin, latest: bunLatest, kind: "version" },
   {
     name: "zoxide",
     where: "remote/install.sh",
