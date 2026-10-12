@@ -141,6 +141,20 @@ describe(".forgejo/ci/install-tools.sh", () => {
   });
 });
 
+describe("agent instruction files (INFRA-161)", () => {
+  // AGENTS.md is the one instruction file; CLAUDE.md only imports it. The
+  // reviewer runs under --restricted, which does not load project memory, so
+  // it finds the criteria by reading the file the prompt names.
+  test("CLAUDE.md is exactly the @AGENTS.md pointer", () => {
+    expect(read(join(ROOT, "CLAUDE.md"))).toBe("@AGENTS.md\n");
+  });
+
+  test("AGENTS.md carries the review criteria the prompt sends the reviewer to", () => {
+    expect(read(join(ROOT, "AGENTS.md"))).toMatch(/^## Code review criteria$/m);
+    expect(read(join(ROOT, ".forgejo", "review", "prompt.md"))).toMatch(/`\.\/AGENTS\.md` holds\s+the review criteria/);
+  });
+});
+
 describe(".forgejo/CODEOWNERS", () => {
   const path = join(ROOT, ".forgejo", "CODEOWNERS");
   const rules = () => codeownersRules(read(path));
@@ -160,12 +174,12 @@ describe(".forgejo/CODEOWNERS", () => {
     expect([...new Set(rules().flatMap((r) => r.owners))]).toEqual(["@bkennedy"]);
   });
 
-  test("the review setup and CLAUDE.md's high-risk paths are owned", () => {
+  test("the review setup and AGENTS.md's high-risk paths are owned", () => {
     // Unlike the infrastructure repo, nothing here is left unowned on purpose:
     // the CODEOWNERS comment explains why every path is high blast radius.
     const owned = (p) => rules().some((r) => !r.negative && matches(r.pattern, p));
     for (const p of [
-      ".forgejo/workflows/claude-review.yml", ".forgejo/CODEOWNERS", "CLAUDE.md", "scripts/forgejo-review.mjs",
+      ".forgejo/workflows/claude-review.yml", ".forgejo/CODEOWNERS", "AGENTS.md", "CLAUDE.md", "scripts/forgejo-review.mjs",
       "tests/lib/repo.js", "nix-darwin/flake.nix", "remote/install.sh", "_agent/rules/global.md",
       "_agent/skills/security-audit.md", "docs/security-baseline.md", ".claude/settings.json", "README.md",
     ]) {

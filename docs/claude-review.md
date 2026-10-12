@@ -12,7 +12,7 @@ this repo). This page covers what is specific to dotfiles.
 | What | Where |
 |---|---|
 | Review when a PR opens or reopens, or on the `claude-review` label | `.forgejo/workflows/claude-review.yml` |
-| The criteria the reviewer applies | `CLAUDE.md`, "Code review criteria" |
+| The criteria the reviewer applies | `AGENTS.md`, "Code review criteria" (`CLAUDE.md` only imports it) |
 | Prompt, output schema, posting | `.forgejo/review/prompt.md`, `scripts/forgejo-review.mjs` |
 | Pinned toolchain: bun, Claude Code | `.forgejo/ci/install-tools.sh` |
 | Tests on every push to `main` and every PR | `.forgejo/workflows/test.yml` runs `bun test tests/` |
@@ -24,9 +24,9 @@ this repo). This page covers what is specific to dotfiles.
 flowchart TB
   trigger["PR opened or reopened,<br/>or labelled claude-review"] --> base & head
   subgraph job["claude-review job on the forge's runner"]
-    base["Base branch at ./<br/>CLAUDE.md, prompt, script"]
+    base["Base branch at ./<br/>AGENTS.md, prompt, script"]
     head["PR checkout at pr/<br/>untrusted, never executed"]
-    strip["Strip CLAUDE.md, .claude/<br/>and symlinks from pr/"]
+    strip["Strip CLAUDE.md, AGENTS.md, .claude/<br/>and symlinks from pr/"]
     diff[".review/pr.diff"]
     claude["claude -p --restricted<br/>env -i, only CLAUDE_CODE_OAUTH_TOKEN"]
     post["forgejo-review.mjs post<br/>only CLAUDE_REVIEW_TOKEN"]
@@ -61,8 +61,8 @@ flowchart TB
 2. **Two checkouts, neither keeps a credential.** The base branch supplies
    everything executed or trusted. The PR checkout under `pr/` is data.
 3. **Only the base branch's criteria steer the review.** Claude Code loads any
-   `CLAUDE.md` it passes, so every `CLAUDE.md`, `CLAUDE.local.md` and `.claude/`
-   leaves `pr/` first. In this repo that includes the `claude/.claude/` stow
+   `CLAUDE.md` it passes, so every `CLAUDE.md`, `CLAUDE.local.md`, `AGENTS.md`,
+   `AGENTS.local.md` and `.claude/` leaves `pr/` first. In this repo that includes the `claude/.claude/` stow
    package, whose changes the reviewer reads in the diff.
 4. **Symlinks leave `pr/` too.** This is the one step the infrastructure repo
    does not have. A link's path is inside the workspace even when its target is

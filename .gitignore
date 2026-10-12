@@ -55,3 +55,6 @@ herdr/.config/herdr/*
 # live file, which aborted stowing for every package. The .txt source is tracked;
 # this output is not.
 zsh/.zsh_plugins.zsh
+
+# Agent scratchpad — ephemeral task notes, never shared (INFRA-161)
+.agent/scratchpad.md

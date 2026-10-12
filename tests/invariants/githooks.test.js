@@ -1,4 +1,4 @@
-// The commit-time secret check that CLAUDE.md's review criteria rely on:
+// The commit-time secret check that AGENTS.md's review criteria rely on:
 // .githooks/pre-commit runs gitleaks over the staged change and refuses the
 // commit when gitleaks is missing, and nix-darwin activation points this
 // checkout's core.hooksPath at it. docs/decisions/DOT-22.md explains why.
