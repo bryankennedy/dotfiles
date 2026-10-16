@@ -10,6 +10,8 @@ git clone https://github.com/bryankennedy/dotfiles.git ~/src/dotfiles
 
 ## 2) Apply nix-darwin system config
 
+Sign in to the App Store app first. The switch installs Xcode through `mas` (`homebrew.masApps`), and a failed Homebrew stage stops activation before it stows the dotfiles or sets `core.hooksPath`. `mas` can only install an app this Apple ID has "gotten" once, so on a new Apple ID, click Get on Xcode's App Store page before switching.
+
 ```sh
 cd ~/src/dotfiles
 git add nix-darwin/flake.nix nix-darwin/flake.lock
@@ -41,7 +43,23 @@ antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
 exec zsh
 ```
 
-## 4) Optional verification
+## 4) Xcode (one-time)
+
+The switch in step 2 installs Xcode (after the App Store sign-in described there), but two pieces stay manual:
+
+1. Point the developer tools at Xcode instead of the Command Line Tools, and accept the license:
+
+   ```sh
+   sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+   sudo xcodebuild -license accept
+   xcodebuild -runFirstLaunch
+   ```
+
+2. Open Xcode once to download any extra platforms (the macOS SDK ships with it; iOS simulators are optional) and add your Apple ID under Settings → Accounts for signing.
+
+The Command Line Tools (`xcode-select --install`) can stay installed next to Xcode; `xcode-select -p` shows which one is active.
+
+## 5) Optional verification
 
 ```sh
 ls -l ~/.zshrc ~/.gitconfig ~/.vimrc ~/.config/ghostty ~/.config/wezterm ~/.config/karabiner ~/.config/starship.toml

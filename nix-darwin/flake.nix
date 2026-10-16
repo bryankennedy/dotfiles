@@ -224,6 +224,9 @@
           "lazygit"
           # JSON data utility
           "jq"
+          # Mac App Store CLI, for masApps below. Declared so the uninstall
+          # cleanup never removes it.
+          "mas"
           # System information
           "fastfetch"
           # Infrastructure as code - open source Terraform fork
@@ -313,6 +316,17 @@
           "tailscale-app"
           "visual-studio-code"
         ];
+        # Mac App Store apps, installed with `mas` (declared in brews above).
+        # The App Store must already be signed in, and mas can
+        # only install an app the Apple ID has "gotten" once, so Xcode's first
+        # install may have to be clicked through in the App Store by hand.
+        # After that, pointing xcode-select at Xcode and accepting its license
+        # are one-time manual steps (docs/SETUP.md), not activation work.
+        masApps = {
+          # Full Xcode: the macOS SDKs, simulators and signing that the
+          # Command Line Tools alone do not have
+          Xcode = 497799835;
+        };
       };
       # --- HOMEBREW CONFIGURATION END ---
 
