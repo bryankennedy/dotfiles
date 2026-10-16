@@ -1,0 +1,7 @@
+### DOT-35 — The review job's cache rests on runner isolation, accepted under INFRA-203
+
+**Decision.** No DOT-33 decision file is added. The one proposed would have said that this repo's caches are verified by digest after restore and do not rely on runner cache isolation. That is true of `test.yml`, which holds no secret, but not of the review job. As `claude-review.yml` says above "Restore the review toolchain", a restore unpacks a tar archive before any digest check runs. The check catches a corrupt entry, not a forged one, so what keeps a forged entry out of that job is the runner's isolation of `pull_request` cache writes. The owner accepted the cache on that footing for exact keys only (INFRA-203), and `AGENTS.md` flags any cache step that loosens the key.
+
+**Where the record lives.** What the DOT-33 probe measured, and anything that depends on it, is kept in the private infrastructure repo and the action tracker, not here (`docs/decisions/DOT-1.md`).
+
+**Why a review rule.** The probe workflow's header, still in published history, explained what the fleet's caches depend on and what a failure would let unreviewed code do, while its result was recorded nowhere public. Had the result gone the other way, that header would have been a public description of an open weakness. `AGENTS.md` now flags a probe, test or comment that states the stakes rather than the mechanism it checks. History is not rewritten.

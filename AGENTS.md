@@ -85,6 +85,10 @@ WezTerm's Lua, Ghostty's `command`.
   `--restricted` or `env -i`.
 - A cache step with `restore-keys` or a key not derived from `hashFiles`. The
   runner cache is accepted for exact keys only (INFRA-203).
+- A probe, test or comment that says what the fleet's security rests on, or
+  what a failure would let an attacker do. Describe the mechanism it checks;
+  the stakes and the result belong in the private infrastructure repo
+  (`docs/decisions/DOT-35.md`).
 - Weakening the commit-time secret check: `.githooks/pre-commit` exiting 0 when
   gitleaks is missing, or activation no longer setting `core.hooksPath`.
 - A baseline entry added or loosened in `docs/security-baseline.md`. Review it as
