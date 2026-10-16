@@ -202,7 +202,16 @@ const timingFooter = (timings, meta) => {
   return parts.map((p) => ` · ${p}`).join("");
 };
 
-export const renderFinding = (f) => `**${f.severity}** · ${oneLine(f.title)}\n\n${String(f.body).trim()}`;
+// A model title is wrapped in bold, so an asterisk in it must not end the run.
+const headline = (title) => oneLine(title).replace(/\*/g, "\\*") || "(untitled)";
+
+export const renderFinding = (f) => `**${headline(f.title)}** · ${f.severity}\n\n${String(f.body).trim()}`;
+
+// The review body leads with the verdict, then lists every finding under the
+// section that says whether it blocks the merge (INFRA-238). Medium blocks:
+// the owner ships a PR only once no medium-or-worse finding remains. A finding
+// anchored to a diff line shows its headline here and its body inline.
+export const MUST_FIX = ["critical", "high", "medium"];
 
 const footer = (headSha, meta, timings) =>
   `<sub>Claude Code review of ${String(headSha ?? "").slice(0, 10)}` +
@@ -215,13 +224,13 @@ const footer = (headSha, meta, timings) =>
  * when Forgejo rejects an inline anchor.
  */
 export function buildReview({ review, commentable, headSha, meta = {}, timings = null, inline = true }) {
-  const attached = [];
-  const loose = [];
+  const attached = new Set();
+  const sorted = [];
   for (const raw of [...review.findings].sort(bySeverity)) {
     const f = { ...raw, path: normalizePath(raw.path), line: Number(raw.line) };
     const anchorable = f.line > 0 && commentable.get(f.path)?.has(f.line);
-    if (inline && anchorable && attached.length < MAX_INLINE) attached.push(f);
-    else loose.push(f);
+    if (inline && anchorable && attached.size < MAX_INLINE) attached.add(f);
+    sorted.push(f);
   }
 
   const out = ["### Claude review", ""];
@@ -230,18 +239,20 @@ export function buildReview({ review, commentable, headSha, meta = {}, timings =
     for (const reason of review.high_risk_reasons) out.push(`> - ${oneLine(reason)}`);
     out.push("");
   }
-  out.push(oneLine(review.summary) || "(no summary)", "");
-  if (review.findings.length === 0) {
-    out.push("No issues found.", "");
-  } else if (attached.length) {
-    out.push(`${attached.length} finding${attached.length === 1 ? " is" : "s are"} attached to lines in the diff.`, "");
-  }
-  if (loose.length) {
-    out.push(attached.length ? "**Findings not on a line in the diff**" : "**Findings**", "");
-    for (const f of loose) {
+  out.push(`**TL;DR:** ${oneLine(review.summary) || "(no summary)"}`, "");
+  if (sorted.length === 0) out.push("No findings.", "");
+  for (const [heading, inSection] of [
+    ["Must fix", (f) => MUST_FIX.includes(f.severity)],
+    ["Should fix", (f) => !MUST_FIX.includes(f.severity)],
+  ]) {
+    const items = sorted.filter(inSection);
+    if (!items.length) continue;
+    out.push(`**${heading}**`, "");
+    for (const f of items) {
       const where = f.line > 0 ? `${f.path}:${f.line}` : f.path;
-      out.push(`- \`${where}\` · **${f.severity}** · ${oneLine(f.title)}`);
-      for (const l of String(f.body).trim().split("\n")) out.push(`  ${l}`);
+      const isInline = attached.has(f);
+      out.push(`- **${headline(f.title)}** · \`${where}\` · ${f.severity}${isInline ? " · inline" : ""}`);
+      if (!isInline) for (const l of String(f.body).trim().split("\n")) out.push(`  ${l}`);
     }
     out.push("");
   }
@@ -251,7 +262,7 @@ export function buildReview({ review, commentable, headSha, meta = {}, timings =
     event: "COMMENT",
     commit_id: headSha,
     body: redact(out.join("\n")),
-    comments: attached.map((f) => ({ path: f.path, new_position: f.line, body: redact(renderFinding(f)) })),
+    comments: [...attached].map((f) => ({ path: f.path, new_position: f.line, body: redact(renderFinding(f)) })),
   };
 }
 

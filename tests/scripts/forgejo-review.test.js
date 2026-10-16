@@ -108,8 +108,9 @@ describe("buildReview", () => {
     });
     expect(p.event).toBe("COMMENT");
     expect(p.commit_id).toBe("abcdef1234567890");
-    expect(p.comments).toEqual([{ path: "tofu/cloudflare/main.tf", new_position: 11, body: "**high** · t\n\nb" }]);
-    expect(p.body).toContain("`ansible/site.yml:3` · **high** · elsewhere");
+    expect(p.comments).toEqual([{ path: "tofu/cloudflare/main.tf", new_position: 11, body: "**t** · high\n\nb" }]);
+    expect(p.body).toContain("- **t** · `tofu/cloudflare/main.tf:11` · high · inline");
+    expect(p.body).toContain("- **elsewhere** · `ansible/site.yml:3` · high\n  b");
   });
 
   test("inline: false folds every finding into the body", () => {
@@ -122,14 +123,42 @@ describe("buildReview", () => {
     const p = buildReview({ review: review({ blast_radius: "high", high_risk_reasons: ["OpenTofu: tofu/"] }), commentable, headSha: "a" });
     expect(p.body.split("\n")[2]).toContain("High blast radius");
     expect(p.body).toContain("> - OpenTofu: tofu/");
-    expect(p.body).toContain("No issues found.");
+    expect(p.body).toContain("**TL;DR:** s\n\nNo findings.");
+    expect(p.body).not.toContain("**Must fix**");
+    expect(p.body).not.toContain("**Should fix**");
+  });
+
+  test("medium and worse go under Must fix, low under Should fix; empty sections are left out", () => {
+    const p = buildReview({
+      review: review({ findings: [finding({ severity: "low", title: "lo" }), finding({ severity: "medium", title: "med" })] }),
+      commentable, headSha: "a", inline: false,
+    });
+    const must = p.body.indexOf("**Must fix**");
+    const should = p.body.indexOf("**Should fix**");
+    expect(must).toBeGreaterThan(p.body.indexOf("**TL;DR:**"));
+    expect(should).toBeGreaterThan(must);
+    expect(p.body.indexOf("**med**")).toBeGreaterThan(must);
+    expect(p.body.indexOf("**med**")).toBeLessThan(should);
+    expect(p.body.indexOf("**lo**")).toBeGreaterThan(should);
+    const onlyLow = buildReview({ review: review({ findings: [finding({ severity: "low" })] }), commentable, headSha: "a" });
+    expect(onlyLow.body).not.toContain("**Must fix**");
   });
 
   test("inline comments are capped; the overflow is not dropped", () => {
     const many = Array.from({ length: MAX_INLINE + 3 }, () => finding());
     const p = buildReview({ review: review({ findings: many }), commentable, headSha: "a" });
     expect(p.comments.length).toBe(MAX_INLINE);
-    expect(p.body.match(/`tofu\/cloudflare\/main\.tf:11`/g).length).toBe(3);
+    // Every finding is listed in the body; only the overflow carries its body there.
+    expect(p.body.match(/`tofu\/cloudflare\/main\.tf:11`/g).length).toBe(MAX_INLINE + 3);
+    expect(p.body.match(/ · inline$/gm).length).toBe(MAX_INLINE);
+    expect(p.body.match(/^  b$/gm).length).toBe(3);
+  });
+
+  test("a title cannot break its bold headline", () => {
+    const p = buildReview({ review: review({ findings: [finding({ title: "a **b" }), finding({ title: " ", line: 12 })] }), commentable, headSha: "a" });
+    expect(p.comments[0].body).toStartWith("**a \\*\\*b** · high");
+    expect(p.comments[1].body).toStartWith("**(untitled)** · high");
+    expect(p.body).not.toContain("No findings.");
   });
 
   test("findings are ordered by severity", () => {
