@@ -47,6 +47,10 @@ Adding a package? Put it in the `flake.nix` list. Three packages (`bin`, `nvim`,
 
 Stowing the packages together in one invocation lets Stow link into existing `~/.config/<app>` paths instead of trying to replace all of `~/.config`.
 
+## Claude Code plugin marketplace (not a stow package)
+
+- **`_agent/marketplace/`**: A plugin marketplace that `nix-darwin/flake.nix` and `remote/install.sh` register as a local `directory` source. Each entry in `.claude-plugin/marketplace.json` points at a third-party plugin by `git-subdir` and pins it to a commit `sha`. `scripts/audit-pins.mjs` reports when upstream moves past a pin, and `tests/invariants/plugin-sources.test.js` fails if an entry loses its pin. See `docs/decisions/DOT-36.md`.
+
 ## Remote VM config (not a stow package)
 
 - **`remote/`**: Lightweight bash-based dotfiles for headless Linux VMs. Has its own installer (`install.sh`) that symlinks shared configs (vim, tmux) and generates a safe gitconfig. See [Remote VM Setup](REMOTE.md).

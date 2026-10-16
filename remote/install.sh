@@ -311,25 +311,27 @@ elif command -v bun  &>/dev/null;        then CLAUDE_JS_RUNTIME="bun"
 elif [ -x "$HOME/.bun/bin/bun" ];        then CLAUDE_JS_RUNTIME="$HOME/.bun/bin/bun"
 fi
 if [ -n "$CLAUDE_JS_RUNTIME" ]; then
-  "$CLAUDE_JS_RUNTIME" -e "
+  DOTFILES_DIR="$DOTFILES_DIR" "$CLAUDE_JS_RUNTIME" -e "
     const { readFileSync, writeFileSync, mkdirSync } = require('fs');
     const dir = process.env.HOME + '/.claude';
     const file = dir + '/settings.json';
     let cfg = {};
     try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch (_) {}
-    // Not pinned to a commit: Claude Code cannot pin a marketplace source.
-    // Accepted in docs/security-baseline.md (DOT-24); a change to this source
-    // or the plugin list fails tests/invariants/plugin-sources.test.js.
+    // Plugins come from this repo's own marketplace (_agent/marketplace),
+    // which pins each one to an upstream commit; scripts/audit-pins.mjs
+    // watches the pin (DOT-36). The unpinned copy earlier runs enabled is
+    // removed. A change here fails tests/invariants/plugin-sources.test.js.
     cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};
-    cfg.extraKnownMarketplaces['claude-plugins-official'] = { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } };
+    cfg.extraKnownMarketplaces['dotfiles'] = { source: { source: 'directory', path: process.env.DOTFILES_DIR + '/_agent/marketplace' } };
     cfg.enabledPlugins = cfg.enabledPlugins || {};
-    cfg.enabledPlugins['frontend-design@claude-plugins-official'] = true;
+    delete cfg.enabledPlugins['frontend-design@claude-plugins-official'];
+    cfg.enabledPlugins['frontend-design@dotfiles'] = true;
     // Concise output style fleet-wide, so remote agents match the local default.
     cfg.outputStyle = 'Concise';
     mkdirSync(dir, { recursive: true });
     writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
   "
-  green "  enabled frontend-design@claude-plugins-official"
+  green "  enabled frontend-design@dotfiles (pinned)"
   green "  set outputStyle=Concise"
 else
   red "  skipped: no node/bun runtime found to update settings.json"

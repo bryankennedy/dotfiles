@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // audit-pins.mjs — tell me when a pinned network install has fallen behind.
 //
-// Three files pin code that is fetched over the network and run or unpacked
+// Four files pin code that is fetched over the network and run or unpacked
 // into an agent's path:
 //
 //   remote/install.sh (the fleet) pins bun to an exact release (BUN_VERSION) and zoxide
@@ -14,6 +14,9 @@
 //   nix-darwin/scripts/impeccable-install.mjs pins the impeccable skill bundle
 //   to a GitHub release tag (with the asset's SHA-256 checked in the script)
 //   and the impeccable CLI to an npm version.
+//
+//   _agent/marketplace/.claude-plugin/marketplace.json pins each Claude Code
+//   plugin that activation and the fleet enable to an upstream commit (DOT-36).
 //
 // Pinning stops an unreviewed install from running on every bootstrap or
 // rebuild — but it also means a security fix upstream does not reach a machine
@@ -65,6 +68,13 @@ const impCliPin = imp.match(/CLI_VERSION\s*=\s*'([0-9]+\.[0-9]+\.[0-9]+)'/)?.[1]
 const impSha = imp.match(/BUNDLE_SHA256\s*=\s*'([0-9a-f]{64})'/)?.[1];
 if (!impSkillPin) die(`could not find SKILL_TAG in nix-darwin/scripts/impeccable-install.mjs — did the constant change shape?`);
 if (!impCliPin) die(`could not find CLI_VERSION in nix-darwin/scripts/impeccable-install.mjs — did the constant change shape?`);
+const market = JSON.parse(read("_agent/marketplace/.claude-plugin/marketplace.json"));
+const pluginPins = market.plugins.map((p) => ({ name: p.name, ...p.source }));
+for (const p of pluginPins) {
+  const repo = p.url?.match(/^https:\/\/github\.com\/([^/]+\/[^/]+?)(\.git)?$/)?.[1];
+  if (p.source !== "git-subdir" || !/^[0-9a-f]{40}$/.test(p.sha ?? "") || !repo) die(`plugin ${p.name} in _agent/marketplace is not a git-subdir GitHub source pinned by a full sha — did the entry change shape?`);
+  p.repo = repo;
+}
 if (!impSha) die(`could not find a 64-hex BUNDLE_SHA256 in nix-darwin/scripts/impeccable-install.mjs — the tag is pinned but the digest is not`);
 
 const gh = async (url) => {
@@ -149,6 +159,18 @@ const checks = [
     latest: () => npmLatest("impeccable"),
     kind: "version",
   },
+  ...pluginPins.map((p) => ({
+    name: p.name,
+    where: "_agent/marketplace",
+    pinned: p.sha.slice(0, 10),
+    async latest() {
+      // The pin is the last commit that touched the plugin's directory, so
+      // any newer commit on that path means the plugin upstream has moved.
+      const commits = await gh(`https://api.github.com/repos/${p.repo}/commits?path=${encodeURIComponent(p.path)}&per_page=1`);
+      return (commits?.[0]?.sha || "").slice(0, 10);
+    },
+    kind: "plugin-sha",
+  })),
 ];
 
 let behind = 0, unknown = 0;
@@ -169,7 +191,7 @@ for (const c of checks) {
 }
 
 const w = (s, n) => String(s).padEnd(n);
-console.error(`audit-pins: read ${checks.length} pins from remote/install.sh, nix-darwin/flake.nix and nix-darwin/scripts/impeccable-install.mjs`);
+console.error(`audit-pins: read ${checks.length} pins from remote/install.sh, nix-darwin/flake.nix, nix-darwin/scripts/impeccable-install.mjs and _agent/marketplace`);
 for (const r of rows) {
   console.log(`${w(r.status, 8)} ${w(r.name, 17)} ${w(r.kind, 14)} pinned=${w(r.pinned, 12)} latest=${w(r.latest, 12)} ${r.where}`);
 }

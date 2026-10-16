@@ -1,0 +1,16 @@
+{
+  "name": "dotfiles",
+  "owner": { "name": "bryankennedy" },
+  "plugins": [
+    {
+      "name": "frontend-design",
+      "description": "Anthropic's frontend-design skill, pinned to a reviewed upstream commit (DOT-36).",
+      "source": {
+        "source": "git-subdir",
+        "url": "https://github.com/anthropics/claude-plugins-official.git",
+        "path": "plugins/frontend-design",
+        "sha": "44490cccaf6d9f82fdeec9416fbf7c9bd72575dc"
+      }
+    }
+  ]
+}

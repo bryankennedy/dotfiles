@@ -9,7 +9,7 @@ import { test, expect, describe } from "bun:test";
 import {
   workflowSteps, secretsOnPullRequest, unpinnedUses, credentialedCheckouts, runsTouchingPr,
   symlinkStripStep, unverifiedDownloads, codeownersRules, deadCodeownersRules,
-  hookFailsOpen, hooksPathActivation, unacceptedPluginSources,
+  hookFailsOpen, hooksPathActivation, unexpectedPluginSources, unpinnedMarketplaceEntries,
 } from "../lib/repo.js";
 
 describe("canary: the Forgejo CI rules reject the shapes they exist for", () => {
@@ -97,26 +97,45 @@ describe("canary: the commit-time secret check rejects a hook or activation that
   });
 });
 
-describe("canary: the plugin-source rule rejects what the baseline did not accept", () => {
-  const accepted = { marketplaces: { m: "{ source: { source: 'github', repo: 'o/m' } }" }, plugins: ["p@m"] };
+describe("canary: the plugin-source rule rejects what was not expected", () => {
+  const expected = { marketplaces: { m: "{ source: { source: 'directory', path: '/r/m' } }" }, plugins: ["p@m"], retired: ["p@old"] };
   const ok = [
     "    cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};",
-    "    cfg.extraKnownMarketplaces['m'] = { source: { source: 'github', repo: 'o/m' } };",
+    "    cfg.extraKnownMarketplaces['m'] = { source: { source: 'directory', path: '/r/m' } };",
     "    // cfg.enabledPlugins['commented@out'] = true;",
     "    cfg.enabledPlugins = cfg.enabledPlugins || {};",
+    "    delete cfg.enabledPlugins['p@old'];",
     "    cfg.enabledPlugins['p@m'] = true;",
   ].join("\n");
 
   test("a new marketplace, a changed source, a new plugin, or an unreadable shape", () => {
-    expect(unacceptedPluginSources(ok, accepted)).toEqual([]);
-    expect(unacceptedPluginSources(ok + "\ncfg.extraKnownMarketplaces['x'] = { source: { source: 'github', repo: 'e/x' } };", accepted)).toHaveLength(1);
-    expect(unacceptedPluginSources(ok.replace("'o/m'", "'evil/m'"), accepted)).toHaveLength(1);
-    expect(unacceptedPluginSources(ok + "\ncfg.enabledPlugins['q@m'] = true;", accepted)).toHaveLength(1);
-    expect(unacceptedPluginSources(ok + "\nObject.assign(cfg.enabledPlugins, { 'q@x': true });", accepted)).toHaveLength(1);
+    expect(unexpectedPluginSources(ok, expected)).toEqual([]);
+    expect(unexpectedPluginSources(ok + "\ncfg.extraKnownMarketplaces['x'] = { source: { source: 'github', repo: 'e/x' } };", expected)).toHaveLength(1);
+    expect(unexpectedPluginSources(ok.replace("'/r/m'", "'/evil/m'"), expected)).toHaveLength(1);
+    expect(unexpectedPluginSources(ok + "\ncfg.enabledPlugins['q@m'] = true;", expected)).toHaveLength(1);
+    expect(unexpectedPluginSources(ok + "\nObject.assign(cfg.enabledPlugins, { 'q@x': true });", expected)).toHaveLength(1);
+    expect(unexpectedPluginSources(ok + "\ndelete cfg.enabledPlugins['p@m'];", expected)).toHaveLength(1);
   });
 
-  test("an accepted entry that disappears is reported, so the baseline is retired with it", () => {
-    expect(unacceptedPluginSources(ok.replace("cfg.enabledPlugins['p@m'] = true;", ""), accepted)).toHaveLength(1);
-    expect(unacceptedPluginSources("", accepted)).toHaveLength(2);
+  test("an expected entry that disappears is reported", () => {
+    expect(unexpectedPluginSources(ok.replace("cfg.enabledPlugins['p@m'] = true;", ""), expected)).toHaveLength(1);
+    expect(unexpectedPluginSources("", expected)).toHaveLength(2);
+  });
+});
+
+describe("canary: the marketplace pin rule rejects an entry that is not pinned", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  const entry = (source) => JSON.stringify({ name: "m", plugins: [{ name: "p", source }] });
+  const pinned = { source: "git-subdir", url: "https://example.com/r.git", path: "plugins/p", sha };
+
+  test("git-subdir with a full sha passes; anything looser does not", () => {
+    expect(unpinnedMarketplaceEntries(entry(pinned))).toEqual([]);
+    expect(unpinnedMarketplaceEntries(entry({ ...pinned, sha: undefined }))).toHaveLength(1);
+    expect(unpinnedMarketplaceEntries(entry({ ...pinned, sha: sha.slice(0, 12) }))).toHaveLength(1);
+    expect(unpinnedMarketplaceEntries(entry({ ...pinned, ref: "main" }))).toHaveLength(1);
+    expect(unpinnedMarketplaceEntries(entry({ source: "github", repo: "o/r" }))).toHaveLength(1);
+    expect(unpinnedMarketplaceEntries(entry("./plugins/p"))).toHaveLength(1);
+    expect(unpinnedMarketplaceEntries("{")).toHaveLength(1);
+    expect(unpinnedMarketplaceEntries(JSON.stringify({ name: "m", plugins: [] }))).toHaveLength(1);
   });
 });

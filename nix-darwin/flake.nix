@@ -419,16 +419,17 @@
           // The fleet does not set this — remote/install.sh leaves the mode at
           // Claude Code's own default.
           cfg.permissions.defaultMode = 'auto';
-          // Standard plugins enabled on every machine. The official marketplace
-          // is registered explicitly (mirrors the cloudflare plugin setup) so a
-          // fresh install can resolve the plugin without a prior /plugin install.
-          // Not pinned to a commit: Claude Code cannot pin a marketplace source.
-          // Accepted in docs/security-baseline.md (DOT-24); a change to this source
-          // or the plugin list fails tests/invariants/plugin-sources.test.js.
+          // Standard plugins enabled on every machine, from this repo's own
+          // marketplace (_agent/marketplace), which pins each plugin to an
+          // upstream commit; scripts/audit-pins.mjs watches the pin (DOT-36).
+          // The unpinned frontend-design@claude-plugins-official that earlier
+          // switches enabled is removed so only the pinned copy loads.
+          // A change here fails tests/invariants/plugin-sources.test.js.
           cfg.extraKnownMarketplaces = cfg.extraKnownMarketplaces || {};
-          cfg.extraKnownMarketplaces['claude-plugins-official'] = { source: { source: 'github', repo: 'anthropics/claude-plugins-official' } };
+          cfg.extraKnownMarketplaces['dotfiles'] = { source: { source: 'directory', path: '/Users/bk/src/dotfiles/_agent/marketplace' } };
           cfg.enabledPlugins = cfg.enabledPlugins || {};
-          cfg.enabledPlugins['frontend-design@claude-plugins-official'] = true;
+          delete cfg.enabledPlugins['frontend-design@claude-plugins-official'];
+          cfg.enabledPlugins['frontend-design@dotfiles'] = true;
           mkdirSync(dir, { recursive: true });
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "

@@ -200,13 +200,13 @@ export function hooksPathActivation(flake) {
 /**
  * Problems with the plugin marketplaces and plugins a settings-merge script
  * writes into ~/.claude/settings.json: a marketplace or source not in
- * `accepted.marketplaces` (name -> source text, compared without whitespace),
- * a plugin not in `accepted.plugins`, or a line touching either key in a shape
- * this cannot read. Claude Code cannot pin a marketplace to a commit, so each
- * accepted entry is an accepted risk in docs/security-baseline.md, and this
- * keeps the acceptance exactly as wide as it was written (DOT-24).
+ * `expected.marketplaces` (name -> source text, compared without whitespace),
+ * a plugin not in `expected.plugins`, a removal of a key not in
+ * `expected.retired`, or a line touching either key in a shape this cannot
+ * read. The marketplace is this repo's own, so its source is a fixed path and
+ * the commit pins live in its marketplace.json (DOT-36).
  */
-export function unacceptedPluginSources(body, accepted) {
+export function unexpectedPluginSources(body, expected) {
   const bad = [];
   const squash = (s) => s.replace(/\s+/g, "");
   const seen = new Set();
@@ -215,23 +215,47 @@ export function unacceptedPluginSources(body, accepted) {
     if (/^\s*cfg\.(extraKnownMarketplaces|enabledPlugins)\s*=\s*cfg\.\1\s*\|\|\s*\{\s*\};\s*$/.test(l)) continue;
     const m = /^\s*cfg\.extraKnownMarketplaces\[['"]([^'"]+)['"]\]\s*=\s*(\{.*\});\s*$/.exec(l);
     const p = /^\s*cfg\.enabledPlugins\[['"]([^'"]+)['"]\]\s*=\s*true;\s*$/.exec(l);
+    const d = /^\s*delete\s+cfg\.enabledPlugins\[['"]([^'"]+)['"]\];\s*$/.exec(l);
     if (m) {
       seen.add(`marketplace ${m[1]}`);
-      const want = accepted.marketplaces[m[1]];
-      if (want === undefined) bad.push(`marketplace not accepted in the baseline: ${m[1]}`);
-      else if (squash(want) !== squash(m[2])) bad.push(`marketplace ${m[1]} source differs from the accepted one: ${m[2]}`);
+      const want = expected.marketplaces[m[1]];
+      if (want === undefined) bad.push(`marketplace not expected: ${m[1]}`);
+      else if (squash(want) !== squash(m[2])) bad.push(`marketplace ${m[1]} source differs from the expected one: ${m[2]}`);
     } else if (p) {
       seen.add(`plugin ${p[1]}`);
-      if (!accepted.plugins.includes(p[1])) bad.push(`plugin not accepted in the baseline: ${p[1]}`);
+      if (!expected.plugins.includes(p[1])) bad.push(`plugin not expected: ${p[1]}`);
+    } else if (d) {
+      if (!(expected.retired ?? []).includes(d[1])) bad.push(`removal not expected: ${d[1]}`);
     } else {
       bad.push(`unrecognised marketplace or plugin line: ${l.trim()}`);
     }
   }
-  for (const name of Object.keys(accepted.marketplaces)) {
-    if (!seen.has(`marketplace ${name}`)) bad.push(`accepted marketplace ${name} not found; retire its baseline entry or fix the shape`);
+  for (const name of Object.keys(expected.marketplaces)) {
+    if (!seen.has(`marketplace ${name}`)) bad.push(`expected marketplace ${name} not found; fix the shape or the expectation`);
   }
-  for (const name of accepted.plugins) {
-    if (!seen.has(`plugin ${name}`)) bad.push(`accepted plugin ${name} not found; retire its baseline entry or fix the shape`);
+  for (const name of expected.plugins) {
+    if (!seen.has(`plugin ${name}`)) bad.push(`expected plugin ${name} not found; fix the shape or the expectation`);
+  }
+  return bad;
+}
+
+/**
+ * Plugin entries in a marketplace.json that are not pinned: any source other
+ * than `git-subdir` with a full 40-hex `sha`, or a `ref` beside the sha
+ * (Claude Code would follow the ref). A relative-path source would load
+ * whatever this checkout holds, which is reviewed, but this marketplace exists
+ * to pin third-party plugins, so it is reported too.
+ */
+export function unpinnedMarketplaceEntries(json) {
+  let m;
+  try { m = JSON.parse(json); } catch (e) { return [`marketplace.json does not parse: ${e.message}`]; }
+  if (!Array.isArray(m?.plugins) || m.plugins.length === 0) return ["marketplace.json lists no plugins"];
+  const bad = [];
+  for (const p of m.plugins) {
+    const s = p?.source;
+    if (typeof s !== "object" || s === null || s.source !== "git-subdir") bad.push(`${p?.name}: source is not git-subdir`);
+    else if (!/^[0-9a-f]{40}$/.test(s.sha ?? "")) bad.push(`${p.name}: no full commit sha`);
+    else if (s.ref !== undefined) bad.push(`${p.name}: ref set beside sha`);
   }
   return bad;
 }
