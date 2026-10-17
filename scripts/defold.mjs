@@ -211,8 +211,8 @@ function main() {
       "difference between a no-op and a $HOME with no dotfiles in it.\n");
     conflicts.forEach((c) => console.error("  " + c.trim()));
     console.error("\nA conflicting target is a real file where stow wants a symlink. If an app\n" +
-      "generates it (antidote writes ~/.zsh_plugins.zsh, for example), the file is\n" +
-      "not yours to link — add it to <package>/.stow-local-ignore. Stow reads that\n" +
+      "generates it, the file is not yours to link — add it to\n" +
+      "<package>/.stow-local-ignore. Stow reads that\n" +
       "from the package directory, not the repo root.");
     process.exit(1);
   }

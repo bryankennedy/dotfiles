@@ -40,7 +40,7 @@ Once the dotfiles are installed on this machine, the day-to-day loop is just two
 
 ### First-time setup (new machine)
 
-Bootstrapping a fresh macOS machine (clone, nix-darwin rebuild, Antidote bundle, verification) lives in **[docs/SETUP.md](docs/SETUP.md)**.
+Bootstrapping a fresh macOS machine (clone, nix-darwin rebuild, Xcode, verification) lives in **[docs/SETUP.md](docs/SETUP.md)**.
 
 ## Remote VM Setup (exe.dev, cloud VMs, etc.)
 

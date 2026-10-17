@@ -83,8 +83,17 @@
         pkgs.nodejs
         pkgs.google-clasp
         pkgs.vim
+        # Zsh plugins, sourced by zsh/.zshrc from /run/current-system/sw.
+        # Pinned by flake.lock instead of cloned at a moving ref (DOT-34).
+        pkgs.zsh-autosuggestions
+        pkgs.zsh-completions
+        pkgs.zsh-syntax-highlighting
         zxcvbn-cli
       ];
+
+      # zsh-syntax-highlighting installs to share/zsh-syntax-highlighting,
+      # which the system profile does not link by default.
+      environment.pathsToLink = [ "/share/zsh-syntax-highlighting" ];
 
       # Watches ~/Downloads (e.g. HEIC files dropped in via AirDrop) and
       # converts them to JPG with `sips`. Declared here instead of a raw
@@ -193,8 +202,6 @@
           }
           # Manage remote and local VMs
           "ansible"
-          # Zsh plugin manager
-          "antidote"
           # Window border highlights for active/inactive windows
           "FelixKratz/formulae/borders"
           # Better cat

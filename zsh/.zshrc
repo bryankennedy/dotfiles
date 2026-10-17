@@ -38,17 +38,16 @@ autoload -Uz edit-command-line
 zle -N edit-command-line
 bindkey -M vicmd 'v' edit-command-line
 
-# Set up Antidote - A tool for managing zsh plugins
-source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
-
-# Ensure zsh-completions is loaded early
-fpath=(${ZDOTDIR:-$HOME}/.antidote/plugins/zsh-users/zsh-completions/src $fpath)
-
-# Load Antidote plugins
-if [[ ! -f ${ZDOTDIR:-$HOME}/.zsh_plugins.zsh ]]; then
-  antidote bundle < ${ZDOTDIR:-$HOME}/.zsh_plugins.txt > ${ZDOTDIR:-$HOME}/.zsh_plugins.zsh
-fi
-source ${ZDOTDIR:-$HOME}/.zsh_plugins.zsh
+# Zsh plugins come from nixpkgs (nix-darwin systemPackages), pinned by
+# flake.lock (DOT-34). zsh-completions needs no line here: /etc/zshenv already
+# puts /run/current-system/sw/share/zsh/site-functions on fpath.
+_zsh_plugins=/run/current-system/sw/share
+for _zsh_plugin in \
+  $_zsh_plugins/zsh-syntax-highlighting/zsh-syntax-highlighting.zsh \
+  $_zsh_plugins/zsh/plugins/zsh-autosuggestions/zsh-autosuggestions.zsh; do
+  [[ -r $_zsh_plugin ]] && source $_zsh_plugin
+done
+unset _zsh_plugins _zsh_plugin
 
 # Initialize zsh auto-completions
 autoload -Uz compinit && compinit

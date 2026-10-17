@@ -25,25 +25,7 @@ Notes:
 - The activation script stows all dotfile packages into `$HOME` for you — no separate Stow step is needed. To relink by hand, see [STRUCTURE.md](STRUCTURE.md#manual-stow-optional).
 - It also sets `core.hooksPath` for this checkout, so `.githooks/pre-commit` scans staged changes with gitleaks before every commit. A commit with a finding is refused. If you've read the finding and it's a false positive, `git commit --no-verify` overrides it.
 
-## 3) Regenerate Antidote plugin bundle (required on a new machine)
-
-The checked-in `~/.zsh_plugins.zsh` can reference stale cache paths from another machine. Rebuild it locally:
-
-```sh
-rm -f ~/.zsh_plugins.zsh
-antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
-exec zsh
-```
-
-If plugin download paths are still missing:
-
-```sh
-antidote update
-antidote bundle < ~/.zsh_plugins.txt > ~/.zsh_plugins.zsh
-exec zsh
-```
-
-## 4) Xcode (one-time)
+## 3) Xcode (one-time)
 
 The switch in step 2 installs Xcode (after the App Store sign-in described there), but two pieces stay manual:
 
@@ -59,11 +41,11 @@ The switch in step 2 installs Xcode (after the App Store sign-in described there
 
 The Command Line Tools (`xcode-select --install`) can stay installed next to Xcode; `xcode-select -p` shows which one is active.
 
-## 5) Optional verification
+## 4) Optional verification
 
 ```sh
 ls -l ~/.zshrc ~/.gitconfig ~/.vimrc ~/.config/ghostty ~/.config/wezterm ~/.config/karabiner ~/.config/starship.toml
-command -v starship antidote stow rg
+command -v starship stow rg
 source ~/.zshrc
 alias l c
 ```

@@ -5,8 +5,3 @@
 \.git
 \.gitignore
 \.DS_Store
-
-# Generated at runtime by antidote into $HOME (see zsh/.zshrc:24). Never stow it:
-# a symlink here would make antidote write its output straight into this repo,
-# which is the same tree-fold hazard --no-folding exists to prevent.
-^\.zsh_plugins\.zsh$
