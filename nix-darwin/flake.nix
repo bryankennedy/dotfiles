@@ -329,10 +329,18 @@
         # install may have to be clicked through in the App Store by hand.
         # After that, pointing xcode-select at Xcode and accepting its license
         # are one-time manual steps (docs/SETUP.md), not activation work.
+        # The uninstall cleanup above covers this list too: brew bundle runs
+        # `mas uninstall` on any App Store app not declared here, so an app
+        # installed from the App Store by hand is removed on the next switch.
         masApps = {
           # Full Xcode: the macOS SDKs, simulators and signing that the
           # Command Line Tools alone do not have
           Xcode = 497799835;
+          "Amazon Kindle" = 302584613;
+          "Brother P-touch Editor" = 1453365242;
+          ColorSlurp = 1287239339;
+          "Copy 'Em" = 876540291;
+          "Draw Things" = 6444050820;
         };
       };
       # --- HOMEBREW CONFIGURATION END ---
