@@ -28,6 +28,6 @@ git config --global user.email "you@example.com"
 
 ## What lives where
 
-- **Shared with mac** (symlinked, not duplicated): `vim/.vimrc`, `tmux/.tmux.conf`, `git/.gitignore_global`, `zsh/aliases-core.zsh`, `_agent/rules/global.md`, `_agent/skills/*.md`
+- **Shared with mac** (symlinked, not duplicated): `vim/.vimrc`, `nvim/.config/nvim/init.lua`, `tmux/.tmux.conf`, `git/.gitignore_global`, `zsh/aliases-core.zsh`, `_agent/rules/global.md`, `_agent/skills/*.md`
 - **Generated at install** (to strip personal data): `~/.gitconfig.dotfiles`, which `~/.gitconfig` includes
 - **Per-VM overrides** (not checked in): `~/.bashrc.local`, `~/.gitconfig.local`

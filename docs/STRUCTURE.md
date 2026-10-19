@@ -11,6 +11,9 @@ The repository is structured so that running `stow <package>` from the root syml
 - **ghostty/**: Ghostty terminal configuration and themes.
 - **zsh/**: Zsh shell configuration.
 - **vim/**: Vim configuration.
+- **nvim/**: Neovim configuration (`~/.config/nvim/init.lua`) — Neovide GUI settings, and the
+  OSC 52 yank that carries a clipboard copy out of an SSH session. `remote/install.sh` links the
+  same file on the VMs, where `vi` and `vim` are both Neovim.
 - **git/**: Git global configuration.
 - **starship/**: Starship prompt configuration.
 - **karabiner/**: Karabiner-Elements configuration. Includes a complex modification that maps the middle mouse button (button3) to F15 for use as the [Hex](https://github.com/kitlangton/Hex) trigger.

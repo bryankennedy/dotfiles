@@ -9,7 +9,7 @@
 #
 # What it does:
 #   1. Clones the repo (if not already present)
-#   2. Symlinks vim, tmux, and bash configs into ~
+#   2. Symlinks vim, neovim, tmux, and bash configs into ~
 #   3. Ensures the tmux-256color terminfo entry exists (ncurses-term)
 #   4. Installs a lightweight .bashrc that sources core aliases
 #   5. Generates ~/.gitconfig.dotfiles from the shared git/.gitconfig, stripping
@@ -75,6 +75,15 @@ backup_and_link "$DOTFILES_DIR/vim/.vimrc" "$HOME/.vimrc"
 mkdir -p "$HOME/.vim/colors"
 ln -sf "$DOTFILES_DIR/vim/.vim/colors/Tomorrow-Night.vim" "$HOME/.vim/colors/Tomorrow-Night.vim"
 dim "  linked color scheme"
+
+# --- Neovim ---------------------------------------------------------------
+# `vi` and `vim` on these VMs are both Neovim (Ubuntu's alternatives point
+# there), and Neovim never reads ~/.vimrc — so without this the editor that
+# actually opens runs with no config at all. Shares nvim/.config/nvim/init.lua
+# with the Mac, which stow links to the same path.
+green "\nNeovim"
+mkdir -p "$HOME/.config/nvim"
+backup_and_link "$DOTFILES_DIR/nvim/.config/nvim/init.lua" "$HOME/.config/nvim/init.lua"
 
 # --- Tmux -----------------------------------------------------------------
 green "\nTmux"
