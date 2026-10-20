@@ -15,8 +15,12 @@ config-file = ?font.ghostty
 #
 # Themes
 #
-# Active. Dark all the time, regardless of the macOS system appearance.
-theme = Catppuccin Macchiato
+# Active. Follows the macOS system appearance and swaps live, no restart
+# needed: Dawnfox in light mode, Nightfox in dark. Both ship with Ghostty.
+theme = light:Dawnfox,dark:Nightfox
+
+# Dark all the time, regardless of the macOS system appearance.
+# theme = Catppuccin Macchiato
 
 # Follow the macOS system appearance and swap between these two live, no
 # restart needed. Uncomment this line and comment out the one above to go back.

@@ -5,10 +5,19 @@
 onboarding = false
 
 [theme]
-# Active. Dark all the time, matching Ghostty's pinned `theme = Catppuccin
-# Macchiato`, regardless of the macOS system appearance.
-name = "catppuccin"
-auto_switch = false
+# Active. herdr has no Nightfox or Dawnfox, so it draws its UI from the
+# terminal's own palette instead. Ghostty swaps that palette with the macOS
+# appearance (light:Dawnfox, dark:Nightfox), so herdr follows it.
+# auto_switch is on only so the [theme.custom.light] fix below applies.
+name = "terminal"
+auto_switch = true
+dark_name = "terminal"
+light_name = "terminal"
+
+# Dark all the time, matching Ghostty's `theme = Catppuccin Macchiato`,
+# regardless of the macOS system appearance.
+# name = "catppuccin"
+# auto_switch = false
 
 # Track Ghostty, which itself follows the macOS system appearance
 # (light:ghostty-tokyonight-day, dark:Catppuccin Macchiato). herdr detects light
@@ -21,6 +30,14 @@ auto_switch = false
 # auto_switch = true
 # dark_name = "catppuccin"
 # light_name = "tokyo-night-day"
+
+# Light mode only, where the terminal theme leaves tab names unreadable on
+# Dawnfox. overlay1 is inactive tab text, a light gray meant for dark
+# backgrounds: Dawnfox's secondary foreground instead. surface_dim is the
+# active tab's text on the accent: Dawnfox's background instead.
+[theme.custom.light]
+overlay1 = "#625c87"
+surface_dim = "#faf4ed"
 
 [terminal]
 # Empty => $SHELL (zsh). "auto" uses a login shell on macOS.
