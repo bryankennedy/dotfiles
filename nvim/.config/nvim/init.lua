@@ -7,6 +7,24 @@ if vim.g.neovide then
   vim.g.neovide_position_animation_length = 0
 end
 
+-- Colorscheme — Nightfox in dark mode, Dawnfox in light, like Ghostty and herdr
+--
+-- Neovim asks the terminal for its background color (OSC 11) and sets
+-- 'background' from the answer, so the scheme follows Ghostty, which follows
+-- the macOS appearance. If the terminal never answers, 'background' stays dark.
+-- colors/nightfox-auto.lua picks the fox; it is a wrapper rather than an
+-- OptionSet autocmd because of how a 'background' change reloads the scheme.
+--
+-- Installed by vim.pack (Neovim 0.12+), pinned to the v3.10.0 release commit;
+-- the first launch asks before cloning it. The VMs are on 0.9.5, which has no
+-- vim.pack, so they skip this and keep the default colorscheme.
+if vim.pack then
+  vim.pack.add({
+    { src = 'https://github.com/EdenEast/nightfox.nvim', version = 'd3e8b1acc095baf57af81bb5e89fe7c4359eb619' },
+  })
+  vim.cmd.colorscheme('nightfox-auto')
+end
+
 -- Clipboard — a yank reaches the Mac's clipboard, even from a VM over SSH
 --
 -- `vi` and `vim` on the VMs are both Neovim (Ubuntu's alternatives point there),
