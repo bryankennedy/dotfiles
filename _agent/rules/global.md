@@ -73,3 +73,40 @@ When creating Mermaid diagrams, use these following standard colors:
     * **Loading:** All deployment secrets must be loaded using `dotenv` from a `.env` file.
     * **No Plaintext:** Secrets must **never** be included as plaintext in any script or command.
     * **GCP Integration:** Secrets should be added to Google Cloud resources (Cloud Run, Cloud Functions, etc.) only by referencing them from **Google Secret Manager**.
+
+---
+
+## 8. Writing Style: Simplified Technical English
+Write prose in **ASD-STE100 Simplified Technical English (STE)**. This applies to every channel: replies in an interactive session, pull request titles and bodies, commit message bodies, code review comments, notes and actions in the Progress tracker, and repository documentation. The fleet policy, with the per-channel table, is section 11 of infrastructure's [`docs/house-standards.md`](https://git.bck.dev/bkennedy/infrastructure/src/branch/main/docs/house-standards.md).
+
+**The rules.**
+
+1. One idea in one sentence. An instruction is 20 words or fewer. A descriptive sentence is 25 words or fewer.
+2. A paragraph holds 6 sentences or fewer. Its first sentence gives its topic.
+3. Use the active voice. Name the thing that does the work: "the runner pulls the image", not "the image is pulled".
+4. Write an instruction as a command, and write one instruction in one sentence. Two actions need two sentences.
+5. Use the simple tenses: simple present, simple past, simple future.
+6. Do not use an `-ing` word as a noun or as a verb tense. Write "to start the service", not "starting the service". An `-ing` word that is part of a technical name is correct ("load balancing", "static typing").
+7. Keep the articles. Write "remove the token", not "remove token".
+8. Use three words or fewer in a noun cluster. Break up "forge Actions secret rotation policy".
+9. Use one word for one thing, every time. Do not change the word to vary the prose.
+10. Put a condition or a warning before the action it governs: "Before you push, run the tests."
+11. Use plain words. Prefer: use (not utilize, leverage); before (not prior to); after (not subsequent to); to (not in order to); help (not assist); start (not initiate, commence); stop (not terminate); must (not shall); show (not surface); about (not approximately); so (not thereby, thus).
+12. Cut the filler: "it is important to note", "in terms of", "robust", "seamless", "comprehensive", "delve", and any opener that restates the question.
+13. Use no slang, no idiom and no metaphor.
+14. Write an abbreviation out in full the first time you use it in a document.
+15. Use a vertical list or a table when the text carries more than three steps, conditions or cases.
+16. Do not hide a second thought in an em dash or in parentheses. Write a second sentence.
+
+**Technical names are not restricted.** Any term that names the subject is correct, even when the STE dictionary does not hold it: "load balancer", "Cloudflare Tunnel", "static typing", "tailnet", "Durable Object", "idempotent". STE licenses these as technical names and technical verbs. Never write around a precise term to reach a simpler one. A vague word is not an improvement.
+
+**The dictionary is a preference, not a gate.** STE Part 2 approves about 900 general words, each with one part of speech and one meaning. It is copyrighted, so no copy of it is in these repositories, and the one-meaning rule is not enforced. Rule 11 carries the part of it that changes how the prose reads.
+
+**Do not apply STE to:**
+
+* **Code and quoted text.** Identifiers, file paths, commands, configuration, and quoted log or error text are copied exactly. Never rewrite one to make it plainer.
+* **Prose written for other people.** Marketing copy, website text, email, and anything written to persuade or to please are written in the register the request asks for.
+* **Design and creative work.** A colour, a feeling, an aesthetic and a joke need words STE does not hold. Keep the short sentences and the active voice; use any word the work needs.
+* **Material quoted from somewhere else**, and any text that must be reproduced faithfully.
+
+A rule that fights the work loses. The goal is a reader who understands the text in one pass, not a score.
