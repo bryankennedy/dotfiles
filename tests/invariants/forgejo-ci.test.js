@@ -52,6 +52,20 @@ for (const f of workflowFiles) {
     test("never exposes a secret to a pull_request run", () => {
       expect(secretsOnPullRequest(parse(f))).toEqual([]);
     });
+
+    // docs/security-baseline.md accepts the runner cache for exact keys only
+    // (INFRA-203, DOT-38): no prefix fallback, and a key that changes with
+    // the install script's pins.
+    test("restores and saves caches by exact key only", () => {
+      const loose = workflowSteps(parse(f))
+        .filter(({ step }) => /(^|\/)cache(\/(restore|save))?@/.test(step.uses ?? ""))
+        .filter(({ step }) =>
+          step.with?.["restore-keys"] !== undefined ||
+          !/^[a-z0-9-]+-\$\{\{ hashFiles\('\.forgejo\/ci\/install-tools\.sh'\) \}\}$/.test(String(step.with?.key))
+        )
+        .map(({ job, step }) => `${job}: ${step.name}`);
+      expect(loose).toEqual([]);
+    });
   });
 }
 
@@ -138,6 +152,17 @@ describe("claude-review.yml", () => {
 describe(".forgejo/ci/install-tools.sh", () => {
   test("downloads only through fetch(), against literal digests", () => {
     expect(unverifiedDownloads(read(join(ROOT, ".forgejo", "ci", "install-tools.sh")))).toEqual([]);
+  });
+
+  test("install_claude() checks CLAUDE_BIN_SHA256 before claude reaches /usr/local/bin", () => {
+    // Both branches, the restored binary and the fresh one, are checked before
+    // the shared install line at the end of the function.
+    const body = read(join(ROOT, ".forgejo", "ci", "install-tools.sh")).match(/^install_claude\(\) \{\n([\s\S]*?)\n\}$/m)?.[1] ?? "";
+    const install = body.indexOf('install -m 0755 "$cached" /usr/local/bin/claude');
+    const checks = [...body.matchAll(/echo "\$CLAUDE_BIN_SHA256  [^"]+" \| sha256sum -c/g)].map((m) => m.index);
+    expect(install, "install_claude() no longer installs to /usr/local/bin/claude as expected").toBeGreaterThan(0);
+    expect(checks.length).toBe(2);
+    expect(checks.every((i) => i < install)).toBe(true);
   });
 });
 

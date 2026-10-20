@@ -139,18 +139,19 @@ The empty global `permissions.allow` list (finding 6) is a condition of the acce
 
 **Re-verify, do not re-decide.** Pass 2d's `node -e` check prints `allow entries: 0` and `hooks: none`. Reassess if the allow-list grows, if the gate is loosened, if a new unpinned skill or plugin source is added to activation, or if a permission rule for a single tool is ever counted on as a control here. Assess such a rule against the private findings file before relying on it.
 
----
-
-### The review job restores the runner cache (accepted 2026-10-03)
+### The review job restores the runner cache
+*Accepted 2026-10-03 (DOT-33, INFRA-203). Rationale for keeping the runner as its basis in `docs/decisions/DOT-38.md`.*
 
 `.forgejo/workflows/claude-review.yml`'s `review` job holds `CLAUDE_CODE_OAUTH_TOKEN`, `CLAUDE_REVIEW_TOKEN` and the job token, and restores two caches: `review-tools-<hashFiles of .forgejo/ci/install-tools.sh>` and `ci-downloads-review-<same hash>`. `test.yml`'s `test` job restores `ci-downloads-bun-<same hash>` and holds no secret.
 
 Accepted because the forge's runner isolates cache entries written by `pull_request` runs: unreviewed code cannot plant an entry that a `pull_request_target`, `push` or `workflow_dispatch` run restores. This was measured in this repository on 2026-10-03 (PRs #86 and #87, DOT-33). The fleet rule, its four conditions and the probe result are in `bkennedy/infrastructure`: `docs/house-standards.md` section 7 and `docs/decisions/INFRA-203.md`.
 
-**Re-verify, do not re-decide.** Report again only if:
+The literal-digest checks in `.forgejo/ci/install-tools.sh` are not a basis for this entry. They catch a corrupt entry, but a restore unpacks a tar archive that can write anywhere in the container before any check runs.
+
+**Re-verify, do not re-decide.** This expires if:
 
 - `claude-review.yml`, or any workflow that holds a secret, gains a `pull_request` trigger;
-- a cache step uses `restore-keys` or a key not derived from `hashFiles`;
+- a cache step uses `restore-keys` or a key not derived from `hashFiles`, or the `tests/invariants/forgejo-ci.test.js` check that refuses both ("restores and saves caches by exact key only") is removed or loosened;
 - a workflow runs code from an account without write access on an event other than `pull_request`;
 - the runner moves to a new major version and INFRA-203 records no probe result for it.
 
