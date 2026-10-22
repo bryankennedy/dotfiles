@@ -55,12 +55,15 @@ const hostVarFiles = existsSync(HOST_VARS)
   : [];
 const sources = [hosts, ...hostVarFiles.map((f) => readFileSync(`${HOST_VARS}/${f}`, "utf8"))];
 
-// Values that identify the fleet: hostnames, accounts, proxy hostnames. A
+// Values that identify the fleet: hostnames, accounts, proxy hostnames.
+// public_host is the vms group's public hostname since infrastructure
+// INFRA-256 (2026-10-22): ansible_host there is computed from a fleet_via
+// switch, so the literal name moved to this key. A
 // multi-label name also adds its registrable domain; an IP address does not,
 // because its last two octets are not a name anyone would search for.
 const values = new Set();
 for (const src of sources)
-  for (const m of src.matchAll(/^\s*(?:ansible_host|ansible_user|herdr_user|gh_host):\s*["']?([^\s"'#]+)/gm))
+  for (const m of src.matchAll(/^\s*(?:ansible_host|public_host|ansible_user|herdr_user|gh_host):\s*["']?([^\s"'#]+)/gm))
     values.add(m[1]);
 for (const v of [...values]) {
   const p = v.split(".");
@@ -119,7 +122,7 @@ const terms = new Set([...values, ...names]);
 // A count of zero and a scan of zero things are not the same claim, so say what
 // we found. Values go to stdout; everything a human reads goes to stderr, so the
 // caller can pipe stdout into the search loop.
-const hostCount = (hosts.match(/^\s*ansible_host:/gm) ?? []).length;
+const hostCount = (hosts.match(/^\s*(?:ansible_host|public_host):/gm) ?? []).length;
 console.error(`audit-topology: ${terms.size} terms (${values.size} from inventory values, ` +
               `${names.size} inventory host names) from ${hostCount} hosts and ` +
               `${hostVarFiles.length} host_vars file(s); ${accounts.length} declared login ` +
