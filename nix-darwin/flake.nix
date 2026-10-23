@@ -458,7 +458,7 @@
         # one falls behind. Bump here, deliberately. `|| echo … >&2`, not
         # `|| true`, so an offline or failed install shows in the switch log
         # instead of silently leaving the old version in place.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g @anthropic-ai/claude-code@2.1.267 || echo "postActivation: claude-code install failed (offline?)" >&2
+        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g @anthropic-ai/claude-code@2.1.309 || echo "postActivation: claude-code install failed (offline?)" >&2
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g wrangler@4.129.0 || echo "postActivation: wrangler install failed (offline?)" >&2
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g vite@8.2.2 || echo "postActivation: vite install failed (offline?)" >&2
         # ghostty-font: live Ghostty font trials, A/B compare and Elo ranking.
