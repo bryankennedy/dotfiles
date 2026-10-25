@@ -240,25 +240,51 @@ fi
 
 # --- Bun ------------------------------------------------------------------
 green "\nBun"
-if command -v bun &> /dev/null || [ -x "$HOME/.bun/bin/bun" ]; then
-  dim "  bun already installed"
+# The bun CI installs (INFRA-154): the same release zip, checked against a
+# literal digest the way .forgejo/ci/install-tools.sh checks it, rather than
+# the bun.sh installer, which checks nothing. BUN_VERSION and the x64 digest
+# must equal BUN_VERSION and BUN_SHA256 in install-tools.sh; infrastructure's
+# runtime-pins check compares them. `herdr --remote` does not gate bun, so
+# unlike herdr this version is the one the VM keeps. To bump: change all four
+# lines, after hashing each zip yourself and comparing with the release's
+# SHASUMS256.txt.
+BUN_VERSION=1.4.4
+BUN_SHA256_X64=bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c
+BUN_SHA256_X64_BASELINE=e0446eb55995772eb9894bebae9a6be368d985a8b9271ee124486f9946eedd76
+BUN_SHA256_AARCH64=baa6bb36f51d6e58561e02bbea825038a9df454f673d6d776e8bbf86f8c7850e
+# This script owns ~/.bun/bin/bun and replaces it when it is not BUN_VERSION,
+# so a pin bump reaches a running VM on its next play, not only a fresh one
+# (INFRA-260). A binary that fails, prints nothing, or takes more than 10
+# seconds to print its version reads as "unrunnable" and is replaced too. A
+# bun off the pin that this script cannot replace fails the play. A bun
+# elsewhere on PATH, with none in ~/.bun/bin, belongs to something else and
+# is left alone.
+bun_have=""
+bun_probe=("$HOME/.bun/bin/bun" --version)
+if command -v timeout &> /dev/null; then
+  bun_probe=(timeout 10 "${bun_probe[@]}")
+fi
+if [ -x "$HOME/.bun/bin/bun" ]; then
+  bun_have="$("${bun_probe[@]}" 2>/dev/null </dev/null)" || bun_have=""
+  bun_have="${bun_have:-unrunnable}"
+fi
+if [ "$bun_have" = "$BUN_VERSION" ]; then
+  export PATH="$HOME/.bun/bin:$PATH"
+  dim "  bun $BUN_VERSION already installed"
+elif [ -z "$bun_have" ] && command -v bun &> /dev/null; then
+  dim "  bun already installed at $(command -v bun), outside ~/.bun/bin"
 elif ! command -v unzip &> /dev/null; then
   # The bun installer needs unzip to unpack the binary
   red "  skipped bun: 'unzip' not found (install it, then re-run)"
+  if [ -n "$bun_have" ]; then
+    exit 1
+  fi
 else
-  green "  installing bun..."
-  # The bun CI installs (INFRA-154): the same release zip, checked against a
-  # literal digest the way .forgejo/ci/install-tools.sh checks it, rather than
-  # the bun.sh installer, which checks nothing. BUN_VERSION and the x64 digest
-  # must equal BUN_VERSION and BUN_SHA256 in install-tools.sh; infrastructure's
-  # runtime-pins check compares them. `herdr --remote` does not gate bun, so
-  # unlike herdr this version is the one the VM keeps. To bump: change all four
-  # lines, after hashing each zip yourself and comparing with the release's
-  # SHASUMS256.txt.
-  BUN_VERSION=1.4.4
-  BUN_SHA256_X64=bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c
-  BUN_SHA256_X64_BASELINE=e0446eb55995772eb9894bebae9a6be368d985a8b9271ee124486f9946eedd76
-  BUN_SHA256_AARCH64=baa6bb36f51d6e58561e02bbea825038a9df454f673d6d776e8bbf86f8c7850e
+  if [ -n "$bun_have" ]; then
+    green "  replacing bun $bun_have with $BUN_VERSION..."
+  else
+    green "  installing bun..."
+  fi
   # The build the bun.sh installer would pick: baseline x64 on a CPU without
   # AVX2. Nothing on musl (Alpine): this pins no musl build, so it says so.
   bun_build=""
@@ -279,20 +305,26 @@ else
   fi
   if [ -z "$bun_build" ]; then
     red "  skipped bun: no pinned build for $(uname -m) on this libc"
+    if [ -n "$bun_have" ]; then
+      exit 1
+    fi
   else
     # Under ~/.bun, not /tmp: --version runs the binary before it is
     # installed, and a noexec /tmp would fail that check on a good binary.
     mkdir -p "$HOME/.bun"
     bun_tmp="$(mktemp -d "$HOME/.bun/.install.XXXXXX")"
     # --version before install: a binary this CPU cannot run never lands where
-    # the "already installed" check above would keep it.
+    # the "already installed" check above would keep it. The rename is the
+    # install: bun_tmp is under ~/.bun, so mv is one rename on one filesystem,
+    # and a job that is running the old bun keeps its open copy.
     if curl -fsSL --retry 3 -o "$bun_tmp/bun.zip" \
          "https://github.com/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-linux-${bun_build}.zip" \
        && echo "${bun_sha256}  $bun_tmp/bun.zip" | sha256sum -c --quiet - \
        && unzip -q -o "$bun_tmp/bun.zip" -d "$bun_tmp" \
        && "$bun_tmp/bun-linux-${bun_build}/bun" --version >/dev/null \
        && mkdir -p "$HOME/.bun/bin" \
-       && install -m 0755 "$bun_tmp/bun-linux-${bun_build}/bun" "$HOME/.bun/bin/bun" \
+       && chmod 0755 "$bun_tmp/bun-linux-${bun_build}/bun" \
+       && mv -f "$bun_tmp/bun-linux-${bun_build}/bun" "$HOME/.bun/bin/bun" \
        && ln -sf bun "$HOME/.bun/bin/bunx"; then
       # On PATH for the steps below; remote/bashrc puts it there for later shells.
       export PATH="$HOME/.bun/bin:$PATH"
@@ -300,7 +332,8 @@ else
       rm -rf "$bun_tmp"
     else
       # Fatal, as the old installer pipe was under pipefail: a VM left
-      # without bun fails later steps in ways that are harder to read.
+      # without bun, or on a bun the pin no longer allows, fails later steps
+      # in ways that are harder to read. A failed replace keeps the old bun.
       rm -rf "$bun_tmp"
       red "  bun install failed: download, digest or run check (bun-v$BUN_VERSION, $bun_build)"
       exit 1
