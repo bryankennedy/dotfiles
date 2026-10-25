@@ -360,8 +360,9 @@
 
       # macOS system configs
       # Application firewall. macOS keeps a per-app allow/block list that this
-      # module does not touch; these five switches are the global ones. "Block
-      # all incoming connections" overrides the per-app list and stops AirDrop
+      # module does not touch (the rapportd entry below is set in
+      # postActivation); these five switches are the global ones. "Block all
+      # incoming connections" overrides the per-app list and stops AirDrop
       # (sharingd) from receiving, so it stays off. Stealth mode does not
       # affect AirDrop, which discovers peers over AWDL with Bonjour, so it
       # stays on. Declared here so a click in System Settings cannot silently
@@ -410,6 +411,17 @@
         # see this Mac. It is the macOS default, written here so it survives a
         # change in System Settings. The key is per user, so it runs as bk.
         /usr/bin/sudo -Hu bk /usr/bin/defaults write com.apple.sharingd DiscoverableMode -string "Contacts Only" || echo "postActivation: could not set the AirDrop receiving mode" >&2
+        # Continuity daemon (rapportd): allow incoming connections. When an
+        # iPhone sends to one of its owner's own devices, it opens the
+        # connection to rapportd on the Mac. With rapportd on the firewall's
+        # per-app block list the phone shows "waiting" then "failed", while
+        # Mac-to-phone works because the Mac opens that connection itself.
+        # The nix-darwin module does not manage per-app entries, so the rule
+        # is set here. --add is only needed when the daemon is not yet listed.
+        /usr/libexec/ApplicationFirewall/socketfilterfw --listapps | /usr/bin/grep -q /usr/libexec/rapportd \
+          || /usr/libexec/ApplicationFirewall/socketfilterfw --add /usr/libexec/rapportd >/dev/null \
+          || echo "postActivation: could not add rapportd to the firewall list" >&2
+        /usr/libexec/ApplicationFirewall/socketfilterfw --unblockapp /usr/libexec/rapportd >/dev/null || echo "postActivation: could not allow incoming connections for rapportd; AirDrop from the phone will fail" >&2
         ${pkgs.bash}/bin/bash ${./scripts/spotlight-option-space-hotkey.sh}
         # Link this repo's dotfiles into $HOME via GNU Stow. This package list is
         # the canonical source of truth for what gets stowed — docs/STRUCTURE.md
