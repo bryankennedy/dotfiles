@@ -359,6 +359,21 @@
       security.pam.services.sudo_local.touchIdAuth = true;
 
       # macOS system configs
+      # Application firewall. macOS keeps a per-app allow/block list that this
+      # module does not touch; these five switches are the global ones. "Block
+      # all incoming connections" overrides the per-app list and stops AirDrop
+      # (sharingd) from receiving, so it stays off. Stealth mode does not
+      # affect AirDrop, which discovers peers over AWDL with Bonjour, so it
+      # stays on. Declared here so a click in System Settings cannot silently
+      # bring "block all" back; every switch re-applies this state.
+      networking.applicationFirewall = {
+        enable = true;
+        blockAllIncoming = false;
+        allowSigned = true;
+        allowSignedApp = true;
+        enableStealthMode = true;
+      };
+
       system.defaults = {
         dock = {
           autohide = true;
@@ -390,6 +405,11 @@
         ln -sf ${pkgs.neovim}/bin/nvim /usr/local/bin/nvim
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelToggle -bool true
         /usr/bin/defaults write com.apple.universalaccess closeViewScrollWheelModifiersInt -int 262144
+        # AirDrop receiving mode: "Contacts Only" so only devices signed in to an
+        # Apple ID in the owner's Contacts (the owner's own phone included) can
+        # see this Mac. It is the macOS default, written here so it survives a
+        # change in System Settings. The key is per user, so it runs as bk.
+        /usr/bin/sudo -Hu bk /usr/bin/defaults write com.apple.sharingd DiscoverableMode -string "Contacts Only" || echo "postActivation: could not set the AirDrop receiving mode" >&2
         ${pkgs.bash}/bin/bash ${./scripts/spotlight-option-space-hotkey.sh}
         # Link this repo's dotfiles into $HOME via GNU Stow. This package list is
         # the canonical source of truth for what gets stowed — docs/STRUCTURE.md
