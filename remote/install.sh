@@ -255,10 +255,10 @@ else
   # unlike herdr this version is the one the VM keeps. To bump: change all four
   # lines, after hashing each zip yourself and comparing with the release's
   # SHASUMS256.txt.
-  BUN_VERSION=1.3.13
-  BUN_SHA256_X64=79c0771fa8b92c33aae41e15a0e0d307ea99d0e2f00317c71c6c53237a78e25a
-  BUN_SHA256_X64_BASELINE=9d8a24292a7068090205daac0a5a223f5f69736f5287e37bf88d3b4031edc750
-  BUN_SHA256_AARCH64=70bae41b3908b0a120e1e58c5c8af30e74afae3b8d11b0d3fdd8e787ddfb4b22
+  BUN_VERSION=1.4.4
+  BUN_SHA256_X64=bf8ccbfb2b0b80159e0f9a6d15c55317add8077534dbc6130a3edb52fccb395c
+  BUN_SHA256_X64_BASELINE=e0446eb55995772eb9894bebae9a6be368d985a8b9271ee124486f9946eedd76
+  BUN_SHA256_AARCH64=baa6bb36f51d6e58561e02bbea825038a9df454f673d6d776e8bbf86f8c7850e
   # The build the bun.sh installer would pick: baseline x64 on a CPU without
   # AVX2. Nothing on musl (Alpine): this pins no musl build, so it says so.
   bun_build=""

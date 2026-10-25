@@ -47,12 +47,12 @@
       # compares them. To bump: change bunVersion, and paste the SRI form
       # (sha256-<base64>) of bun-darwin-aarch64.zip's sha256 from the
       # release's SHASUMS256.txt after hashing the zip yourself.
-      bunVersion = "1.3.13";
+      bunVersion = "1.4.4";
       bun = pkgs.bun.overrideAttrs (_: {
         version = bunVersion;
         src = pkgs.fetchurl {
           url = "https://github.com/oven-sh/bun/releases/download/bun-v${bunVersion}/bun-darwin-aarch64.zip";
-          hash = "sha256-VGfj9l26Umuf6pjwzOBO+vwMY+Fpcz7Ce4dqOtMtoZA=";
+          hash = "sha256-wkDX8My5DCY6hJ/NsJt+5iYw2SE0jtaq/ahrnVd7xRA=";
         };
       });
     in {
@@ -80,7 +80,14 @@
         pkgs.imagemagick
         pkgs.mermaid-cli
         pkgs.neovim
-        pkgs.nodejs
+        # nodejs_26, not the nodejs alias (24.x). The Node security releases of
+        # 2026-10-20 (22.23.4, 24.22.1, 26.12.1) remove emSign ECC Root CA - G3
+        # from the built-in root store. At the locked nixpkgs rev the alias
+        # still ships 24.21.0, because the 24.22.1 bump is in staging, and
+        # nodejs_26 ships 26.12.1 (INFRA-264, docs/decisions/INFRA-264.md).
+        # Node 26 becomes Active LTS on 2026-10-28. Go back to the alias when
+        # nixpkgs points it at 26.
+        pkgs.nodejs_26
         pkgs.google-clasp
         pkgs.vim
         # Zsh plugins, sourced by zsh/.zshrc from /run/current-system/sw.
