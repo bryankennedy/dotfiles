@@ -1,3 +1,12 @@
+# Forge repos on the Mac use the nix OpenSSH (docs/decisions/INFRA-321.md).
+# Only repos with a forge remote read ~/.gitconfig-darwin. Stow links it on
+# the Mac; the VMs do not have it, and git skips a missing include.
+[includeIf "hasconfig:remote.*.url:ssh://git@git.bck.dev:2222/**"]
+	path = ~/.gitconfig-darwin
+[includeIf "hasconfig:remote.*.url:ssh://git.bck.dev:2222/**"]
+	path = ~/.gitconfig-darwin
+[includeIf "hasconfig:remote.*.url:git@git.bck.dev:*/**"]
+	path = ~/.gitconfig-darwin
 
 [core]
 	excludesfile = ~/.gitignore_global

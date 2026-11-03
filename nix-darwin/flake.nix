@@ -89,6 +89,9 @@
         # nixpkgs points it at 26.
         pkgs.nodejs_26
         pkgs.google-clasp
+        # OpenSSH with FIDO security key support, which Apple's build lacks
+        # (docs/decisions/INFRA-321.md).
+        pkgs.openssh
         pkgs.vim
         # Zsh plugins, sourced by zsh/.zshrc from /run/current-system/sw.
         # Pinned by flake.lock instead of cloned at a moving ref (DOT-34).

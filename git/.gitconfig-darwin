@@ -1,0 +1,3 @@
+# Mac-only: the nix OpenSSH for forge repos. See docs/decisions/INFRA-321.md.
+[core]
+	sshCommand = /run/current-system/sw/bin/ssh

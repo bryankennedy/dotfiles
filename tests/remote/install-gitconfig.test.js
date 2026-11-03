@@ -122,3 +122,21 @@ describe("remote/install.sh leaves ~/.gitconfig to whoever else writes there", (
     expect(backups().length).toBe(1);
   });
 });
+
+// INFRA-321: the shared git/.gitconfig includes the Mac-only ~/.gitconfig-darwin
+// for forge repos. A VM must never get that file, or every forge fetch there
+// would run a /run/current-system path that only exists on the Mac.
+describe("remote/install.sh keeps the Mac-only git settings off the VMs", () => {
+  test("a VM repo with a forge remote resolves no core.sshCommand", () => {
+    install();
+    expect(existsSync(join(home, ".gitconfig-darwin"))).toBe(false);
+    const repo = join(home, "repo");
+    mkdirSync(repo);
+    const run = (...args) => spawnSync("git", ["-C", repo, ...args], { env, encoding: "utf8" });
+    expect(run("init", "-q").status).toBe(0);
+    expect(run("remote", "add", "origin", "ssh://git@git.bck.dev:2222/owner/repo.git").status).toBe(0);
+    const r = run("config", "--get", "core.sshCommand");
+    expect(r.status, "core.sshCommand must be unset on a VM").toBe(1);
+    expect(r.stdout.trim()).toBe("");
+  });
+});
