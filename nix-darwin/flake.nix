@@ -201,6 +201,8 @@
         # settings survive until someone removes them on purpose.
         onActivation.cleanup = "uninstall";
         taps = [
+          # Hex dictation (see the casks list)
+          "anomalyco/tap"
           "drawthingsai/draw-things"
           "FelixKratz/formulae"
           "nikitabobko/tap"
@@ -285,6 +287,13 @@
           "1password-cli"
           "agentsview"
           "alfred"
+          # Hex dictation, from Anomaly's tap. Hex 3 moved from kitlangton/Hex
+          # (cask kitlangton-hex, bundle com.kitlangton.hex2) to anomalyco/hex,
+          # and the old app no longer updates. Both casks install
+          # /Applications/Hex.app, so the swap was done by hand once: uninstall
+          # the old cask, then install this one (docs/decisions/DOT-39.md). The
+          # dictation hotkey is set by scripts/hex.sh.
+          "anomalyco/tap/hex"
           "audacity"
           "claude"
           "cursor"
@@ -319,7 +328,6 @@
           "ghostty"
           "google-chrome"
           "keycastr"
-          "kitlangton-hex"
           # Open-source firewall (Objective-See)
           "lulu"
           # Finder alternative

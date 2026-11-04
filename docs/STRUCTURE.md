@@ -16,7 +16,7 @@ The repository is structured so that running `stow <package>` from the root syml
   same file on the VMs, where `vi` and `vim` are both Neovim.
 - **git/**: Git global configuration.
 - **starship/**: Starship prompt configuration.
-- **karabiner/**: Karabiner-Elements configuration. Includes a complex modification that maps the middle mouse button (button3) to F15 for use as the [Hex](https://github.com/kitlangton/Hex) trigger.
+- **karabiner/**: Karabiner-Elements configuration. Includes complex modifications that map the middle mouse button (button3), the fn key, and the Varmilo Pause key (and F15) to F17, the [Hex](https://github.com/anomalyco/hex) dictation trigger (`docs/decisions/DOT-39.md`).
 
   > **Important:** Complex modifications only apply to devices explicitly enabled in Karabiner. After stowing this config, open Karabiner-Elements → **Devices** tab and enable any non-keyboard devices (e.g. your mouse) that should be processed. Without this, complex modification rules will be silently ignored for that device.
 - **aerospace/**: Aerospace window manager configuration.
@@ -75,7 +75,7 @@ Some macOS applications store their configuration in `~/Library/Preferences` (vi
 
 | Script | App | What it configures |
 |--------|-----|--------------------|
-| `scripts/hex.sh` | [Hex](https://github.com/kitlangton/Hex) | Sets global hotkey to F15 (pairs with the Karabiner middle-mouse → F15 rule) |
+| `scripts/hex.sh` | [Hex](https://github.com/anomalyco/hex) | Sets the dictation hotkey to F17 through Hex's CLI (pairs with the Karabiner rules that send F17) |
 
 Run a script after installing the corresponding app:
 

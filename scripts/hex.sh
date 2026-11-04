@@ -1,40 +1,32 @@
 #!/usr/bin/env zsh
-# Configure Hex hotkey via macOS defaults system.
-# Run this after installing Hex. Hex must be restarted for changes to take effect.
+# Set the Hex dictation hotkey to F17 through Hex's own CLI.
+# Run it after a Hex install or a settings reset.
 #
-# Trigger key: F15 (keyCode 113, no modifiers)
-# Paired with karabiner rule: Middle mouse button (button3) -> F15
+# F17 pairs with the three Karabiner rules in
+# karabiner/.config/karabiner/karabiner.json: the middle mouse button, the fn
+# key, and the Varmilo Pause key (and F15) each send F17. macOS binds F15 to
+# brightness up and consumes it before Hex sees it, so F15 itself cannot be
+# the trigger (docs/decisions/DOT-39.md).
+#
+# Hex 3 (cask anomalyco/tap/hex) ships the CLI inside the app bundle. With Hex
+# running, `settings set` changes the setting in the app. With Hex stopped,
+# `settings apply` writes settings.json directly.
 
 set -e
 
-PLIST=~/Library/Containers/com.kitlangton.Hex/Data/Library/Preferences/com.kitlangton.Hex.plist
+HEX=/Applications/Hex.app/Contents/MacOS/hex
+KEY=f17
 
-if [[ ! -f "$PLIST" ]]; then
-  echo "Error: Hex plist not found at $PLIST"
-  echo "Make sure Hex has been launched at least once before running this script."
+if [[ ! -x "$HEX" ]]; then
+  echo "Error: Hex CLI not found at $HEX" >&2
+  echo "Install Hex first: brew install --cask anomalyco/tap/hex" >&2
   exit 1
 fi
 
-echo "Configuring Hex..."
-
-# defaults write stores values as strings; Hex requires integers.
-# Use PlistBuddy to write properly typed integer values.
-/usr/libexec/PlistBuddy -c "Delete :globalHotkey" "$PLIST" 2>/dev/null || true
-/usr/libexec/PlistBuddy -c "Add :globalHotkey dict" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :globalHotkey:keyCode integer 113" "$PLIST"
-/usr/libexec/PlistBuddy -c "Add :globalHotkey:modifierFlags integer 0" "$PLIST"
-
-# Flush the preferences cache
-killall cfprefsd 2>/dev/null || true
-
-if pgrep -x Hex &>/dev/null; then
-  echo "Restarting Hex..."
-  killall Hex
-  sleep 0.5
-  open -a Hex
-  echo "Hex restarted."
+if "$HEX" status >/dev/null 2>&1; then
+  "$HEX" settings set dictation_hotkey "$KEY"
+  echo "Hex dictation hotkey: $("$HEX" settings get dictation_hotkey)"
 else
-  echo "Hex is not running. Launch it to apply the configuration."
+  printf '{"dictation_hotkey":"%s"}\n' "$KEY" | "$HEX" settings apply -
+  echo "Hex is not running. It reads the hotkey ($KEY) at the next launch."
 fi
-
-echo "Done."
