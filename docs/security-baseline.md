@@ -164,6 +164,32 @@ The literal-digest checks in `.forgejo/ci/install-tools.sh` are not a basis for 
 
 Bounds: runs as `bk`, never root; only when the binary is missing, so an installed herdr is never re-fetched or downgraded by activation; the installer checks the asset against the manifest's SHA-256 (internal consistency only, as finding 3 notes). Reassess if the bootstrap ever runs unconditionally or gains a root path. Retire this entry if the Mac returns to the stable channel — Homebrew is the better source again at that point, and the brew should come back with it.
 
+### The Hex cask comes from Anomaly's tap at the tap's HEAD
+*Accepted 2026-11-04 (DOT-40). The move to the tap is in `docs/decisions/DOT-39.md`.*
+
+`nix-darwin/flake.nix` declares the tap `anomalyco/tap` and one cask from it, `anomalyco/tap/hex`. Homebrew keeps a tap as a git clone that follows the tap's HEAD. This repo pins no tap commit, so a change to the cask file reaches the Mac when Homebrew next updates its taps.
+
+Accepted because the tap asks for no trust that Hex itself does not already need. Anomaly publishes the tap, the app and the update feed. The cask sets `auto_updates true`, so Hex installs its own updates from `anoma.ly`, and Homebrew does not supply them. So a pin on the tap commit does not pin the app. The herdr entry above rests on the same reasoning: one verified download does not bind what the next update installs.
+
+Bounds. The flake facts were checked in this repo on 2026-11-04. The owner checked the cask facts on the Mac on 2026-11-04 with `brew cat --cask anomalyco/tap/hex`, at cask version `3.3.0`. A copy of the cask from the tap's GitHub HEAD on the same day matched it.
+
+- The flake takes one cask from the tap and no formula.
+- The cask installs only `Hex.app`, with the bundle ID `anomaly.hex`. It has no `pkg` or `installer` stanza. Homebrew runs it as `bk`, never as root.
+- The cask gives a literal `sha256` for the download, `c57106949a28a3d0767cc15505cd802638badeb0c18cfd06c57b130ab0d98859` at version `3.3.0`, and the download URL names the same digest. That digest covers the download the cask names. It does not cover a later change to the cask file.
+- `onActivation.cleanup = "uninstall"` removes any cask that the flake does not declare, so the declared list stays the whole Homebrew surface (pass 3b).
+- The flake sets neither `onActivation.autoUpdate` nor `onActivation.upgrade`, and both default to false. So `darwin-rebuild switch` does not update a tap clone that already exists, and does not upgrade the cask. A missing tap is different: on a new or rebuilt Mac, or after the tap is removed, the first switch clones `anomalyco/tap` at its current HEAD.
+
+This entry covers `anomalyco/tap` only. The other three taps in the same list are not assessed here.
+
+**Re-verify, do not re-decide.** `brew cat --cask anomalyco/tap/hex` on the Mac prints the cask file. This expires if:
+
+- the flake declares a second cask, or any formula, from `anomalyco/tap`;
+- the cask file loses its literal `sha256`, or gains a `pkg` or `installer` stanza;
+- the flake sets `onActivation.autoUpdate` or `onActivation.upgrade` to true;
+- the cask stops setting `auto_updates true`, because Homebrew then supplies every update and a pin on the tap carries weight.
+
+Retire this entry if the flake pins its taps through nix-homebrew's own `taps` option with `mutableTaps = false`. The tap commit then sits in `flake.lock`.
+
 ---
 
 ## Open
