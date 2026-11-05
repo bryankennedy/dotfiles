@@ -49,6 +49,34 @@
                                 "to": [{ "key_code": "f17" }]
                             }
                         ]
+                    },
+                    {
+                        "description": "Ghostty: MX Master thumb (gesture) button sends a quadruple click to select the line. Without Logi Options+ the mouse sends that button as Ctrl+Option+Tab on its keyboard interface.",
+                        "manipulators": [
+                            {
+                                "type": "basic",
+                                "from": {
+                                    "key_code": "tab",
+                                    "modifiers": { "mandatory": ["left_control", "left_option"] }
+                                },
+                                "to": [
+                                    { "pointing_button": "button1" },
+                                    { "pointing_button": "button1" },
+                                    { "pointing_button": "button1" },
+                                    { "pointing_button": "button1" }
+                                ],
+                                "conditions": [
+                                    {
+                                        "type": "frontmost_application_if",
+                                        "bundle_identifiers": ["^com\\.mitchellh\\.ghostty$"]
+                                    },
+                                    {
+                                        "type": "device_if",
+                                        "identifiers": [{ "vendor_id": 1133, "product_id": 45081 }]
+                                    }
+                                ]
+                            }
+                        ]
                     }
                 ]
             },
