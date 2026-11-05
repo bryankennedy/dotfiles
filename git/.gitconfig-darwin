@@ -1,3 +1,11 @@
-# Mac-only: the nix OpenSSH for forge repos. See docs/decisions/INFRA-321.md.
+# Mac-only: forge repos use bin/bin/forge-ssh, linked into ~/bin. It runs
+# the nix OpenSSH and shows a dialog while the FIDO key waits for a touch.
+# The path is absolute, so a tool that runs it with no shell also works.
+# See docs/decisions/INFRA-321.md and docs/decisions/INFRA-320.md.
 [core]
-	sshCommand = /run/current-system/sw/bin/ssh
+	sshCommand = /Users/bk/bin/forge-ssh
+# git cannot tell from the name "forge-ssh" that it is OpenSSH. Without
+# this, git runs "forge-ssh -G" as a probe before each connection. If the
+# probe fails, git refuses the port in an ssh://host:2222/ URL.
+[ssh]
+	variant = ssh

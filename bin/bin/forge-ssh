@@ -1,0 +1,28 @@
+#!/bin/sh
+# forge-ssh: git's ssh for forge repos on the Mac (INFRA-320, INFRA-321).
+# git/.gitconfig-darwin points core.sshCommand here. It runs the nix
+# OpenSSH. For a connection to the forge, it also opens a dialog each time
+# the FIDO key waits for a touch. See docs/decisions/INFRA-320.md.
+ssh=/run/current-system/sw/bin/ssh
+
+# git sends every remote of a forge repo through this file. Only the forge
+# gets BatchMode and the dialog. Another remote keeps its normal prompts.
+forge=no
+for arg in "$@"; do
+  case $arg in
+    git.bck.dev | *@git.bck.dev) forge=yes ;;
+  esac
+done
+[ "$forge" = yes ] || exec "$ssh" "$@"
+
+# BatchMode makes ssh send the touch notice to SSH_ASKPASS also when a
+# terminal is attached. It also stops every other prompt, so a forge
+# connection never waits on a question that nobody sees. ssh sets
+# SSH_ASKPASS_PROMPT=none for a touch notice and leaves it unset for a
+# passphrase or PIN request, so an inherited value must not reach the
+# notifier.
+unset SSH_ASKPASS_PROMPT
+SSH_ASKPASS="$(dirname "$0")/fido-touch-notify"
+SSH_ASKPASS_REQUIRE=force
+export SSH_ASKPASS SSH_ASKPASS_REQUIRE
+exec "$ssh" -o BatchMode=yes "$@"

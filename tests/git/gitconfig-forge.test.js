@@ -1,5 +1,6 @@
 // INFRA-321: on the Mac, git/.gitconfig includes ~/.gitconfig-darwin, which
-// sets core.sshCommand to the nix OpenSSH, for repos with a forge remote only.
+// sets core.sshCommand to the forge-ssh wrapper (INFRA-320), for repos with a
+// forge remote only.
 // This runs the real git/.gitconfig against a throwaway $HOME with a stub
 // ~/.gitconfig-darwin, so a pattern that misses a URL form fails here.
 import { test, expect, describe, beforeEach, afterEach } from "bun:test";
@@ -56,10 +57,20 @@ describe("git/.gitconfig scopes the Mac-only ssh to forge remotes", () => {
 });
 
 describe("git/.gitconfig-darwin itself", () => {
-  test("points git at the nix OpenSSH in the system profile", () => {
+  const get = (key) => {
     const text = readFileSync(join(ROOT, "git/.gitconfig-darwin"), "utf8");
-    const r = spawnSync("git", ["config", "--file", join(ROOT, "git/.gitconfig-darwin"), "--get", "core.sshCommand"], { encoding: "utf8" });
+    const r = spawnSync("git", ["config", "--file", join(ROOT, "git/.gitconfig-darwin"), "--get", key], { encoding: "utf8" });
     expect(r.status, text).toBe(0);
-    expect(r.stdout.trim()).toBe("/run/current-system/sw/bin/ssh");
+    return r.stdout.trim();
+  };
+
+  // INFRA-320: the wrapper runs the nix OpenSSH (INFRA-321) and adds the
+  // touch dialog. tests/bin/forge-ssh.test.js checks the wrapper itself.
+  test("points git at the forge-ssh wrapper in ~/bin, by its absolute path", () => {
+    expect(get("core.sshCommand")).toBe("/Users/bk/bin/forge-ssh");
+  });
+
+  test("tells git that the wrapper is OpenSSH, so a port in the URL works", () => {
+    expect(get("ssh.variant")).toBe("ssh");
   });
 });

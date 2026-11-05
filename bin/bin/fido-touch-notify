@@ -1,0 +1,35 @@
+#!/bin/sh
+# fido-touch-notify: forge-ssh sets this as SSH_ASKPASS (INFRA-320,
+# docs/decisions/INFRA-320.md).
+# ssh runs it when the FIDO key waits for a touch, with
+# SSH_ASKPASS_PROMPT=none, and stops it after the touch.
+# Any other request is refused. A yes/no question then fails at once. A
+# passphrase or PIN request gets an empty answer, and that try fails.
+[ "${SSH_ASKPASS_PROMPT:-}" = "none" ] || exit 1
+
+# The parent is ssh. Its command line ends with the git command on the
+# forge, for example: git-receive-pack '/bkennedy/infrastructure.git'
+# -ww: without it, macOS ps cuts the line to 79 columns when no terminal
+# is attached, and the git command falls off the end.
+cmd=$(/bin/ps -ww -o command= -p "$PPID" 2>/dev/null)
+case $cmd in
+  *git-receive-pack*) what="git push" ;;
+  *git-upload-pack*) what="git fetch" ;;
+  *) what="ssh" ;;
+esac
+repo=$(printf '%s\n' "$cmd" | /usr/bin/sed -nE "s#.*git-(receive|upload)-pack '?/?([A-Za-z0-9._/-]+)'?.*#\2#p")
+repo=${repo%.git}
+msg="$what ${repo:-git.bck.dev} waits for a touch. Touch the key only if you started it."
+
+# One line in the terminal or log, and a sound.
+printf '\a>>> %s\n' "$msg" >&2
+/usr/bin/afplay /System/Library/Sounds/Glass.aiff >/dev/null 2>&1 &
+
+# A dialog that stays up. exec keeps this process ID, so when ssh stops
+# this process after the touch, the dialog closes with it. It also closes
+# after 120 seconds, which is longer than the key waits.
+exec /usr/bin/osascript - "Touch your security key" "$msg" >/dev/null 2>&1 <<'EOF'
+on run argv
+  display dialog (item 2 of argv) with title (item 1 of argv) buttons {"OK"} default button "OK" with icon caution giving up after 120
+end run
+EOF

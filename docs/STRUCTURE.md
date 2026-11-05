@@ -15,6 +15,7 @@ The repository is structured so that running `stow <package>` from the root syml
   OSC 52 yank that carries a clipboard copy out of an SSH session. `remote/install.sh` links the
   same file on the VMs, where `vi` and `vim` are both Neovim.
 - **git/**: Git global configuration.
+- **bin/**: Scripts linked into `~/bin`. Among them, `forge-ssh` is git's ssh for forge repos on the Mac, and `fido-touch-notify` shows a dialog while the FIDO key waits for a touch (`docs/decisions/INFRA-320.md`).
 - **starship/**: Starship prompt configuration.
 - **karabiner/**: Karabiner-Elements configuration. Includes complex modifications that map the middle mouse button (button3), the fn key, and the Varmilo Pause key (and F15) to F17, the [Hex](https://github.com/anomalyco/hex) dictation trigger (`docs/decisions/DOT-39.md`).
 
