@@ -17,6 +17,54 @@
         "type": "github"
       }
     },
+    "homebrew-anomalyco-tap": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1793801402,
+        "narHash": "sha256-9ZlvOj30rI8WQyOuS15iH5eK4G7SphsdjzmRrNvT3pM=",
+        "owner": "anomalyco",
+        "repo": "homebrew-tap",
+        "rev": "bb3fccc17b0c079656acc09ede24a83be9c28bca",
+        "type": "github"
+      },
+      "original": {
+        "owner": "anomalyco",
+        "repo": "homebrew-tap",
+        "type": "github"
+      }
+    },
+    "homebrew-felixkratz-formulae": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791580578,
+        "narHash": "sha256-E2lxCwGyWui+8+7AlntHhzaFENVm2o/CeVHNEeSEGPU=",
+        "owner": "FelixKratz",
+        "repo": "homebrew-formulae",
+        "rev": "e38ef7a0e90101100ca6fa66c1e1da80f3c1dc87",
+        "type": "github"
+      },
+      "original": {
+        "owner": "FelixKratz",
+        "repo": "homebrew-formulae",
+        "type": "github"
+      }
+    },
+    "homebrew-nikitabobko-tap": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1791286232,
+        "narHash": "sha256-Zsi4MqzCSUlx7Nfx7hkqafC4iyPAHZRDzL0xobOBNo8=",
+        "owner": "nikitabobko",
+        "repo": "homebrew-tap",
+        "rev": "086fa55e376037f28bd959a274f588c65296c1f1",
+        "type": "github"
+      },
+      "original": {
+        "owner": "nikitabobko",
+        "repo": "homebrew-tap",
+        "type": "github"
+      }
+    },
     "nix-darwin": {
       "inputs": {
         "nixpkgs": [
@@ -73,6 +121,9 @@
     },
     "root": {
       "inputs": {
+        "homebrew-anomalyco-tap": "homebrew-anomalyco-tap",
+        "homebrew-felixkratz-formulae": "homebrew-felixkratz-formulae",
+        "homebrew-nikitabobko-tap": "homebrew-nikitabobko-tap",
         "nix-darwin": "nix-darwin",
         "nix-homebrew": "nix-homebrew",
         "nixpkgs": "nixpkgs"

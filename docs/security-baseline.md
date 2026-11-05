@@ -164,8 +164,8 @@ The literal-digest checks in `.forgejo/ci/install-tools.sh` are not a basis for 
 
 Bounds: runs as `bk`, never root; only when the binary is missing, so an installed herdr is never re-fetched or downgraded by activation; the installer checks the asset against the manifest's SHA-256 (internal consistency only, as finding 3 notes). Reassess if the bootstrap ever runs unconditionally or gains a root path. Retire this entry if the Mac returns to the stable channel — Homebrew is the better source again at that point, and the brew should come back with it.
 
-### The Hex cask comes from Anomaly's tap at the tap's HEAD
-*Accepted 2026-11-04 (DOT-40). The move to the tap is in `docs/decisions/DOT-39.md`.*
+### ~~The Hex cask comes from Anomaly's tap at the tap's HEAD~~
+*Accepted 2026-11-04 (DOT-40). The move to the tap is in `docs/decisions/DOT-39.md`. **Retired 2026-11-05** (DOT-41): the retire condition at the end of this entry came true. The flake now pins every tap in `flake.lock`. See "The Homebrew taps are pinned in `flake.lock`" under Resolved. The text below is the entry as it was accepted.*
 
 `nix-darwin/flake.nix` declares the tap `anomalyco/tap` and one cask from it, `anomalyco/tap/hex`. Homebrew keeps a tap as a git clone that follows the tap's HEAD. This repo pins no tap commit, so a change to the cask file reaches the Mac when Homebrew next updates its taps.
 
@@ -201,6 +201,42 @@ The first full audit ran 2026-07-09. Its open findings are recorded in the **pri
 ## Resolved
 
 Decisions, not findings. A resolved item is deleted from the private list and recorded here, described rather than quoted, so that the fix has a rationale attached to it and the private list stays short enough to read.
+
+### The Homebrew taps are pinned in `flake.lock`
+*Resolved 2026-11-05 (DOT-41). Replaces the DOT-40 Hex entry under Accepted.*
+
+Homebrew keeps a tap as a git clone that follows the tap's HEAD. Before DOT-41, the flake pinned no tap commit. Two of the declared items do not update themselves, so a change to a tap file changed what the next hand-run `brew` command installed. A pin on the tap commit puts each such change in `flake.lock`, where a pull request shows it.
+
+What changed:
+
+- `nix-darwin/flake.nix` declares each third-party tap as a flake input with `flake = false`. `flake.lock` holds the tap's commit and its `narHash`.
+- `nix-homebrew.mutableTaps = false` puts the taps in `Library/Taps` as one read-only store path. `brew tap` and `brew update` cannot change them.
+- `mutableTaps = false` also makes brew run with `HOMEBREW_NO_AUTO_UPDATE=1`. In Homebrew 7.0.4, that stops every refresh of the core formula and cask data from Homebrew's API. So the flake sets `HOMEBREW_FORCE_API_AUTO_UPDATE=1` through `nix-homebrew.extraEnv`, and brew refreshes that data as before. The setting also applies to the `brew bundle` run in `darwin-rebuild switch`. That run passes `--no-upgrade`, so a refresh there changes only the version of a newly declared core item.
+- `homebrew.taps` is `builtins.attrNames config.nix-homebrew.taps`, so `brew bundle` never taps or untaps one.
+- The flake no longer declares `drawthingsai/draw-things` or its `draw-things-cli` HEAD brew. The owner does not use them. The Draw Things App Store app stays.
+- `tests/invariants/homebrew-taps.test.js` fails if a tap is declared outside this shape, has no pinned lock entry, or a declared item names a tap that is not pinned.
+
+These are the pins on 2026-11-05. Each commit is the `rev` of the tap's node in `flake.lock`. The version and the `sha256` are in the named file at that commit.
+
+| Tap | The flake takes |
+|---|---|
+| `anomalyco/tap` | cask `hex` |
+| `FelixKratz/formulae` | formula `borders` |
+| `nikitabobko/tap` | cask `aerospace` |
+
+- `anomalyco/tap` at `bb3fccc17b0c079656acc09ede24a83be9c28bca`: `Casks/hex.rb`, version `3.3.0`, `sha256` `c57106949a28a3d0767cc15505cd802638badeb0c18cfd06c57b130ab0d98859`.
+- `FelixKratz/formulae` at `e38ef7a0e90101100ca6fa66c1e1da80f3c1dc87`: `borders.rb`, version `1.9.0`, `sha256` `70b5bff531b67a082cc0108d88a8355ba5e7c8326285533143c185efdf21769f`.
+- `nikitabobko/tap` at `086fa55e376037f28bd959a274f588c65296c1f1`: `Casks/aerospace.rb`, version `0.21.3-Beta`, `sha256` `bdbd3fedb3a41bdd3987d241dd5cc1d8b74a56fdbc0d76a98e6925c5cfef4ce4`.
+
+On 2026-11-05 the owner ran `brew cat` on the Mac for `aerospace` and `borders` and posted the output to the Atlas session. The version, `sha256` and URL lines matched the files at these commits. The `hex` values are the ones the owner checked on 2026-11-04 (DOT-40). The tap files are public, so a reviewer can check each value at its commit.
+
+A tap bump is a review point. `nix flake update` with no input name moves the taps with all the other inputs. Before a bump of a tap input merges, read the tap's diff between the two commits for each file the flake takes. GitHub shows it at `https://github.com/<owner>/homebrew-<repo>/compare/<old>...<new>`.
+
+**Reassess if:**
+
+- the flake sets `mutableTaps = true`, or declares a tap outside `nix-homebrew.taps`;
+- a bump of a tap input merges with no read of the tap's diff;
+- a declared item loses its literal `sha256`, or starts to update itself.
 
 ### The Mac's activation no longer installs moving refs into the agent's path
 *Resolved 2026-09-07. Surfaced by a repo review, not a numbered audit finding; same shape as finding 3.*

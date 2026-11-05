@@ -2,7 +2,8 @@
 // workflow files and scripts, never a network call and never a secret.
 //
 // Ported from the private infrastructure repo's tests/lib/repo.js, keeping only
-// the Forgejo Actions and PR-review predicates (docs/claude-review.md). They
+// the Forgejo Actions and PR-review predicates (docs/claude-review.md), plus
+// the Homebrew tap rule (DOT-41). They
 // live here rather than inline in the tests so that canary.test.js can feed
 // them the bad shapes and prove each rule still rejects what it claims to.
 import { readFileSync, readdirSync, statSync, existsSync } from "node:fs";
@@ -193,6 +194,56 @@ export function hooksPathActivation(flake) {
     bad.push(`core.hooksPath line lacks the || echo "postActivation: …" >&2 fallback: ${line.trim()}`);
   }
   return bad;
+}
+
+// --- Homebrew taps (DOT-41) --------------------------------------------------
+
+/**
+ * Problems with how the flake pins its Homebrew taps: mutableTaps not false,
+ * homebrew.taps not derived from nix-homebrew.taps, or a tap whose flake input
+ * is not a github input with flake = false and a locked commit in flake.lock.
+ * Returns [problems, tap names]. docs/security-baseline.md explains the shape.
+ */
+export function tapPinProblems(flake, lockJson) {
+  const bad = [];
+  const live = String(flake ?? "").split("\n").filter((l) => !/^\s*#/.test(l)).join("\n");
+  const mutable = [...live.matchAll(/^\s*mutableTaps\s*=\s*(\w+)\s*;/gm)].map((m) => m[1]);
+  if (mutable.length !== 1 || mutable[0] !== "false") bad.push(`mutableTaps must be set once, to false (found: ${mutable.join(", ") || "none"})`);
+  const lists = [...live.matchAll(/^\s*(?:homebrew\.)?taps\s*=\s*(.*)$/gm)].map((m) => m[1].trim());
+  if (!lists.includes("builtins.attrNames config.nix-homebrew.taps;")) bad.push("homebrew.taps is not builtins.attrNames config.nix-homebrew.taps");
+  if (lists.some((l) => !l.startsWith("{") && l !== "builtins.attrNames config.nix-homebrew.taps;")) bad.push("a taps = ... line other than nix-homebrew.taps and its attrNames declares a tap outside nix-homebrew.taps");
+  const block = /^\s*taps\s*=\s*\{\n([\s\S]*?)^\s*\};/m.exec(live)?.[1];
+  if (block === undefined) { bad.push("no nix-homebrew.taps = { ... } block"); return [bad, []]; }
+  let lock;
+  try { lock = JSON.parse(lockJson); } catch { bad.push("flake.lock is not JSON"); return [bad, []]; }
+  const lines = block.split("\n").filter((l) => l.trim());
+  const names = [];
+  for (const l of lines) {
+    const m = /^\s*"([^"/]+)\/(homebrew-[^"/]+)"\s*=\s*inputs\.([\w-]+)\s*;\s*$/.exec(l);
+    if (!m) { bad.push(`not a "<owner>/homebrew-<repo>" = inputs.<name>; line: ${l.trim()}`); continue; }
+    if (m[1] !== m[1].toLowerCase() || m[2] !== m[2].toLowerCase()) bad.push(`tap key ${m[1]}/${m[2]} is not lower case; Homebrew looks up the lower-case path`);
+    const [, owner, repo, input] = m;
+    names.push(`${owner}/${repo}`);
+    const esc = input.replace(/[-]/g, "\\-");
+    const decl = new RegExp(`^\\s*${esc}\\s*=\\s*\\{\\s*url\\s*=\\s*"github:([^"]+)";\\s*flake\\s*=\\s*false;\\s*\\};`, "m").exec(live);
+    if (!decl) { bad.push(`input ${input} is not { url = "github:..."; flake = false; }`); continue; }
+    if (decl[1].toLowerCase() !== `${owner}/${repo}`.toLowerCase()) bad.push(`input ${input} points at ${decl[1]}, not ${owner}/${repo}`);
+    const node = lock?.nodes?.[lock?.nodes?.root?.inputs?.[input]];
+    const k = node?.locked;
+    if (!node || node.flake !== false || k?.type !== "github") { bad.push(`flake.lock has no flake = false github node for ${input}`); continue; }
+    if (`${k.owner}/${k.repo}`.toLowerCase() !== `${owner}/${repo}`.toLowerCase()) bad.push(`flake.lock pins ${input} to ${k.owner}/${k.repo}`);
+    if (!/^[0-9a-f]{40}$/.test(k.rev ?? "")) bad.push(`flake.lock has no commit for ${input}`);
+    if (!/^sha256-[A-Za-z0-9+/]{43}=$/.test(k.narHash ?? "")) bad.push(`flake.lock has no narHash for ${input}`);
+  }
+  if (!names.length) bad.push("nix-homebrew.taps is empty");
+  // A fully-qualified brew or cask ("<owner>/<repo>/<item>") from a tap that
+  // nix-homebrew.taps does not pin. Tap names compare as brew compares them.
+  const pinned = new Set(names.map((n) => n.toLowerCase().replace("/homebrew-", "/")));
+  for (const m of live.matchAll(/"([A-Za-z0-9_-]+)\/([A-Za-z0-9_-]+)\/([A-Za-z0-9@._+-]+)"/g)) {
+    const tap = `${m[1]}/${m[2]}`.toLowerCase().replace("/homebrew-", "/");
+    if (!pinned.has(tap)) bad.push(`${m[0]} names the tap ${tap}, which nix-homebrew.taps does not pin`);
+  }
+  return [bad, names];
 }
 
 // --- Plugin marketplaces that activation registers -------------------------

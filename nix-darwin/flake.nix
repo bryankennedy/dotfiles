@@ -8,9 +8,27 @@
 
     # Added nix-homebrew input
     nix-homebrew.url = "github:zhaofengli-wip/nix-homebrew";
+
+    # The third-party Homebrew taps, pinned in flake.lock (DOT-41).
+    # nix-homebrew.taps below puts each one in place read-only. A bump is a
+    # review point: before it merges, read the tap's diff for each file the
+    # flake takes. See "The Homebrew taps are pinned in flake.lock" in
+    # docs/security-baseline.md.
+    homebrew-anomalyco-tap = {
+      url = "github:anomalyco/homebrew-tap";
+      flake = false;
+    };
+    homebrew-felixkratz-formulae = {
+      url = "github:FelixKratz/homebrew-formulae";
+      flake = false;
+    };
+    homebrew-nikitabobko-tap = {
+      url = "github:nikitabobko/homebrew-tap";
+      flake = false;
+    };
   };
 
-  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew }:
+  outputs = inputs@{ self, nix-darwin, nixpkgs, nix-homebrew, ... }:
   let
     configuration = { pkgs, config, ... }:
     let
@@ -187,6 +205,24 @@
         # for the /nix mount race this integration lacks — so one owner, not
         # two.
         enableZshIntegration = false;
+
+        # The third-party taps, from the pinned flake inputs (DOT-41).
+        # mutableTaps = false makes Library/Taps one read-only store path.
+        # `brew tap` and `brew update` cannot change it. The keys are lower
+        # case, because Homebrew looks up the lower-case path.
+        mutableTaps = false;
+        taps = {
+          # Hex dictation (see the casks list)
+          "anomalyco/homebrew-tap" = inputs.homebrew-anomalyco-tap;
+          # borders, which AeroSpace starts (see the brews list)
+          "felixkratz/homebrew-formulae" = inputs.homebrew-felixkratz-formulae;
+          # AeroSpace window manager (see the casks list)
+          "nikitabobko/homebrew-tap" = inputs.homebrew-nikitabobko-tap;
+        };
+        # mutableTaps = false also sets HOMEBREW_NO_AUTO_UPDATE=1. Without
+        # this, brew never refreshes the core formula and cask data from
+        # Homebrew's API, and `brew outdated` stops showing core fixes.
+        extraEnv.HOMEBREW_FORCE_API_AUTO_UPDATE = "1";
       };
 
       # This part manages the apps installed via Homebrew
@@ -200,21 +236,14 @@
         # the casks list is exactly that shape. Undeclared casks still go; their
         # settings survive until someone removes them on purpose.
         onActivation.cleanup = "uninstall";
-        taps = [
-          # Hex dictation (see the casks list)
-          "anomalyco/tap"
-          "drawthingsai/draw-things"
-          "FelixKratz/formulae"
-          "nikitabobko/tap"
-        ];
+        # The same taps as nix-homebrew.taps above, so brew bundle never
+        # taps or untaps one by hand (DOT-41).
+        taps = builtins.attrNames config.nix-homebrew.taps;
         brews = [
-          {
-            name = "drawthingsai/draw-things/draw-things-cli";
-            args = [ "HEAD" ];
-          }
           # Manage remote and local VMs
           "ansible"
-          # Window border highlights for active/inactive windows
+          # Window border highlights for active/inactive windows. AeroSpace
+          # starts it (after-startup-command in aerospace/.aerospace.toml).
           "FelixKratz/formulae/borders"
           # Better cat
           "bat"
