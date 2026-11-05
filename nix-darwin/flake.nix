@@ -279,6 +279,10 @@
           "tree"
           # Download stuff
           "wget"
+          # YubiKey Manager CLI. Checks and configures the FIDO key that the
+          # nix OpenSSH above signs with (docs/decisions/INFRA-321.md):
+          # `ykman fido info`.
+          "ykman"
           # Jump around directories
           "zoxide"
         ];
