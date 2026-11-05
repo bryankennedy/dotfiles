@@ -10,7 +10,7 @@ ssh=/run/current-system/sw/bin/ssh
 forge=no
 for arg in "$@"; do
   case $arg in
-    git.bck.dev | *@git.bck.dev) forge=yes ;;
+    git.bck.dev | *@git.bck.dev) forge=yes dest=$arg ;;
   esac
 done
 [ "$forge" = yes ] || exec "$ssh" "$@"
@@ -22,7 +22,8 @@ done
 # passphrase or PIN request, so an inherited value must not reach the
 # notifier.
 unset SSH_ASKPASS_PROMPT
+FIDO_SSH_DEST=$dest
 SSH_ASKPASS="$(dirname "$0")/fido-touch-notify"
 SSH_ASKPASS_REQUIRE=force
-export SSH_ASKPASS SSH_ASKPASS_REQUIRE
+export FIDO_SSH_DEST SSH_ASKPASS SSH_ASKPASS_REQUIRE
 exec "$ssh" -o BatchMode=yes "$@"

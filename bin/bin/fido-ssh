@@ -1,0 +1,54 @@
+#!/bin/sh
+# fido-ssh: Ansible's ssh on the Mac (INFRA-320b). zsh/profile.zsh sets
+# ANSIBLE_SSH_EXECUTABLE to it. It runs the nix OpenSSH and adds a dialog
+# each time a FIDO key waits for a touch, because Ansible hides ssh's own
+# "Confirm user presence" line. See docs/decisions/INFRA-320.md.
+ssh=/run/current-system/sw/bin/ssh
+
+# Another tool's askpass wins, such as Ansible's own password helper.
+if [ -n "${SSH_ASKPASS:-}" ]; then
+  exec "$ssh" "$@"
+fi
+
+# The host for the dialog text: the first argument that is not an option or
+# the value of one. The ssh options that take a value: B b c D E e F I i J L
+# l m O o P p Q R S W w. A cluster of flags can end in one of them, as in
+# -vp 2222, and then the next argument is its value. A value can also follow
+# its letter at once, as in -p2222 or -vEfile, and then nothing is skipped.
+dest=
+skip=no
+for arg in "$@"; do
+  if [ "$skip" = yes ]; then skip=no; continue; fi
+  case $arg in
+    -*)
+      rest=${arg#-}
+      init=${rest%?}
+      last=${rest#"$init"}
+      case $last in
+        [BbcDEeFIiJLlmOoPpQRSWw])
+          case $init in
+            *[!46AaCfGgKkMNnqsTtVvXxYy]*) ;;
+            *) skip=yes ;;
+          esac
+          ;;
+      esac
+      ;;
+    *) dest=${arg#ssh://}; break ;;
+  esac
+done
+
+# With stderr not a terminal, ssh sends a touch notice to SSH_ASKPASS when
+# DISPLAY or WAYLAND_DISPLAY is set (notify_start in OpenSSH's readpass.c).
+# Ansible gives ssh a pipe for stderr. No BatchMode and no
+# SSH_ASKPASS_REQUIRE here: a password, passphrase or host key question still
+# goes to the terminal when there is one. ssh sets SSH_ASKPASS_PROMPT=none for
+# a touch notice only, so an inherited value must not reach the notifier.
+unset SSH_ASKPASS_PROMPT
+if [ -z "${DISPLAY:-}" ] && [ -z "${WAYLAND_DISPLAY:-}" ]; then
+  WAYLAND_DISPLAY=fido-ssh
+  export WAYLAND_DISPLAY
+fi
+FIDO_SSH_DEST=$dest
+SSH_ASKPASS="$(dirname "$0")/fido-touch-notify"
+export FIDO_SSH_DEST SSH_ASKPASS
+exec "$ssh" "$@"

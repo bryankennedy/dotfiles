@@ -58,6 +58,15 @@ export GIT_EDITOR="vim"
 # launchd doesn't source shell profiles.
 export AGENTSVIEW_TELEMETRY_ENABLED=0
 
+# Ansible's ssh on the Mac is bin/fido-ssh (INFRA-320): the same nix OpenSSH,
+# with a dialog while a FIDO key waits for a touch. Ansible hides ssh's own
+# "Confirm user presence" line, so without it a run that waits for a touch
+# looks hung. Only where the wrapper is linked, so a machine without it keeps
+# Ansible's default.
+if [[ -x "$HOME/bin/fido-ssh" ]]; then
+    export ANSIBLE_SSH_EXECUTABLE="$HOME/bin/fido-ssh"
+fi
+
 # FNM (Fast Node Manager)
 # Basic environment setup for tools (no interactive hooks)
 if command -v fnm > /dev/null; then

@@ -28,3 +28,20 @@
 - A key that ssh-agent holds signs in the agent, so ssh opens no dialog.
 - The forge check matches `git.bck.dev` in lower case, as the remotes write it. An upper-case host or an alias from `~/.ssh/config` runs the plain nix OpenSSH, with no dialog.
 - `BatchMode` stops passphrase, PIN and host key prompts for the forge. A forge connection that needs one fails at once. To accept a new forge host key, run the plain nix OpenSSH once: `/run/current-system/sw/bin/ssh -T git@git.bck.dev`.
+
+### INFRA-320b — The same dialog for Ansible, for any host
+
+**Decision.** `bin/bin/fido-ssh` runs the nix OpenSSH with `fido-touch-notify` as `SSH_ASKPASS`, for any host. `zsh/profile.zsh` sets `ANSIBLE_SSH_EXECUTABLE` to `~/bin/fido-ssh` when that file exists, so an Ansible run from a Mac shell uses it. `forge-ssh` does not change, except that it also exports the host for the dialog text.
+
+**What prompted it.** Ansible's ssh can now wait for a FIDO touch. Ansible hides ssh's own "Confirm user presence" line, so on 2026-11-05 a run looked hung until the owner saw the key blink.
+
+**Why no BatchMode here.** With stderr not a terminal, ssh sends a touch notice to `SSH_ASKPASS` when `DISPLAY` or `WAYLAND_DISPLAY` is set (`notify_start()` in OpenSSH's `readpass.c`). Ansible gives ssh a pipe for stderr. So `fido-ssh` sets `WAYLAND_DISPLAY=fido-ssh` when no display variable is set, and adds neither `BatchMode` nor `SSH_ASKPASS_REQUIRE`. Without those two, `read_passphrase()` still uses the terminal when one is open. So a password with `-k`, a host key question and a passphrase typed at the terminal still work. Ansible sends `-o BatchMode=no` for a password login, and `BatchMode=yes` from the wrapper would come first and win. That is why the forge path keeps `BatchMode` and this path does not. When `SSH_ASKPASS` is already set, for example by Ansible's `ssh_askpass` password mechanism, `fido-ssh` runs plain ssh and changes nothing.
+
+**The host in the dialog.** `fido-ssh` takes the first argument that is not an option or the value of one, with any `ssh://` prefix removed, and exports it as `FIDO_SSH_DEST`. `forge-ssh` exports the forge host. The notifier keeps only host-name characters and drops a `user@` part. A git connection to the forge still shows the command and the repo. Any other connection shows "ssh to <host>", or "An SSH login" when the wrapper found no host. A wrong parse changes only the dialog text, never the arguments that ssh gets.
+
+**Limits.**
+- Only Ansible and git use the wrappers. A plain `ssh` in a shell shows ssh's own line and no dialog.
+- Ansible's file transfers run `sftp` or `scp` directly. They reuse the connection that `fido-ssh` opened while `ControlPersist` keeps it, and need no new touch. If that connection has closed, a transfer that waits for a touch shows no dialog.
+- With no controlling terminal, ssh sends a passphrase or password request to the notifier, which refuses it. The same key also fails without the wrapper, because ssh then has no way to ask.
+- A `ProxyJump` hop inherits the environment, so its dialog names the final host.
+- A shell that started before `compy` linked `fido-ssh` keeps Ansible's default until it starts again.

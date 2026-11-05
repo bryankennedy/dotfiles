@@ -1,5 +1,5 @@
 #!/bin/sh
-# fido-touch-notify: forge-ssh sets this as SSH_ASKPASS (INFRA-320,
+# fido-touch-notify: forge-ssh and fido-ssh set this as SSH_ASKPASS (INFRA-320,
 # docs/decisions/INFRA-320.md).
 # ssh runs it when the FIDO key waits for a touch, with
 # SSH_ASKPASS_PROMPT=none, and stops it after the touch.
@@ -19,7 +19,18 @@ case $cmd in
 esac
 repo=$(printf '%s\n' "$cmd" | /usr/bin/sed -nE "s#.*git-(receive|upload)-pack '?/?([A-Za-z0-9._/-]+)'?.*#\2#p")
 repo=${repo%.git}
-msg="$what ${repo:-git.bck.dev} waits for a touch. Touch the key only if you started it."
+# fido-ssh exports the host it connects to. Keep only host-name characters,
+# and drop a user@ part.
+host=$(printf '%s' "${FIDO_SSH_DEST:-}" | /usr/bin/tr -cd 'A-Za-z0-9._@:-')
+host=${host#*@}
+if [ -n "$repo" ]; then
+  target="$what $repo"
+elif [ -n "$host" ]; then
+  target="$what to $host"
+else
+  target="An SSH login"
+fi
+msg="$target waits for a touch. Touch the key only if you started it."
 
 # One line in the terminal or log, and a sound.
 printf '\a>>> %s\n' "$msg" >&2
