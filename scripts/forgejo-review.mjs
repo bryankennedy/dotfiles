@@ -1,6 +1,8 @@
 #!/usr/bin/env bun
 // Claude Code PR review on Forgejo: the trusted glue around one headless
-// `claude -p` run. Design and trust boundaries: docs/forge-ci.md. Where each
+// `claude -p` run. Design and trust boundaries: docs/forge-ci.md in
+// bkennedy/infrastructure, the kit's canonical home, which syncs this file
+// verbatim to every repository that carries the review. Where each
 // subcommand runs: .forgejo/workflows/claude-review.yml.
 //
 //   bun scripts/forgejo-review.mjs schema
