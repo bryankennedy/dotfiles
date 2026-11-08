@@ -9,6 +9,13 @@ if [[ -z "$DOTFILES_PROFILE_LOADED" && -f "$DOTFILES_ZSH_DIR/profile.zsh" ]]; th
   source "$DOTFILES_ZSH_DIR/profile.zsh"
 fi
 
+# Keep a command line that holds a token out of the history file. It comes
+# before the Antigravity block, which returns early: that shell saves its
+# history too. No `[ -f ]` guard: if the file is missing, each new shell
+# prints an error. With a guard, the shell would save every line again and
+# give no message.
+source "$DOTFILES_ZSH_DIR/history-secrets.zsh"
+
 # Antigravity Terminal Fix
 # Prevents VS Code Shell Integration codes and interactive noise from breaking the agent.
 if [[ -n "$ANTIGRAVITY_AGENT" ]]; then

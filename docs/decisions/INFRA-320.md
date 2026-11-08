@@ -45,3 +45,29 @@
 - With no controlling terminal, ssh sends a passphrase or password request to the notifier, which refuses it. The same key also fails without the wrapper, because ssh then has no way to ask.
 - A `ProxyJump` hop inherits the environment, so its dialog names the final host.
 - A shell that started before `compy` linked `fido-ssh` keeps Ansible's default until it starts again.
+
+### INFRA-320f — zsh does not save a command line that holds a token
+
+**Decision.** `zsh/history-secrets.zsh` adds a `zshaddhistory` hook, `_dotfiles_history_secret_guard`. The hook returns 1 for a line that matches one of the patterns in `DOTFILES_HISTORY_SECRET_PATTERNS`, so zsh does not write that line to `~/.zsh_history`, and it prints one line to stderr to say so. The file also sets `HIST_IGNORE_SPACE`, so zsh does not save a line that starts with a space either. `.zshrc` sources the file before the Antigravity block, which returns early, with no `[ -f ]` guard.
+
+**What prompted it.** zsh saves each command line, and a token that is pasted into a command stays in the history file in plaintext. To type a space first, or to use `op read`, works only when someone remembers. The hook checks every line.
+
+**The patterns.** Most entries are the shape that the issuer gives its tokens: Tailscale, GitHub, GitLab, Anthropic, OpenAI, Slack, AWS key IDs, 1Password service accounts, npm, Stripe live keys and Google API keys. Two entries match a name instead: `aws_secret_access_key`, and an upper-case variable name that ends in `TOKEN`, `SECRET`, `PASSWORD`, `PASSWD`, `API_KEY`, `APIKEY` or `ACCESS_KEY`, followed by `=` and a value that starts with a letter, a digit or one of `+/_.:@-`, with or without a double quote first. So `NAME=$(op read …)`, ``NAME=`op read …` ``, a single-quoted value and an empty value do not match, and any other literal value does, also a flag such as `SKIP_TOKEN=1`. The hook matches a pattern only at the start of the line or after a character that is not a letter, a digit or `_`. Where a token has a fixed length, the pattern requires that length, so a file name such as `ops_site.yml` does not match. The file joins the list into one expression when the shell starts.
+
+**Why the notice.** A refused line is not in the history the next time someone looks for it. The notice says why, at the moment it happens, so a pattern that matches too much is seen at once.
+
+**Why the check at load.** When zsh cannot compile an expression, `=~` prints an error and returns 1, the same status as no match. A bad entry would then let the hook save every line. So when the file loads, it tests the expression against a known token. If the token does not match, for that reason or any other, the file prints an error, and the hook refuses every line until the list works. The file builds and tests the expression under `emulate -L zsh`, as the hook runs: with `KSH_ARRAYS` on, the join would keep only the first entry, and with `RE_MATCH_PCRE` on, zsh would compile the test with PCRE instead of ERE.
+
+**Why no guard on the source line.** If the file is missing, each new shell prints an error. With a guard, the shell would save every line again and give no message.
+
+**Why before the Antigravity block.** That block returns early for an Antigravity agent shell, and that shell still writes the history file, because the system `/etc/zshrc` sets `HISTFILE`. The hook and the option need no other part of `.zshrc`.
+
+**Why the hook keeps MATCH local.** `=~` sets `MATCH`, `match` and their offsets. Without `local`, the hook would change them in the user's shell after each command, and a refused line would leave its token in them.
+
+**Tested.** `tests/zsh/history-secrets.test.js` builds the same joined expression in JavaScript, and checks it against a sample of each format and against lines that zsh must still save. It also checks that each pattern has a sample, that each line of the array is a single-quoted entry, and that no entry uses syntax with another meaning in POSIX ERE. The test builds each sample from parts, so the test file holds no whole token for a secret scanner to report. Where zsh is installed, the test also runs the hook in zsh. It checks the exit status for each line, the notice, the hook registration, the option, `MATCH` after a refusal, a load with `KSH_ARRAYS` on, and a copy of the file with an entry that does not compile. Each check gives the hook the line with its newline, as zsh does. The CI image has no zsh, so CI runs only the JavaScript checks. On 2026-11-08 the test passed with zsh 5.9, and an interactive zsh 5.9 did not write a refused line or a line with a leading space to its history file. A hook that never refuses failed the zsh check, and a source line after the Antigravity block failed the JavaScript check.
+
+**Scope.** The hook acts on new lines in interactive zsh. It does not change lines that are already in the history file. zsh keeps a refused line in the history list until the next command runs, so the up arrow recalls it once. That is how zsh treats a return value of 1.
+
+**Check after a pull.** `~/.zshrc` links to the file in the repo, and `.zshrc` finds `history-secrets.zsh` through its own real path, so a `git pull` of dotfiles is enough. Then, in a new shell:
+- `export TEST_TOKEN=abc123` prints the notice, and `fc -ln -1` then does not show that line;
+- ` echo spaced`, with a space first, followed by `fc -ln -1`, does not show the line either.
