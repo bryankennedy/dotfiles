@@ -543,6 +543,10 @@
           let cfg = {};
           try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch(_) {}
           cfg.preferredNotifChannel = 'terminal_bell';
+          // Status line: the stowed claude/.claude/statusline.mjs, which shows
+          // the context window use. remote/install.sh sets the same value;
+          // tests/claude/statusline.test.js fails when the two differ.
+          cfg.statusLine = { type: 'command', command: 'bun ~/.claude/statusline.mjs' };
           cfg.permissions = cfg.permissions || {};
           // User-level permission mode for Claude Code on this Mac. This is the
           // effective default in every project that does not set its own; this

@@ -95,3 +95,5 @@ Run a script after installing the corresponding app:
   2. Symlink it into the Claude package: `ln -s ../../../_agent/skills/<file>.md claude/.claude/commands/<file>.md`
   3. Symlink it into the Gemini package: `ln -s ../../../../_agent/skills/<file>.md gemini/.gemini/antigravity/global_workflows/<file>.md`
   4. Create a Cursor skill dir and symlink: `mkdir cursor/.cursor/skills/<name> && ln -s ../../../../_agent/skills/<file>.md cursor/.cursor/skills/<name>/SKILL.md`
+
+- **`claude/.claude/statusline.mjs`**: The Claude Code status line. It shows the model, the directory, a bar for the context window, and the 5-hour rate limit. This file is the one copy: stow links it into `~/.claude/` on the Mac, and `remote/install.sh` links it on the VMs. The settings merge in `nix-darwin/flake.nix` and the one in `remote/install.sh` each set `statusLine` to `bun ~/.claude/statusline.mjs`. `tests/claude/statusline.test.js` fails when the two values differ.

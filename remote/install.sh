@@ -223,6 +223,11 @@ for skill in "$DOTFILES_DIR"/_agent/skills/*.md; do
   green "  linked command: $name"
 done
 
+# Status line: the same script that stow links on the Mac. The settings merge
+# below points statusLine at this path.
+ln -sf "$DOTFILES_DIR/claude/.claude/statusline.mjs" "$HOME/.claude/statusline.mjs"
+green "  linked statusline.mjs"
+
 # --- Zoxide ---------------------------------------------------------------
 green "\nZoxide"
 if command -v zoxide &> /dev/null; then
@@ -370,11 +375,16 @@ if [ -n "$CLAUDE_JS_RUNTIME" ]; then
     cfg.enabledPlugins['frontend-design@dotfiles'] = true;
     // Concise output style fleet-wide, so remote agents match the local default.
     cfg.outputStyle = 'Concise';
+    // Status line: the statusline.mjs linked above, which shows the context
+    // window use. nix-darwin/flake.nix sets the same value;
+    // tests/claude/statusline.test.js fails when the two differ.
+    cfg.statusLine = { type: 'command', command: 'bun ~/.claude/statusline.mjs' };
     mkdirSync(dir, { recursive: true });
     writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
   "
   green "  enabled frontend-design@dotfiles (pinned)"
   green "  set outputStyle=Concise"
+  green "  set statusLine"
 else
   red "  skipped: no node/bun runtime found to update settings.json"
 fi
