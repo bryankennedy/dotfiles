@@ -549,10 +549,9 @@
           cfg.statusLine = { type: 'command', command: 'bun ~/.claude/statusline.mjs' };
           cfg.permissions = cfg.permissions || {};
           // User-level permission mode for Claude Code on this Mac. This is the
-          // effective default in every project that does not set its own; this
-          // repo's tracked .claude/settings.json pins 'default' for itself
-          // because it is the public half of the agent instruction supply
-          // chain. Recorded in docs/security-baseline.md (pass 2, accepted).
+          // effective default in every project that does not set its own. This
+          // repo sets none, so 'auto' applies here too (DOT-44).
+          // Recorded in docs/security-baseline.md (pass 2, accepted).
           // The fleet does not set this — remote/install.sh leaves the mode at
           // Claude Code's own default.
           cfg.permissions.defaultMode = 'auto';
