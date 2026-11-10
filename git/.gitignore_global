@@ -57,3 +57,9 @@ Thumbs.db
 package-lock.json
 
 .vscode
+
+# Claude Code local settings
+# Each one holds the permissions of one user on one machine.
+# Keep this exact line. Claude Code appends it to core.excludesfile when it is
+# absent, and that edit changes this tracked file in the checkout (DOT-29).
+**/.claude/settings.local.json
