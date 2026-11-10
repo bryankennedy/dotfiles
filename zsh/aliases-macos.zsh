@@ -36,6 +36,11 @@ compy() {
 alias progress-space='herdr --remote progress-herdr'
 alias progress2-space='herdr --remote progress2-herdr'
 
+# Open a Ghostty window with a plain zsh and no herdr. The Ghostty config sets
+# `command` to herdr, so each new window starts in it. `-n` starts a separate
+# instance, and `--command` replaces the config value for that instance only.
+alias ghostty-plain='open -na Ghostty --args --command=/bin/zsh'
+
 # One-time setup for the progress host. herdr installs itself on the remote
 # only when you first attach with `herdr --remote` (version-matched to the
 # local client), and its CLI/integration commands need herdr on PATH + a
