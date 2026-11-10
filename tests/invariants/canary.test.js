@@ -10,7 +10,9 @@ import {
   workflowSteps, secretsOnPullRequest, unpinnedUses, credentialedCheckouts, runsTouchingPr,
   symlinkStripStep, unverifiedDownloads, codeownersRules, deadCodeownersRules,
   hookFailsOpen, hooksPathActivation, unexpectedPluginSources, unpinnedMarketplaceEntries,
+  managedSettingsProblems,
 } from "../lib/repo.js";
+import { EXPECTED as MANAGED } from "./claude-managed-settings.test.js";
 
 describe("canary: the Forgejo CI rules reject the shapes they exist for", () => {
   test("a secret on pull_request is caught; the same job on pull_request_target is not", () => {
@@ -137,5 +139,54 @@ describe("canary: the marketplace pin rule rejects an entry that is not pinned",
     expect(unpinnedMarketplaceEntries(entry("./plugins/p"))).toHaveLength(1);
     expect(unpinnedMarketplaceEntries("{")).toHaveLength(1);
     expect(unpinnedMarketplaceEntries(JSON.stringify({ name: "m", plugins: [] }))).toHaveLength(1);
+  });
+});
+
+describe("canary: the managed settings rule rejects the shapes it exists for (DOT-43)", () => {
+  const connectors = MANAGED.connectors
+    .map((c) => `        { server = "${c.server}"; url = "${c.url}"; prefix = "${c.prefix}"; }`)
+    .join("\n");
+  const flake = (opts = {}) => `
+      claudeDeniedConnectors = [
+${opts.connectors ?? connectors}
+      ];
+      claudeExtraDeny = [ ${opts.extra ?? '"mcp__claude_ai_Claude_Docs__delete"'} ];
+      claudeManagedSettings = (pkgs.formats.json { }).generate "claude-managed-settings.json" {
+        ${opts.generate ?? "deniedMcpServers = pkgs.lib.concatMap (c: [ { serverName = c.server; } { serverUrl = c.url; } ]) claudeDeniedConnectors;"}
+        permissions.deny = (map (c: c.prefix) claudeDeniedConnectors) ++ claudeExtraDeny;
+      };
+      system.activationScripts.postActivation.text = ''
+${opts.install ?? '        /usr/bin/install -m 644 -o root -g wheel ${claudeManagedSettings} "/Library/Application Support/ClaudeCode/managed-settings.json" || echo "postActivation: could not write the Claude Code managed settings" >&2'}
+      '';
+`;
+
+  test("the expected shape passes", () => {
+    expect(managedSettingsProblems(flake(), MANAGED)).toEqual([]);
+  });
+
+  test("a connector dropped, commented out, or given a URL without the wildcard", () => {
+    const [first, ...rest] = connectors.split("\n");
+    expect(managedSettingsProblems(flake({ connectors: rest.join("\n") }), MANAGED)).toEqual(["connector not denied: claude.ai Gmail"]);
+    expect(managedSettingsProblems(flake({ connectors: ["        #" + first.trimStart(), ...rest].join("\n") }), MANAGED)).toEqual(["connector not denied: claude.ai Gmail"]);
+    const noStar = [first.replace("/*", "/"), ...rest].join("\n");
+    expect(managedSettingsProblems(flake({ connectors: noStar }), MANAGED).length).toBe(2);
+  });
+
+  test("the extra deny list emptied, and the JSON not built from the list", () => {
+    expect(managedSettingsProblems(flake({ extra: "" }), MANAGED).length).toBe(1);
+    expect(managedSettingsProblems(flake({ generate: 'deniedMcpServers = [ ];' }), MANAGED).length).toBe(1);
+  });
+
+  test("an install line that is commented out, not root-owned, world-writable, or without the fallback", () => {
+    const good = '        /usr/bin/install -m 644 -o root -g wheel ${claudeManagedSettings} "/Library/Application Support/ClaudeCode/managed-settings.json" || echo "postActivation: could not write the Claude Code managed settings" >&2';
+    for (const bad of [
+      "        #" + good.trimStart(),
+      good.replace("-o root", "-o bk"),
+      good.replace("-m 644", "-m 666"),
+      good.replace(/ \|\| echo .*$/, ""),
+      good.replace("managed-settings.json", "settings.json"),
+    ]) {
+      expect(managedSettingsProblems(flake({ install: bad }), MANAGED).length, bad).toBe(1);
+    }
   });
 });

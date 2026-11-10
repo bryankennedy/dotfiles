@@ -310,3 +310,64 @@ export function unpinnedMarketplaceEntries(json) {
   }
   return bad;
 }
+
+// --- Claude Code managed settings on the Mac (DOT-43) -----------------------
+
+/** The flake's claudeDeniedConnectors entries, as {server, url, prefix}, from uncommented lines. */
+export const deniedConnectors = (flake) => {
+  const block = /^\s*claudeDeniedConnectors\s*=\s*\[\n([\s\S]*?)^\s*\];/m.exec(String(flake ?? ""))?.[1] ?? "";
+  return block
+    .split("\n")
+    .filter((l) => !/^\s*#/.test(l))
+    .map((l) => /\{\s*server\s*=\s*"([^"]+)";\s*url\s*=\s*"([^"]+)";\s*prefix\s*=\s*"([^"]+)";\s*\}/.exec(l))
+    .filter(Boolean)
+    .map((m) => ({ server: m[1], url: m[2], prefix: m[3] }));
+};
+
+/**
+ * Problems with how the flake writes Claude Code's managed settings on the
+ * Mac: a connector in `expected.connectors` missing from
+ * claudeDeniedConnectors, or present with another URL or prefix; a URL that
+ * does not end in `*`; claudeExtraDeny not equal to `expected.extraDeny`; the
+ * JSON not built from both lists; or postActivation not installing the file
+ * at the managed path, root-owned, mode 644, on an uncommented line with the
+ * house `|| echo "postActivation: …" >&2` fallback. Static text checks only.
+ */
+export function managedSettingsProblems(flake, expected) {
+  const bad = [];
+  const text = String(flake ?? "");
+  const squash = (s) => s.replace(/\s+/g, "");
+  const found = deniedConnectors(text);
+  for (const want of expected.connectors) {
+    const got = found.find((c) => c.server === want.server);
+    if (!got) { bad.push(`connector not denied: ${want.server}`); continue; }
+    if (got.url !== want.url) bad.push(`${want.server}: url is ${got.url}, expected ${want.url}`);
+    if (got.prefix !== want.prefix) bad.push(`${want.server}: prefix is ${got.prefix}, expected ${want.prefix}`);
+  }
+  for (const c of found) {
+    if (!c.url.endsWith("*")) bad.push(`${c.server}: url does not end in *`);
+    if (!/^https:\/\//.test(c.url)) bad.push(`${c.server}: url is not https`);
+  }
+  const extra = /^\s*claudeExtraDeny\s*=\s*\[(.*)\];\s*$/m.exec(text)?.[1];
+  const extraList = extra === undefined ? null : [...extra.matchAll(/"([^"]+)"/g)].map((m) => m[1]);
+  if (!extraList) bad.push("no claudeExtraDeny = [ ... ]; line");
+  else if (JSON.stringify(extraList) !== JSON.stringify(expected.extraDeny)) bad.push(`claudeExtraDeny is ${JSON.stringify(extraList)}, expected ${JSON.stringify(expected.extraDeny)}`);
+  const gen = /^\s*claudeManagedSettings\s*=\s*\(pkgs\.formats\.json\s*\{\s*\}\)\.generate\s+"[^"]+"\s*\{\n([\s\S]*?)^\s*\};/m.exec(text)?.[1] ?? "";
+  if (!gen) bad.push("no claudeManagedSettings = (pkgs.formats.json { }).generate ... block");
+  else {
+    const g = squash(gen);
+    if (!g.includes(squash("deniedMcpServers = pkgs.lib.concatMap (c: [ { serverName = c.server; } { serverUrl = c.url; } ]) claudeDeniedConnectors;"))) {
+      bad.push("deniedMcpServers is not built from claudeDeniedConnectors by server name and url");
+    }
+    if (!g.includes(squash("permissions.deny = (map (c: c.prefix) claudeDeniedConnectors) ++ claudeExtraDeny;"))) {
+      bad.push("permissions.deny is not the connector prefixes plus claudeExtraDeny");
+    }
+  }
+  const live = postActivation(text).split("\n").filter((l) => !/^\s*#/.test(l));
+  const line = live.find((l) => /\$\{claudeManagedSettings\}/.test(l));
+  if (!line) bad.push("postActivation does not install claudeManagedSettings");
+  else if (!/^\s*\/usr\/bin\/install\s+-m\s+644\s+-o\s+root\s+-g\s+wheel\s+\$\{claudeManagedSettings\}\s+"\/Library\/Application Support\/ClaudeCode\/managed-settings\.json"\s*\|\|\s*echo\s+"postActivation: [^"]+"\s*>&2\s*$/.test(line)) {
+    bad.push(`managed settings install line is not root-owned, mode 644, at the managed path, with the || echo fallback: ${line.trim()}`);
+  }
+  return bad;
+}

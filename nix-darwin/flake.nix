@@ -73,6 +73,35 @@
           hash = "sha256-wkDX8My5DCY6hJ/NsJt+5iYw2SE0jtaq/ahrnVd7xRA=";
         };
       });
+
+      # Claude Code managed settings for the Mac (DOT-43). Claude Code reads
+      # /Library/Application Support/ClaudeCode/managed-settings.json before
+      # the user's and the project's settings, and neither of those can undo
+      # an entry in it. The file denies the claude.ai connectors that a
+      # session on this Mac does not use. The entries are the ones the fleet's
+      # VMs get from the private infrastructure repo (INFRA-320e); the owner
+      # chose the same list for the Mac in INFRA-345. Each connector is denied three ways: by server name and by
+      # URL in deniedMcpServers, and by tool-name prefix in permissions.deny.
+      # claude.ai can rename a connector, and the tool prefix follows the
+      # name, so the URL is the entry that survives a rename. Each URL ends in
+      # `*`, so a changed path on the same host still matches. The Progress
+      # and Claude Docs connectors stay, with the Docs delete tool denied on
+      # its own. Names and hosts are from `claude mcp list` on 2026-11-09.
+      # A change here fails tests/invariants/claude-managed-settings.test.js
+      # until the test moves with it. See docs/decisions/DOT-43.md.
+      claudeDeniedConnectors = [
+        { server = "claude.ai Gmail"; url = "https://gmailmcp.googleapis.com/*"; prefix = "mcp__claude_ai_Gmail"; }
+        { server = "claude.ai Google Drive"; url = "https://drivemcp.googleapis.com/*"; prefix = "mcp__claude_ai_Google_Drive"; }
+        { server = "claude.ai Google Calendar"; url = "https://calendarmcp.googleapis.com/*"; prefix = "mcp__claude_ai_Google_Calendar"; }
+        # Deprecated, and disconnected from the account on 2026-11-09. Denied
+        # in case it is connected again.
+        { server = "claude.ai Cloudflare Developer Platform"; url = "https://bindings.mcp.cloudflare.com/*"; prefix = "mcp__claude_ai_Cloudflare_Developer_Platform"; }
+      ];
+      claudeExtraDeny = [ "mcp__claude_ai_Claude_Docs__delete" ];
+      claudeManagedSettings = (pkgs.formats.json { }).generate "claude-managed-settings.json" {
+        deniedMcpServers = pkgs.lib.concatMap (c: [ { serverName = c.server; } { serverUrl = c.url; } ]) claudeDeniedConnectors;
+        permissions.deny = (map (c: c.prefix) claudeDeniedConnectors) ++ claudeExtraDeny;
+      };
     in {
       nix.enable = false;
       system.primaryUser = "bk";
@@ -501,6 +530,12 @@
         # not after. core.hooksPath is per-clone config that git never tracks,
         # so without this line the hook exists in the tree but never runs.
         /usr/bin/sudo -Hu bk ${pkgs.git}/bin/git -C /Users/bk/src/dotfiles config core.hooksPath .githooks || echo "postActivation: could not set core.hooksPath; the gitleaks pre-commit hook is not active" >&2
+        # Claude Code managed settings (DOT-43): the file that claudeManagedSettings
+        # above builds. Root-owned and mode 644, so a session that runs as bk
+        # reads it and only root writes it. `install` copies a fresh file on
+        # every switch, so a hand edit lasts until the next rebuild.
+        /usr/bin/install -d -m 755 -o root -g wheel "/Library/Application Support/ClaudeCode" || echo "postActivation: could not create the Claude Code managed settings directory" >&2
+        /usr/bin/install -m 644 -o root -g wheel ${claudeManagedSettings} "/Library/Application Support/ClaudeCode/managed-settings.json" || echo "postActivation: could not write the Claude Code managed settings" >&2
         /usr/bin/sudo -Hu bk ${bun}/bin/bun -e "
           const { readFileSync, writeFileSync, mkdirSync } = require('fs');
           const dir = process.env.HOME + '/.claude';
