@@ -3,27 +3,38 @@
 // `claude -p` run. Design and trust boundaries: docs/forge-ci.md in
 // bkennedy/infrastructure, the kit's canonical home, which syncs this file
 // verbatim to every repository that carries the review. Where each
-// subcommand runs: .forgejo/workflows/claude-review.yml.
+// subcommand runs: .forgejo/workflows/argus-verdict.yml.
 //
 //   bun scripts/forgejo-review.mjs schema
 //       The JSON Schema Claude's structured output has to satisfy.
+//   bun scripts/forgejo-review.mjs decide
+//       Exit 0 when the event in $GITHUB_EVENT_PATH gets a review, else print
+//       why not ("no verdict: draft") and exit 1. The job then fails; it is
+//       never skipped, because Forgejo maps a skipped job to success (INFRA-289).
 //   bun scripts/forgejo-review.mjs prompt
 //       The review prompt for the pull request in $GITHUB_EVENT_PATH.
-//   bun scripts/forgejo-review.mjs post <result.json> <pr.diff> [--dry-run] [--timings <file>]
+//   bun scripts/forgejo-review.mjs post <result.json> <pr.diff> --binding <file> [--dry-run] [--timings <file>]
 //       Turn Claude's result into one Forgejo review: inline comments where a
-//       finding lands on a line in the diff, everything else in the body. Post
-//       it as the reviewer account, then clear the re-review label. --dry-run
-//       prints the payload instead of posting it. --timings names the file the
-//       workflow's steps append "<phase> <epoch>" marks to; the split goes in
-//       the footer and a "timing:" log line (INFRA-185).
+//       finding lands on a line in the diff, everything else in the body, and
+//       one argus-verdict marker as the body's last line. Post it as the
+//       reviewer account. Exit 0 only for a clean verdict. --binding names
+//       the file the diff step wrote: the SHAs, trees and patch-id that were
+//       reviewed. --dry-run prints the payload instead of posting it.
+//       --timings names the file the workflow's steps append "<phase> <epoch>"
+//       marks to; the split goes in the footer and a "timing:" log line
+//       (INFRA-185).
 //
 // Runs from the BASE branch checkout. It reads the PR's diff as text and never
 // executes anything from the PR.
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { createHash } from "node:crypto";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+// The re-review label of the retired claude-review.yml. No workflow reads it
+// now (INFRA-289); scripts/review-pipeline-metrics.mjs still counts it in old
+// timelines, and scripts/forgejo-review-setup.mjs still provisions it.
 export const REVIEW_LABEL = "claude-review";
 // Past this many inline comments the review stops being readable; the rest go
 // in the body.
@@ -141,7 +152,7 @@ export function readResult(text) {
   if (r?.type !== "result") return { failure: `Claude's output was not a result (type: ${r?.type}).`, meta: {} };
   if (r.subtype !== "success" || r.is_error) {
     const hint = r.subtype === "error_max_turns"
-      ? " It ran out of turns: split the PR, or raise --max-turns in .forgejo/workflows/claude-review.yml."
+      ? " It ran out of turns: split the PR, or raise --max-turns in .forgejo/workflows/argus-verdict.yml."
       : "";
     return { failure: `Claude stopped with \`${r.subtype}\` after ${r.num_turns ?? "?"} turns.${hint}`, meta: r };
   }
@@ -275,7 +286,7 @@ export function failureReview({ failure, headSha, stderrTail = "", meta = {}, ti
     "",
     failure,
     "",
-    `Nothing was reviewed, so this is not an approval. Add the \`${REVIEW_LABEL}\` label to try again.`,
+    "Nothing was reviewed, so this is not an approval. The verdict for this change stays incomplete until the change itself changes: push a commit that changes the diff.",
   ];
   if (stderrTail.trim()) {
     out.push("", "<details><summary>Last lines of Claude's stderr</summary>", "", "```", stderrTail.trim(), "```", "", "</details>");
@@ -283,6 +294,162 @@ export function failureReview({ failure, headSha, stderrTail = "", meta = {}, ti
   out.push("", footer(headSha, meta, timings));
   return { event: "COMMENT", commit_id: headSha, body: redact(out.join("\n")), comments: [] };
 }
+
+// --- the verdict marker (INFRA-289) ------------------------------------------
+//
+// The verdict is not a commit status: any write token can post a status, and
+// Forgejo maps a skipped job to success. The verdict is one marker, on the
+// last line of a review that the engine's own account posted (argus for
+// Claude), on the commit it names. docs/review-pipeline.md, decision 2, holds
+// the rules the gate applies to it; docs/decisions/INFRA-289.md holds the
+// format. The gate imports parseMarker() and textHash() from here, so the
+// writer and the reader cannot drift apart.
+
+// The engine comes from this script, never from model output or the event.
+export const ENGINE = "claude";
+export const MARKER_NAME = "argus-verdict";
+export const MARKER_VERSION = 1;
+// The gate account. Its edits (the escalation title prefix) get no review.
+export const GATE_ACCOUNT = "minos";
+// The gate's escalation title prefix. The draft check and the text hash
+// ignore it, so an escalation changes neither.
+export const GATE_TITLE_PREFIX = "⛔ REVIEW:";
+// The events that get a review. Forgejo's payload spells the push event
+// "synchronized"; the workflow's trigger list spells it "synchronize".
+export const REVIEW_ACTIONS = ["opened", "reopened", "synchronize", "edited"];
+// Forgejo's default WORK_IN_PROGRESS_PREFIXES, matched ignoring case.
+export const DRAFT_PREFIXES = ["WIP:", "[WIP]"];
+export const VERDICTS = ["clean", "blocked", "human", "incomplete"];
+
+// Anything that reads as the marker's name: "argus-verdict", "Argus Verdict",
+// "argus\u200bverdict". Model text must never hold one, so only the post step's
+// own marker line can.
+const MARKER_TEXT = /argus[\W_]*verdict/gi;
+
+/**
+ * Model text with every marker-shaped word removed, and every HTML comment
+ * opener escaped: an unclosed "<!--" in a finding would hide the rest of the
+ * review from people, though not from the gate, which reads the raw text.
+ */
+export const stripMarkerText = (s) => String(s ?? "").replace(MARKER_TEXT, "[marker text removed]").replace(/<!--/g, "&lt;!--");
+
+/** A title without the gate's escalation prefix. */
+export const withoutGatePrefix = (title) => {
+  const t = String(title ?? "").trimStart();
+  return t.startsWith(GATE_TITLE_PREFIX) ? t.slice(GATE_TITLE_PREFIX.length).trimStart() : t;
+};
+
+export const isDraftTitle = (title) => {
+  const t = withoutGatePrefix(title).toLowerCase();
+  return DRAFT_PREFIXES.some((p) => t.startsWith(p.toLowerCase()));
+};
+
+/**
+ * sha256 hex of the PR text the review saw: the UTF-8 bytes of the JSON
+ * array [title, description], with the gate prefix taken off the title and
+ * line ends normalized to \n. JSON keeps the boundary between the two fixed.
+ */
+export function textHash(title, body) {
+  const norm = (s) => String(s ?? "").replace(/\r\n?/g, "\n");
+  return createHash("sha256").update(JSON.stringify([norm(withoutGatePrefix(title)), norm(body)]), "utf8").digest("hex");
+}
+
+/**
+ * Whether a pull_request_target event gets a review. {review: true}, or
+ * {review: false, reason} with a reason that starts "no verdict:".
+ */
+export function decideEvent(event, { gate = GATE_ACCOUNT } = {}) {
+  const pr = event?.pull_request;
+  if (!pr?.number || !pr?.head?.sha) throw new Error("the event is not a pull_request event");
+  const action = event.action === "synchronized" ? "synchronize" : String(event.action ?? "");
+  if (!REVIEW_ACTIONS.includes(action)) return { review: false, reason: `no verdict: a ${action || "unnamed"} event gets no review` };
+  if (pr.state && pr.state !== "open") return { review: false, reason: `no verdict: the PR is ${pr.state}` };
+  if (action === "edited" && event.sender?.login === gate) {
+    return { review: false, reason: `no verdict: an edit by the gate (${gate}); the review of this head stands` };
+  }
+  if (isDraftTitle(pr.title)) return { review: false, reason: "no verdict: draft" };
+  return { review: true };
+}
+
+const OID = /^(?:[0-9a-f]{40}|[0-9a-f]{64})$/;
+export const BINDING_KEYS = ["head", "base", "merge_base", "base_tree", "head_tree", "patch_id"];
+
+/**
+ * The binding file the diff step writes: one "<key> <value>" line per key in
+ * BINDING_KEYS. patch_id is "none" for an empty diff. Throws on anything else.
+ */
+export function readBinding(text) {
+  const out = {};
+  for (const line of String(text ?? "").split("\n")) {
+    if (!line.trim()) continue;
+    const m = /^(\w+) (\S+)$/.exec(line.trim());
+    if (!m || !BINDING_KEYS.includes(m[1]) || m[1] in out) throw new Error(`binding: unexpected line ${JSON.stringify(line)}`);
+    out[m[1]] = m[2];
+  }
+  for (const k of BINDING_KEYS) {
+    const v = out[k];
+    if (v === undefined) throw new Error(`binding: ${k} is missing`);
+    if (!(OID.test(v) || (k === "patch_id" && v === "none"))) throw new Error(`binding: ${k} is not an object id: ${JSON.stringify(v)}`);
+  }
+  return out;
+}
+
+/**
+ * The verdict for one run. clean: the review completed, no finding is medium
+ * or worse, and blast_radius is not high. human: no such finding, but
+ * blast_radius is high, so the PR goes to the owner (C1); it is not a block.
+ * blocked: a medium or worse finding. incomplete: no usable review.
+ */
+export function verdictOf({ review, failure }) {
+  if (failure || !review) return "incomplete";
+  if (review.findings.some((f) => MUST_FIX.includes(f.severity))) return "blocked";
+  if (review.blast_radius === "high") return "human";
+  return "clean";
+}
+
+/** The marker line. Every value is checked; nothing in it comes from the model. */
+export function renderMarker({ verdict, blast, binding, text, engine = ENGINE }) {
+  if (!VERDICTS.includes(verdict)) throw new Error(`marker: bad verdict ${verdict}`);
+  if (!["high", "standard", "low", "none"].includes(blast)) throw new Error(`marker: bad blast ${blast}`);
+  if (!/^[0-9a-f]{64}$/.test(String(text))) throw new Error("marker: bad text hash");
+  const b = readBinding(BINDING_KEYS.map((k) => `${k} ${binding?.[k]}`).join("\n"));
+  const fields = [`v=${MARKER_VERSION}`, `engine=${engine}`, `verdict=${verdict}`, `blast=${blast}`,
+    ...BINDING_KEYS.map((k) => `${k}=${b[k]}`), `text=${text}`];
+  return `<!-- ${MARKER_NAME} ${fields.join(" ")} -->`;
+}
+
+const MARKER_LINE = new RegExp(
+  "^<!-- argus-verdict v=1 engine=(claude|codex) verdict=(clean|blocked|human|incomplete) blast=(high|standard|low|none)" +
+  BINDING_KEYS.map((k) => ` ${k}=(${k === "patch_id" ? "none|" : ""}[0-9a-f]{40}|[0-9a-f]{64})`).join("") +
+  " text=([0-9a-f]{64}) -->$"
+);
+
+/**
+ * A review body -> the marker's fields, or null. Null unless the body holds
+ * the marker name exactly once, and that once is a well-formed marker on the
+ * last line. The caller still checks the review's author and commit_id.
+ */
+export function parseMarker(body) {
+  const text = String(body ?? "").replace(/\r\n?/g, "\n").trimEnd();
+  if ((text.match(MARKER_TEXT) ?? []).length !== 1) return null;
+  const m = MARKER_LINE.exec(text.slice(text.lastIndexOf("\n") + 1));
+  if (!m) return null;
+  const [, engine, verdict, blast, ...rest] = m;
+  const out = { v: MARKER_VERSION, engine, verdict, blast };
+  BINDING_KEYS.forEach((k, i) => (out[k] = rest[i]));
+  out.text = rest[BINDING_KEYS.length];
+  return out;
+}
+
+/**
+ * A review payload with marker-shaped text stripped from the body and every
+ * inline comment, and the marker appended as the body's last line.
+ */
+export const sealReview = (payload, marker) => ({
+  ...payload,
+  body: `${stripMarkerText(payload.body).trimEnd()}\n\n${marker}`,
+  comments: payload.comments.map((c) => ({ ...c, path: stripMarkerText(c.path), body: stripMarkerText(c.body) })),
+});
 
 /** Fill {{placeholders}} in the prompt template. Values are never re-scanned. */
 export function renderPrompt(template, pr) {
@@ -329,21 +496,37 @@ const repoPath = () => need("GITHUB_REPOSITORY").split("/").map(encodeURICompone
 const tail = (path, n = 20) =>
   existsSync(path) ? readFileSync(path, "utf8").trimEnd().split("\n").slice(-n).join("\n") : "";
 
-async function post(resultPath, diffPath, { dryRun = false, timingsPath = null } = {}) {
+async function post(resultPath, diffPath, { dryRun = false, timingsPath = null, bindingPath = null } = {}) {
   const pr = pullRequest();
+  if (!bindingPath) throw new Error("--binding is required: the marker needs what the diff step reviewed");
+  const binding = readBinding(readFileSync(bindingPath, "utf8"));
+  // The diff step checked out and diffed the event's head SHA. If the two
+  // ever differ, the review is of some other commit: post nothing.
+  if (binding.head !== pr.head.sha) {
+    throw new Error(`the diffed head ${binding.head} is not the event head ${pr.head.sha}; no review posted`);
+  }
   const { review, failure, meta } = readResult(existsSync(resultPath) ? readFileSync(resultPath, "utf8") : "");
+  const verdict = verdictOf({ review, failure });
+  const marker = renderMarker({
+    verdict,
+    blast: review ? review.blast_radius : "none",
+    binding,
+    text: textHash(pr.title, pr.body),
+  });
   const commentable = commentableLines(existsSync(diffPath) ? readFileSync(diffPath, "utf8") : "");
   const timings = readTimings(timingsPath && existsSync(timingsPath) ? readFileSync(timingsPath, "utf8") : "");
   console.log(timingLog(timings, meta));
-  const build = (inline) =>
+  const build = (inline) => sealReview(
     failure
       ? failureReview({ failure, headSha: pr.head.sha, stderrTail: tail(join(dirname(resultPath), "claude.stderr")), meta, timings })
-      : buildReview({ review, commentable, headSha: pr.head.sha, meta, timings, inline });
+      : buildReview({ review, commentable, headSha: pr.head.sha, meta, timings, inline }),
+    marker
+  );
 
   let payload = build(true);
   if (dryRun) {
     console.log(JSON.stringify(payload, null, 2));
-    return failure ? 1 : 0;
+    return verdict === "clean" ? 0 : 1;
   }
 
   const token = need("CLAUDE_REVIEW_TOKEN");
@@ -363,15 +546,9 @@ async function post(resultPath, diffPath, { dryRun = false, timingsPath = null }
       ? `posted a did-not-complete notice on #${pr.number}: ${failure}`
       : `posted review on #${pr.number}: ${review.findings.length} finding(s), ${payload.comments.length} inline, blast radius ${review.blast_radius}`
   );
-
-  if ((pr.labels ?? []).some((l) => l?.name === REVIEW_LABEL)) {
-    const labelToken = process.env.LABEL_TOKEN;
-    const del = labelToken
-      ? await forgejo("DELETE", `/repos/${repoPath()}/issues/${pr.number}/labels/${encodeURIComponent(REVIEW_LABEL)}`, labelToken)
-      : { ok: false, status: "no LABEL_TOKEN", text: "" };
-    if (!del.ok) console.error(`warning: could not remove the ${REVIEW_LABEL} label (${del.status}); remove it by hand to request another review`);
-  }
-  return failure ? 1 : 0;
+  // The job's status is only for people to look at; the gate reads the marker.
+  console.log(`verdict: ${verdict} on ${pr.head.sha}`);
+  return verdict === "clean" ? 0 : 1;
 }
 
 async function main(argv) {
@@ -380,15 +557,24 @@ async function main(argv) {
     console.log(JSON.stringify(REVIEW_SCHEMA));
     return 0;
   }
+  if (cmd === "decide") {
+    const decision = decideEvent(JSON.parse(readFileSync(need("GITHUB_EVENT_PATH"), "utf8")));
+    if (decision.review) {
+      console.log("this event gets a review");
+      return 0;
+    }
+    console.error(decision.reason);
+    return 1;
+  }
   if (cmd === "prompt") {
     process.stdout.write(renderPrompt(readFileSync(join(ROOT, ".forgejo", "review", "prompt.md"), "utf8"), pullRequest()));
     return 0;
   }
   if (cmd === "post" && rest.length >= 2) {
-    const at = rest.indexOf("--timings");
-    return post(rest[0], rest[1], { dryRun: rest.includes("--dry-run"), timingsPath: at >= 0 ? rest[at + 1] ?? null : null });
+    const opt = (name) => (rest.indexOf(name) >= 0 ? rest[rest.indexOf(name) + 1] ?? null : null);
+    return post(rest[0], rest[1], { dryRun: rest.includes("--dry-run"), timingsPath: opt("--timings"), bindingPath: opt("--binding") });
   }
-  console.error("usage: forgejo-review.mjs schema | prompt | post <result.json> <pr.diff> [--dry-run] [--timings <file>]");
+  console.error("usage: forgejo-review.mjs schema | decide | prompt | post <result.json> <pr.diff> --binding <file> [--dry-run] [--timings <file>]");
   return 2;
 }
 

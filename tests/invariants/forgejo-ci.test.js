@@ -1,5 +1,5 @@
 // Forgejo CI and the Claude PR reviewer: the security properties
-// .forgejo/workflows/claude-review.yml depends on, held in place so a later
+// .forgejo/workflows/argus-verdict.yml depends on, held in place so a later
 // "simplification" cannot quietly undo one. docs/claude-review.md explains each.
 import { test, expect, describe } from "bun:test";
 import { join } from "node:path";
@@ -30,7 +30,7 @@ describe("CI lives on Forgejo", () => {
 
   test("the test and review workflows exist", () => {
     expect(workflowFiles.map(rel)).toEqual(
-      expect.arrayContaining([".forgejo/workflows/claude-review.yml", ".forgejo/workflows/test.yml"])
+      expect.arrayContaining([".forgejo/workflows/argus-verdict.yml", ".forgejo/workflows/test.yml"])
     );
   });
 });
@@ -69,8 +69,8 @@ for (const f of workflowFiles) {
   });
 }
 
-describe("claude-review.yml", () => {
-  const file = join(WORKFLOWS, "claude-review.yml");
+describe("argus-verdict.yml", () => {
+  const file = join(WORKFLOWS, "argus-verdict.yml");
   const wf = () => parse(file);
   const steps = () => workflowSteps(wf());
   const namesOf = (list) => list.map(({ step }) => step.name);
@@ -82,11 +82,24 @@ describe("claude-review.yml", () => {
     ).toEqual(["pull_request_target"]);
   });
 
+  test("every open, reopen, push and text edit gets a run, and a label never does (INFRA-289)", () => {
+    expect(wf().on.pull_request_target.types).toEqual(["opened", "reopened", "synchronize", "edited"]);
+  });
+
+  test("one job, named for the check, that can never be skipped (INFRA-289)", () => {
+    // Forgejo maps a skipped job to success, so only cache saves may be conditional.
+    expect(Object.keys(wf().jobs)).toEqual(["claude"]);
+    expect(wf().jobs.claude.if).toBeUndefined();
+    const conditional = steps().filter(({ step }) => step.if !== undefined);
+    expect(conditional.every(({ step }) => /actions\/cache\/save@/.test(String(step.uses ?? "")))).toBe(true);
+  });
+
   test("each credential reaches exactly one step, and never the same one", () => {
     expect(namesOf(stepsUsingSecret(wf(), "CLAUDE_CODE_OAUTH_TOKEN"))).toEqual(["Review"]);
     expect(namesOf(stepsUsingSecret(wf(), "CLAUDE_REVIEW_TOKEN"))).toEqual(["Post the review"]);
-    const jobToken = steps().filter(({ step }) => /github\.token|secrets\.(GITHUB|FORGEJO|GITEA)_TOKEN/.test(JSON.stringify(step)));
-    expect(namesOf(jobToken)).toEqual(["Post the review"]);
+    // No step holds the job token: with no label to remove, nothing needs it (INFRA-289).
+    const jobToken = steps().filter(({ step }) => /github\.token|secrets\.(GITHUB|FORGEJO|GITEA)_TOKEN|LABEL_TOKEN/.test(JSON.stringify(step)));
+    expect(namesOf(jobToken)).toEqual([]);
   });
 
   test("the base branch is checked out at the root, the PR only under pr/", () => {
@@ -141,10 +154,12 @@ describe("claude-review.yml", () => {
     }
   });
 
-  test("a review is bounded in time and does not stack", () => {
+  test("a review is bounded in time, and only a push cancels one (INFRA-289)", () => {
     const job = Object.values(wf().jobs)[0];
     expect(job["timeout-minutes"]).toBeLessThanOrEqual(30);
-    expect(wf().concurrency?.["cancel-in-progress"]).toBe(true);
+    expect(wf().concurrency?.["cancel-in-progress"]).toBe(
+      "${{ github.event.action == 'synchronized' || github.event.action == 'synchronize' }}"
+    );
     expect(String(wf().concurrency?.group)).toContain("pull_request.number");
   });
 });
@@ -204,7 +219,7 @@ describe(".forgejo/CODEOWNERS", () => {
     // the CODEOWNERS comment explains why every path is high blast radius.
     const owned = (p) => rules().some((r) => !r.negative && matches(r.pattern, p));
     for (const p of [
-      ".forgejo/workflows/claude-review.yml", ".forgejo/CODEOWNERS", "AGENTS.md", "CLAUDE.md", "scripts/forgejo-review.mjs",
+      ".forgejo/workflows/argus-verdict.yml", ".forgejo/CODEOWNERS", "AGENTS.md", "CLAUDE.md", "scripts/forgejo-review.mjs",
       "tests/lib/repo.js", "nix-darwin/flake.nix", "remote/install.sh", "_agent/rules/global.md",
       "_agent/skills/security-audit.md", "docs/security-baseline.md", ".claude/settings.json", "README.md",
     ]) {

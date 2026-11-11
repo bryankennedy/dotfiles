@@ -1,8 +1,10 @@
-name: claude-review
+name: argus-verdict
 
-# Claude Code as a first-pass PR reviewer, entirely on this forge. It is
-# advisory: owner sign-off comes from .forgejo/CODEOWNERS plus branch
-# protection, never from this review.
+# Argus, the Claude PR reviewer, entirely on this forge. Each run reviews one
+# PR head and posts one review as the `argus` account. The review body ends
+# with one argus-verdict marker bound to that head (INFRA-289). The review
+# gate reads only that marker. This job's own status is only for people to
+# look at, and no merge reads it.
 #
 # bkennedy/infrastructure is the canonical home of this file. There,
 # tests/invariants/forgejo-ci.test.js holds the security properties below in
@@ -18,30 +20,27 @@ on:
   # rewrite it and read the tokens. pull_request_target runs the copy on the
   # base branch. The PR's content is only ever read, never executed.
   #
-  # No `synchronize`: one review when a PR opens, not one per push. Add the
-  # claude-review label to ask for another; the post step removes it again.
+  # Every push gets a new review (synchronize, owner decision C15). An edit
+  # of the title or description gets one too, because the marker binds the
+  # PR text. Never `labeled`: a label must not create or change a run on a
+  # head. To ask for a new review, push a commit, or close and reopen the PR.
   pull_request_target:
-    types: [opened, reopened, labeled]
+    types: [opened, reopened, synchronize, edited]
 
+# One queue per PR. A push cancels the runs for older heads, which the gate
+# ignores anyway. Every other event queues behind the run in progress and
+# never cancels it, so an edit cannot throw away the review of a head.
+# Forgejo spells the push event's action "synchronized" in the payload.
 concurrency:
-  group: claude-review-${{ github.event.pull_request.number }}
-  cancel-in-progress: true
+  group: argus-verdict-${{ github.event.pull_request.number }}
+  cancel-in-progress: ${{ github.event.action == 'synchronized' || github.event.action == 'synchronize' }}
 
 jobs:
-  review:
-    # Skip draft PRs, which Forgejo marks with a WIP: or [WIP] title prefix
-    # (its default WORK_IN_PROGRESS_PREFIXES; startsWith ignores case).
-    #
-    # A label event only counts when the label just added is claude-review, so
-    # tagging a PR `bug` does not buy a 30-turn review. If the payload does not
-    # name the added label, fall back to "the PR carries claude-review", which
-    # the post step removes after every review.
-    if: >-
-      !startsWith(github.event.pull_request.title, 'WIP:') &&
-      !startsWith(github.event.pull_request.title, '[WIP]') &&
-      (github.event.action == 'opened' || github.event.action == 'reopened' ||
-       github.event.label.name == 'claude-review' ||
-       (!github.event.label && contains(github.event.pull_request.labels.*.name, 'claude-review')))
+  # The job id is the check name: "argus-verdict / claude". There is no `if:`
+  # on purpose. Forgejo maps a skipped job to success, so a skip would turn
+  # the check green on a head nobody reviewed. A draft, an edit by the gate,
+  # or any other event without a review fails in the "Decide" step instead.
+  claude:
     runs-on: docker
     container:
       image: node:22-trixie@sha256:77d0c7953e80648137a237496c8edbcb3a14bedc5c5298b93a6d0dfa6c3e1271
@@ -52,7 +51,7 @@ jobs:
       # "timing:" log line (INFRA-185). The file lives outside the workspace
       # because the checkouts below clean it.
       - name: Start the clock
-        run: echo "start $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+        run: echo "start $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"
 
       # Trusted half: the base branch. The prompt, the review criteria
       # (CLAUDE.md) and the posting script all come from here, so a PR cannot
@@ -74,7 +73,7 @@ jobs:
           persist-credentials: false
 
       - name: Mark the end of the checkouts
-        run: echo "checkout $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+        run: echo "checkout $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"
 
       # Claude Code, one ~220 MB native binary, comes from the runner's cache
       # instead of the registry on every run: the install was the whole
@@ -115,7 +114,14 @@ jobs:
       - name: Install the pinned toolchain
         run: |
           sh .forgejo/ci/install-tools.sh review
-          echo "install $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+          echo "install $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"
+
+      # The skip decision, as a failure. A draft (a WIP: or [WIP] title, the
+      # gate's escalation prefix ignored), an edit by the gate account, a
+      # closed PR, or any other event exits 1 here with "no verdict: <why>".
+      # Nothing later runs, and nothing is posted.
+      - name: Decide whether this event gets a review
+        run: bun scripts/forgejo-review.mjs decide
 
       # Saving here is safe where a test.yml gates its save to push runs: this
       # workflow runs only base-branch code (pull_request_target), so what it
@@ -137,13 +143,37 @@ jobs:
           path: /root/.cache/ci-downloads
           key: ci-downloads-review-${{ hashFiles('.forgejo/ci/install-tools.sh') }}
 
+      # The review is of the event's head SHA, the commit Forgejo puts this
+      # job's status on, never of whatever refs/pull/<n>/head is by now. The
+      # PR's objects come in through pr/, then pr/ is rebuilt as a worktree
+      # of that exact commit, so the files Claude reads, the diff and the
+      # marker all name one SHA. A head that a force push has removed fails
+      # here, and the new head's own run reviews it. The binding file records
+      # what was reviewed; the post step writes it into the marker.
       - name: Compute the diff and the prompt
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: |
           mkdir -p .review
           git fetch --quiet --no-tags ./pr HEAD
-          base="$(git merge-base HEAD FETCH_HEAD)"
-          git diff --no-color --no-ext-diff --find-renames "$base" FETCH_HEAD > .review/pr.diff
-          echo "reviewing $(grep -c '^diff --git ' .review/pr.diff) changed file(s) against $(git rev-parse --short "$base")"
+          if ! git cat-file -e "$HEAD_SHA^{commit}"; then
+            echo "no verdict: the event head $HEAD_SHA is not in the PR any more" >&2
+            exit 1
+          fi
+          rm -rf pr
+          git worktree add --quiet --detach pr "$HEAD_SHA"
+          base="$(git merge-base HEAD "$HEAD_SHA")"
+          git diff --no-color --no-ext-diff --find-renames "$base" "$HEAD_SHA" > .review/pr.diff
+          patch_id="$(git patch-id --stable < .review/pr.diff | cut -d' ' -f1)"
+          {
+            echo "head $(git rev-parse "$HEAD_SHA^{commit}")"
+            echo "base $(git rev-parse HEAD)"
+            echo "merge_base $base"
+            echo "base_tree $(git rev-parse "$base^{tree}")"
+            echo "head_tree $(git rev-parse "$HEAD_SHA^{tree}")"
+            echo "patch_id ${patch_id:-none}"
+          } > .review/binding
+          echo "reviewing $(grep -c '^diff --git ' .review/pr.diff) changed file(s) of $HEAD_SHA against $(git rev-parse --short "$base")"
           bun scripts/forgejo-review.mjs prompt > .review/prompt.md
 
       # Claude Code loads CLAUDE.md files it comes across under its working
@@ -181,7 +211,7 @@ jobs:
             echo "symlinks are still present in the PR checkout" >&2
             exit 1
           fi
-          echo "prepare $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+          echo "prepare $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"
 
       # The only step that holds the Claude credential, and it holds nothing
       # else: env -i drops the job token and every variable the runner injected.
@@ -206,15 +236,16 @@ jobs:
               --json-schema "$(bun scripts/forgejo-review.mjs schema)" \
               < /dev/null > .review/result.json 2> .review/claude.stderr
           echo "claude exited $?"
-          echo "review $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+          echo "review $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"
           exit 0
 
-      # The only step that holds the reviewer account's token. It reads Claude's
-      # structured result and the diff as text; it runs nothing from pr/.
+      # The only step that holds the reviewer account's token, and it holds
+      # no other. It reads Claude's structured result, the diff and the
+      # binding as text; it runs nothing from pr/. It strips marker-shaped
+      # text from every model field, then writes the one marker itself as the
+      # last line. It exits 0 only for a clean verdict, so the job's status
+      # matches the marker.
       - name: Post the review
         env:
           CLAUDE_REVIEW_TOKEN: ${{ secrets.CLAUDE_REVIEW_TOKEN }}
-          # The job's own short-lived token, used for one call: removing the
-          # claude-review label so it can be added again for the next review.
-          LABEL_TOKEN: ${{ github.token }}
-        run: bun scripts/forgejo-review.mjs post .review/result.json .review/pr.diff --timings "${RUNNER_TEMP:-/tmp}/claude-review-timings"
+        run: bun scripts/forgejo-review.mjs post .review/result.json .review/pr.diff --binding .review/binding --timings "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"

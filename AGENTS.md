@@ -78,7 +78,7 @@ WezTerm's Lua, Ghostty's `command`.
   widened, hooks added to `.claude/settings.json` or merged into
   `~/.claude/settings.json` by activation or `remote/install.sh`, or a new skill,
   plugin or marketplace source that is not pinned.
-- Weakening the review's own sandbox: `claude-review.yml` triggering on
+- Weakening the review's own sandbox: `argus-verdict.yml` triggering on
   `pull_request`, a checkout that keeps credentials, a secret reaching a step
   that reads `pr/`, the removal of `CLAUDE.md`, `.claude/` or symlinks from `pr/`
   dropped or moved after the Review step, or the Claude step losing
