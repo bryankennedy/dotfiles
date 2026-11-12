@@ -6,11 +6,11 @@
 // its name, with a face for the effort level after it; the directory and a bar
 // for the context window behind a 🧠 mark in the centre; and a bar for each
 // rate limit on the right when the session has them. Each usage bar sits
-// behind an icon for its window. Each bar takes its colour from its own
-// percent. The right part is a link to the usage page on claude.ai, in a
-// terminal that supports OSC 8 links.
+// behind an icon for its window and the time left before the window resets.
+// Each bar takes its colour from its own percent. The right part is a link to
+// the usage page on claude.ai, in a terminal that supports OSC 8 links.
 //
-//   🦊 Fable 5.2 🤔 high     dotfiles · 🧠 ▓▓░░░ 31% 62k/200k     ⏳ 5h ▓░░░░ 24% · 📅 7d ▓▓░░░ 41%
+//   🦊 Fable 5.2 🤔 high     dotfiles · 🧠 ▓▓░░░ 31% 62k/200k     ⏳ 2h ▓░░░░ 24% · 📅 1d ▓▓░░░ 41%
 //
 // Claude Code sets COLUMNS to the terminal width before it runs the script
 // (its stdout is a pipe, so nothing else can read the width). Spaces place the
@@ -64,16 +64,30 @@ const FACES = { low: "😴", medium: "🙂", high: "🤔", xhigh: "🧐", max: "
 const effort = (level) => (level ? `${FACES[level] ?? "😐"} ${level}` : "");
 
 /**
- * The rate-limit windows the session has, shortest first:
- * "⏳ 5h ▓░░░░ 24% · 📅 7d ▓▓░░░ 41%". The hourglass marks the 5-hour session
- * window and the calendar marks the 7-day window. Each icon is a single code
- * point with no variation selector, as the model icons are.
+ * The time from `now` to `resetsAt`, in one rounded unit: "45m", "2h" or
+ * "1d". resets_at is in Unix epoch seconds and `now` is in milliseconds.
+ * Without a reset time in the future, the result is `size`, the window length.
  */
-function usage(d) {
+function left(resetsAt, now, size) {
+  const mins = Math.round((resetsAt - now / 1000) / 60);
+  if (!Number.isFinite(mins) || resetsAt == null || mins <= 0) return size;
+  if (mins < 60) return `${mins}m`;
+  const hours = Math.round(mins / 60);
+  return hours < 24 ? `${hours}h` : `${Math.round(hours / 24)}d`;
+}
+
+/**
+ * The rate-limit windows the session has, shortest first:
+ * "⏳ 2h ▓░░░░ 24% · 📅 1d ▓▓░░░ 41%". The hourglass marks the 5-hour session
+ * window and the calendar marks the 7-day window. The time after each icon is
+ * the time left before that window resets. Each icon is a single code point
+ * with no variation selector, as the model icons are.
+ */
+function usage(d, now) {
   const windows = [
-    ["⏳ 5h", d?.rate_limits?.five_hour?.used_percentage],
-    ["📅 7d", d?.rate_limits?.seven_day?.used_percentage],
-  ];
+    ["⏳", "5h", d?.rate_limits?.five_hour],
+    ["📅", "7d", d?.rate_limits?.seven_day],
+  ].map(([mark, size, w]) => [`${mark} ${left(w?.resets_at, now, size)}`, w?.used_percentage]);
   // rate_limits is absent without a subscription and before the first
   // response, and each window drops out once its reset time passes.
   // One rounded value gives the bar, its colour and the number, so the colour
@@ -84,13 +98,13 @@ function usage(d) {
     .map(([name, pct]) => `${name} ${bar(pct, WIDTH)} ${pct}%`);
 }
 
-export function render(d, columns = 0) {
+export function render(d, columns = 0, now = Date.now()) {
   const cw = d?.context_window ?? {};
   // used_percentage is null early in a session and after /compact.
   const pct = Math.max(0, Math.floor(cw.used_percentage ?? 0));
 
   const model = d?.model?.display_name;
-  const left = [model ? `${icon(model)} ${model}` : "", effort(d?.effort?.level)].filter(Boolean).join(" ");
+  const lead = [model ? `${icon(model)} ${model}` : "", effort(d?.effort?.level)].filter(Boolean).join(" ");
   const centre = [
     basename(d?.workspace?.current_dir ?? d?.cwd ?? ""),
     // The percent alone hides the window size, which is 200k or 1M by model.
@@ -98,21 +112,21 @@ export function render(d, columns = 0) {
   ]
     .filter(Boolean)
     .join(SEP);
-  const limits = usage(d);
+  const limits = usage(d, now);
   const right = limits.length ? link(USAGE_URL, limits.join(SEP)) : "";
 
   // Bun.stringWidth skips the colour codes and counts the emoji as two cells.
-  const [wLeft, wCentre, wRight] = [left, centre, right].map((s) => Bun.stringWidth(s));
+  const [wLeft, wCentre, wRight] = [lead, centre, right].map((s) => Bun.stringWidth(s));
   const row = columns - MARGIN;
   // The centre part sits in the middle of the row, whatever the two ends hold.
   const before = Math.floor((row - wCentre) / 2) - wLeft;
   const after = row - wLeft - before - wCentre - wRight;
   const fits = (gap, part) => part === "" || gap >= SEP.length;
-  if (fits(before, left) && fits(after, right)) {
+  if (fits(before, lead) && fits(after, right)) {
     const pad = (gap, part) => (part === "" ? "" : " ".repeat(Math.max(0, gap)));
-    return `${left}${pad(before, left)}${centre}${pad(after, right)}${right}`;
+    return `${lead}${pad(before, lead)}${centre}${pad(after, right)}${right}`;
   }
-  return [left, centre, right].filter(Boolean).join(SEP);
+  return [lead, centre, right].filter(Boolean).join(SEP);
 }
 
 if (import.meta.main) {

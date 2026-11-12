@@ -37,6 +37,31 @@ describe("statusline.mjs output", () => {
     expect(plain(render(weekOnly))).toEndWith(" · 📅 7d ▓▓░░░ 41%");
   });
 
+  test("shows the time left in each window in place of the window length", () => {
+    const now = Date.UTC(2026, 10, 12, 12, 0, 0);
+    const inMins = (m) => now / 1000 + m * 60;
+    const at = (five, seven) =>
+      plain(
+        render(
+          {
+            rate_limits: {
+              five_hour: { used_percentage: 24, resets_at: five },
+              seven_day: { used_percentage: 41, resets_at: seven },
+            },
+          },
+          0,
+          now
+        )
+      );
+    expect(at(inMins(112), inMins(26 * 60))).toEndWith("⏳ 2h ▓░░░░ 24% · 📅 1d ▓▓░░░ 41%");
+    expect(at(inMins(45), inMins(5 * 24 * 60))).toEndWith("⏳ 45m ▓░░░░ 24% · 📅 5d ▓▓░░░ 41%");
+    expect(at(inMins(59.6), inMins(23.6 * 60))).toEndWith("⏳ 1h ▓░░░░ 24% · 📅 1d ▓▓░░░ 41%");
+    expect(at(inMins(0.2), inMins(20 * 60))).toEndWith("⏳ 5h ▓░░░░ 24% · 📅 20h ▓▓░░░ 41%");
+    // A reset time in the past, or none, gives the window length.
+    expect(at(inMins(-5), undefined)).toEndWith("⏳ 5h ▓░░░░ 24% · 📅 7d ▓▓░░░ 41%");
+    expect(at("soon", null)).toEndWith("⏳ 5h ▓░░░░ 24% · 📅 7d ▓▓░░░ 41%");
+  });
+
   test("the usage part is one link to the usage page, and nothing else is", () => {
     const both = { ...session, rate_limits: { five_hour: { used_percentage: 23.5 }, seven_day: { used_percentage: 41 } } };
     const open = "\x1b]8;;https://claude.ai/settings/usage\x07";
