@@ -443,12 +443,15 @@ export function parseMarker(body) {
 
 /**
  * A review payload with marker-shaped text stripped from the body and every
- * inline comment, and the marker appended as the body's last line.
+ * inline comment body, and the marker appended as the body's last line. A
+ * comment's path stays as it is: buildReview() anchors a comment only on a
+ * path in the diff, and the gate reads only the review body. A stripped path
+ * breaks every inline comment on argus-verdict.yml.
  */
 export const sealReview = (payload, marker) => ({
   ...payload,
   body: `${stripMarkerText(payload.body).trimEnd()}\n\n${marker}`,
-  comments: payload.comments.map((c) => ({ ...c, path: stripMarkerText(c.path), body: stripMarkerText(c.body) })),
+  comments: payload.comments.map((c) => ({ ...c, body: stripMarkerText(c.body) })),
 });
 
 /** Fill {{placeholders}} in the prompt template. Values are never re-scanned. */
