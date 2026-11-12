@@ -17,7 +17,8 @@
 //       Turn Claude's result into one Forgejo review: inline comments where a
 //       finding lands on a line in the diff, everything else in the body, and
 //       one argus-verdict marker as the body's last line. Post it as the
-//       reviewer account. Exit 0 only for a clean verdict. --binding names
+//       reviewer account. Exit 0 for clean and human, 1 for blocked and
+//       incomplete (INFRA-289e). --binding names
 //       the file the diff step wrote: the SHAs, trees and patch-id that were
 //       reviewed. --dry-run prints the payload instead of posting it.
 //       --timings names the file the workflow's steps append "<phase> <epoch>"
@@ -407,6 +408,14 @@ export function verdictOf({ review, failure }) {
   return "clean";
 }
 
+/**
+ * The post step's exit code. Red means a reviewer found a defect, or no
+ * review completed. human is not a defect: the PR goes to the owner through
+ * the gate's own alert (P1.5), so the check stays green (INFRA-289e). The
+ * gate never reads this status; it reads the marker (C5).
+ */
+export const exitCodeFor = (verdict) => (verdict === "clean" || verdict === "human" ? 0 : 1);
+
 /** The marker line. Every value is checked; nothing in it comes from the model. */
 export function renderMarker({ verdict, blast, binding, text, engine = ENGINE }) {
   if (!VERDICTS.includes(verdict)) throw new Error(`marker: bad verdict ${verdict}`);
@@ -529,7 +538,7 @@ async function post(resultPath, diffPath, { dryRun = false, timingsPath = null, 
   let payload = build(true);
   if (dryRun) {
     console.log(JSON.stringify(payload, null, 2));
-    return verdict === "clean" ? 0 : 1;
+    return exitCodeFor(verdict);
   }
 
   const token = need("CLAUDE_REVIEW_TOKEN");
@@ -551,7 +560,7 @@ async function post(resultPath, diffPath, { dryRun = false, timingsPath = null, 
   );
   // The job's status is only for people to look at; the gate reads the marker.
   console.log(`verdict: ${verdict} on ${pr.head.sha}`);
-  return verdict === "clean" ? 0 : 1;
+  return exitCodeFor(verdict);
 }
 
 async function main(argv) {

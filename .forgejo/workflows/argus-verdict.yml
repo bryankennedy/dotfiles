@@ -243,8 +243,8 @@ jobs:
       # no other. It reads Claude's structured result, the diff and the
       # binding as text; it runs nothing from pr/. It strips marker-shaped
       # text from every model field, then writes the one marker itself as the
-      # last line. It exits 0 only for a clean verdict, so the job's status
-      # matches the marker.
+      # last line. It exits 0 for clean and human, and 1 for blocked and
+      # incomplete (INFRA-289e). The gate reads the marker, not this status.
       - name: Post the review
         env:
           CLAUDE_REVIEW_TOKEN: ${{ secrets.CLAUDE_REVIEW_TOKEN }}
