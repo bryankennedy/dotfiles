@@ -110,3 +110,46 @@ Write prose in **ASD-STE100 Simplified Technical English (STE)**. This applies t
 * **Material quoted from somewhere else**, and any text that must be reproduced faithfully.
 
 A rule that fights the work loses. The goal is a reader who understands the text in one pass, not a score.
+
+---
+
+## 9. Commands that the owner runs and pastes back
+
+When you need the owner to run commands and paste the output back to you, give them one block that copies its own output to the Mac clipboard. The owner works on a Mac. You may run on a VM, so you cannot see the Mac or the hosts that the owner reaches over SSH.
+
+**Block shape.** Each block starts with a label line, traces each command, and ends with a copy step:
+
+```
+( echo "### ask-N: <purpose> | $(hostname) | $(date -u +%FT%TZ)"; set -x
+  <command 1>
+  <command 2>
+) 2>&1 | <copy step>
+```
+
+- Number `ask-N` in order within the session. Use the number to match each paste to its request.
+- `set -x` prints each command just before it runs, with a `+` in front. The paste shows what really ran.
+- The parentheses run the block in a subshell, so `set -x` stays off in the owner's own shell.
+- `2>&1` puts errors in the paste as well.
+
+**The copy step depends on where the block runs:**
+
+| Where the block runs | Copy step |
+|---|---|
+| The owner's Mac | `\| tee /dev/tty \| pbcopy` |
+| A Linux host, over SSH from the Mac | `\| c` (OSC 52, see below) |
+| A Linux host where OSC 52 fails | `\| tee ~/cx.out`. Then the owner runs `ssh <host> 'cat ~/cx.out && rm ~/cx.out' \| pbcopy` on the Mac. |
+
+**The OSC 52 function for Linux hosts.** `pbcopy` exists only on macOS. On a Linux host, this function sends the text to the Mac clipboard through the SSH session, and it still shows the text on screen. The function lasts only for the current shell. If the owner opened a new shell, put this line before the block:
+
+```
+c() { tee /dev/stderr | base64 -w0 | { read -r d; printf '\e]52;c;%s\a' "$d" > /dev/tty; }; }
+```
+
+OSC 52 works in the owner's terminal over SSH. It was confirmed on a Linux VM on 2026-11-14. Inside tmux, it works only when `set-clipboard` is on. `base64 -w0` is GNU syntax, so use `c` on Linux only, never on the Mac.
+
+**Rules:**
+
+- Never put a secret in a traced command. `set -x` prints each argument.
+- Never ask for output that holds a token or a credential. Have a script compare values and print only counts or pass/fail.
+- Use commands that stop by themselves, so the pipe ends: `journalctl --since … --until …`, not `-f`.
+- Do not use `ssh <host> 'sudo …' | pbcopy`. The pipe breaks the sudo password prompt.
