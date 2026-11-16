@@ -10,6 +10,14 @@ decisions in `docs/decisions/`. Fleet policy lives in infrastructure's
 [docs/house-standards.md](https://git.bck.dev/bkennedy/infrastructure/src/branch/main/docs/house-standards.md);
 it is linked here, not restated.
 
+## Work in a worktree
+
+Stow links the main checkout into `$HOME`, so an edit there is live before review.
+Do your work in a sibling worktree, never in the main checkout:
+`git worktree add ../dotfiles-<KEY> -b act/<KEY> origin/main`. Do not switch the
+branch of the main checkout. It stays on `main`, and the owner pulls a merged PR
+into it (`docs/decisions/DOT-45.md`).
+
 ## Code review criteria
 
 Read on every automated PR review. Report only problems the PR introduces.
