@@ -112,3 +112,19 @@ fi
 # Eza Colors (Crispy Theme)
 # -------------------------------------------------------------------
 export EZA_COLORS="da=37:ur=32:uw=31:ux=34:gr=32:gw=31:gx=34:tr=32:tw=31:tx=34:sn=33:sb=33:uu=37:gu=37"
+
+# -------------------------------------------------------------------
+# Claude Code
+# -------------------------------------------------------------------
+
+# Start a Claude Code session in a new worktree, in auto mode (DOT-45b).
+# A -w worktree reads the main checkout's local settings, so in dotfiles it
+# gets the main checkout's stricter mode. The flag overrides that mode. The
+# function always pairs the flag with -w, so auto never reaches a main checkout.
+cw() {
+  if [[ -z $1 ]]; then
+    echo "usage: cw <name> [claude args]" >&2
+    return 1
+  fi
+  claude -w "$1" --permission-mode auto "${@:2}"
+}

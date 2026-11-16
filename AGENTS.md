@@ -13,9 +13,10 @@ it is linked here, not restated.
 ## Work in a worktree
 
 Stow links the main checkout into `$HOME`, so an edit there is live before review.
-Do your work in a sibling worktree, never in the main checkout:
-`git worktree add ../dotfiles-<KEY> -b act/<KEY> origin/main`. Do not switch the
-branch of the main checkout. It stays on `main`, and the owner pulls a merged PR
+Do your work in a worktree, never in the main checkout. If the session already
+runs in one (a sibling folder, or one under `.claude/worktrees/`), use it.
+Else run `git worktree add ../dotfiles-<KEY> -b act/<KEY> origin/main`. Do not
+switch the branch of the main checkout. It stays on `main`, and the owner pulls a merged PR
 into it (`docs/decisions/DOT-45.md`).
 
 ## Code review criteria
