@@ -136,16 +136,16 @@ When you need the owner to run commands and paste the output back to you, give t
 | Where the block runs | Copy step |
 |---|---|
 | The owner's Mac | `\| tee /dev/tty \| pbcopy` |
-| A Linux host, over SSH from the Mac | `\| c` (OSC 52, see below) |
+| A Linux host, over SSH from the Mac | `\| c52` (OSC 52, see below) |
 | A Linux host where OSC 52 fails | `\| tee ~/cx.out`. Then the owner runs `ssh <host> 'cat ~/cx.out && rm ~/cx.out' \| pbcopy` on the Mac. |
 
 **The OSC 52 function for Linux hosts.** `pbcopy` exists only on macOS. On a Linux host, this function sends the text to the Mac clipboard through the SSH session, and it still shows the text on screen. The function lasts only for the current shell. If the owner opened a new shell, put this line before the block:
 
 ```
-c() { tee /dev/stderr | base64 -w0 | { read -r d; printf '\e]52;c;%s\a' "$d" > /dev/tty; }; }
+c52() { tee /dev/stderr | base64 -w0 | { read -r d; printf '\e]52;c;%s\a' "$d" > /dev/tty; }; }
 ```
 
-OSC 52 works in the owner's terminal over SSH. It was confirmed on a Linux VM on 2026-11-14. Inside tmux, it works only when `set-clipboard` is on. `base64 -w0` is GNU syntax, so use `c` on Linux only, never on the Mac.
+OSC 52 works in the owner's terminal over SSH. It was confirmed on a Linux VM on 2026-11-14. Inside tmux, it works only when `set-clipboard` is on. `base64 -w0` is GNU syntax, so use `c52` on Linux only, never on the Mac. The function is not named `c`, because some of the owner's hosts map `c` to `clear`.
 
 **Rules:**
 
