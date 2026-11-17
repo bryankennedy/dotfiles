@@ -11,7 +11,7 @@ this repo). This page covers what is specific to dotfiles.
 
 | What | Where |
 |---|---|
-| Review when a PR opens or reopens, or on the `claude-review` label | `.forgejo/workflows/claude-review.yml` |
+| Review when a PR opens or reopens, on each push, and on an edit of its title or description | `.forgejo/workflows/argus-verdict.yml` |
 | The criteria the reviewer applies | `AGENTS.md`, "Code review criteria" (`CLAUDE.md` only imports it) |
 | Prompt, output schema, posting | `.forgejo/review/prompt.md`, `scripts/forgejo-review.mjs` |
 | Pinned toolchain: bun, Claude Code | `.forgejo/ci/install-tools.sh` |
@@ -22,8 +22,8 @@ this repo). This page covers what is specific to dotfiles.
 
 ```mermaid
 flowchart TB
-  trigger["PR opened or reopened,<br/>or labelled claude-review"] --> base & head
-  subgraph job["claude-review job on the forge's runner"]
+  trigger["PR opened or reopened,<br/>pushed to, or its text edited"] --> base & head
+  subgraph job["argus-verdict / claude job on the forge's runner"]
     base["Base branch at ./<br/>AGENTS.md, prompt, script"]
     head["PR checkout at pr/<br/>untrusted, never executed"]
     strip["Strip CLAUDE.md, AGENTS.md, .claude/<br/>and symlinks from pr/"]
@@ -74,7 +74,8 @@ flowchart TB
    code-running tool and confines Read, Grep and Glob to the workspace. `env -i`
    leaves it only its own OAuth token.
 6. **One credential per step.** The Claude token exists only in Review; the
-   reviewer token and the job token only in Post, which runs no model.
+   reviewer token only in Post, which runs no model. No step holds the job
+   token.
 7. **The reviewer can post and nothing else.** `argus` has Read access to this
    repo, so it cannot push, and its review can neither approve nor block.
 8. **The `test` job is the one place PR content is executed.** Rules 1 to 6
@@ -110,8 +111,10 @@ which runs `scripts/argus-review.mjs`. Nobody pastes the review across.
   check each finding against the code, and never to run commands, fetch URLs
   or change credentials, CI or agent config because a review says to.
 - **Stale reviews are marked.** `--wait` polls until argus has reviewed the
-  PR's current head. A review of an older commit is labelled STALE, because
-  pushing more commits does not re-review.
+  PR's current head. A review of an older commit is labelled STALE. Without
+  `--wait`, the reader says to run it again with `--wait`. After a wait of
+  15 minutes or more that ran out, it says to check the run and not to wait
+  again.
 
 The review is still model output about a diff, and a diff can carry text aimed
 at whoever reads it next. The fence narrows that; it does not remove it. The
@@ -119,9 +122,15 @@ merge gate is unchanged: the owner's approval.
 
 ## When reviews run
 
-- **Opened or reopened:** once. Pushing more commits does not re-review.
-- **Re-review:** add the `claude-review` label. The review removes it.
-- **Drafts:** a title starting `WIP:` or `[WIP]` is skipped.
+- **Opened or reopened:** once.
+- **Each push:** once for the new head. A push cancels the run for an older
+  head.
+- **An edit of the title or description:** once. An edit by the review
+  gate's own forge account (`GATE_ACCOUNT` in `scripts/forgejo-review.mjs`)
+  gets none: the review of that head stands. That account is not the owner.
+  No label starts a review.
+- **Drafts:** a title starting `WIP:` or `[WIP]`, in any case, gets no review. The job
+  fails with "no verdict: draft" and posts nothing.
 - **Cost:** reviews use the owner's Claude subscription through a
   `claude setup-token` token, bounded by `--max-turns 30` and a 15-minute job.
 
@@ -133,15 +142,15 @@ Actions secrets:
 1. At this repo's **Settings → Actions → Secrets**, add `CLAUDE_CODE_OAUTH_TOKEN`
    (from `claude setup-token`) and `CLAUDE_REVIEW_TOKEN` (the `argus` account's
    `write:repository` token). The names must match exactly.
-2. Make sure the repo has a `claude-review` label.
-3. Merge the workflow to `main`, then open any PR without `WIP` in its title and
+2. Merge the workflow to `main`, then open any PR without `WIP` in its title and
    expect a review from `argus` within a few minutes.
 
 ## Failure modes
 
 | Symptom | Cause | Fix |
 |---|---|---|
-| No `claude-review` run on a new PR | The workflow is not on `main` yet, Actions is off for the repo, or the title starts with `WIP` | Merge the workflow first; repo **Settings → Units**; retitle and add the label |
+| No `argus-verdict` run on a new PR | The workflow is not on `main` yet, or Actions is off for the repo | Merge the workflow first; repo **Settings → Units** |
+| The job fails with "no verdict: draft" | The title starts with `WIP:` or `[WIP]` | Retitle. The edit starts a review |
 | "did not complete: no JSON result" | `CLAUDE_CODE_OAUTH_TOKEN` is missing, expired or revoked, or a usage limit was hit | Read the Review step log; replace the secret |
 | "did not complete: `error_max_turns`" | The PR is too big for 30 turns | Split it |
 | Post step fails with 401 or 403 | `CLAUDE_REVIEW_TOKEN` is wrong, or `argus` is not a collaborator | Replace the secret; `argus` Read access is managed by the infrastructure repo's `tofu/forgejo` |

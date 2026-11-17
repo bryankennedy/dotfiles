@@ -5,7 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { ROOT } from "../lib/repo.js";
 import {
-  clean, parseRemote, validRepo, teaLogin, reviewerReviews, findPull, normalizeReview, renderMarkdown,
+  clean, parseRemote, validRepo, teaLogin, reviewerReviews, findPull, normalizeReview, renderMarkdown, RUN_TIMEOUT_MINUTES,
 } from "../../scripts/argus-review.mjs";
 
 const SOURCE = readFileSync(join(ROOT, "scripts", "argus-review.mjs"), "utf8");
@@ -129,6 +129,35 @@ describe("normalizeReview and renderMarkdown", () => {
   test("a stale review says how to get a fresh one", () => {
     const md = renderMarkdown({ repo: "o/r", pull: { number: 5, title: "t", head: { sha: "new" } }, reviews: [normalizeReview(review, [], "new")] });
     expect(md).toContain("STALE");
-    expect(md).toContain("`claude-review` label");
+    expect(md).toContain("A push starts a new review");
+    expect(md).toContain("Run this again with --wait");
+    expect(md).not.toContain("claude-review");
+  });
+
+  test("a stale review after a wait that ran out says to stop waiting", () => {
+    const md = renderMarkdown({ repo: "o/r", pull: { number: 5, title: "t", head: { sha: "new" } }, reviews: [normalizeReview(review, [], "new")], waited: 20 });
+    expect(md).toContain("STALE");
+    expect(md).toContain("No review of the current head after 20 minutes");
+    expect(md).toContain("Do not wait again");
+    expect(md).not.toContain("Run this again with --wait");
+  });
+
+  test("a short wait that ran out says the run can still be in progress", () => {
+    const md = renderMarkdown({ repo: "o/r", pull: { number: 5, title: "t", head: { sha: "new" } }, reviews: [normalizeReview(review, [], "new")], waited: 1 });
+    expect(md).toContain("No review of the current head after 1 minutes");
+    expect(md).toContain("run this again with --wait");
+    expect(md).not.toContain("Do not wait again");
+  });
+
+  test("the reader passes how long it waited, and waits on the newest review", () => {
+    expect(SOURCE).toMatch(/renderMarkdown\(\{[^}]*waited: opts\.wait/);
+    expect(SOURCE).toContain("const done = mine.at(-1)?.commit_id === pull.head?.sha;");
+    expect(RUN_TIMEOUT_MINUTES).toBe(15);
+  });
+
+  test("a review of the current head prints no hint", () => {
+    const md = renderMarkdown({ repo: "o/r", pull: { number: 5, title: "t", head: { sha: "new" } }, reviews: [normalizeReview({ ...review, commit_id: "new" }, [], "new")], waited: 20 });
+    expect(md).not.toContain("Do not wait again");
+    expect(md).not.toContain("A push starts a new review");
   });
 });

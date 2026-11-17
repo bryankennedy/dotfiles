@@ -29,8 +29,10 @@ import { join } from "node:path";
 import { execFileSync } from "node:child_process";
 
 export const REVIEWER = "argus";
-export const REVIEW_LABEL = "claude-review";
 const DEFAULT_WAIT_MINUTES = 20;
+// timeout-minutes of the argus-verdict job. A wait this long that finds no
+// review means the run for the head posted nothing.
+export const RUN_TIMEOUT_MINUTES = 15;
 const POLL_SECONDS = 30;
 
 // --- pure ------------------------------------------------------------------
@@ -126,7 +128,7 @@ const short = (sha) => String(sha ?? "").slice(0, 10) || "unknown";
  * Nothing the PR's author wrote is printed, not even the title: outside the
  * fence it would be unfenced text from whoever opened the PR.
  */
-export function renderMarkdown({ repo, pull, reviews }) {
+export function renderMarkdown({ repo, pull, reviews, waited = 0 }) {
   const out = [
     `# argus review of ${repo}#${Number(pull.number)}`,
     "",
@@ -150,7 +152,18 @@ export function renderMarkdown({ repo, pull, reviews }) {
     out.push("</argus-review>");
   }
   if (!reviews.some((r) => r.current)) {
-    out.push("", `Pushing commits does not re-review. Ask the owner to add the \`${REVIEW_LABEL}\` label for a fresh one.`);
+    // After a wait as long as the job's own limit, "wait again" would loop:
+    // the run for this head posted nothing (a failed or timed-out job, or a
+    // draft title). A shorter wait proves nothing, so it gets no stop.
+    const minutes = Number(waited) || 0;
+    out.push(
+      "",
+      minutes >= RUN_TIMEOUT_MINUTES
+        ? `No review of the current head after ${minutes} minutes. Do not wait again: check the argus-verdict run of this PR.`
+        : minutes > 0
+          ? `No review of the current head after ${minutes} minutes. The run can still be in progress: run this again with --wait.`
+          : "A push starts a new review. Run this again with --wait to read the review of the current head."
+    );
   }
   return out.join("\n") + "\n";
 }
@@ -250,7 +263,9 @@ async function main(argv) {
   for (;;) {
     pull = await get(`${base}/pulls/${number}`);
     mine = reviewerReviews(await paged(get, `${base}/pulls/${number}/reviews`));
-    const done = mine.some((r) => r.commit_id === pull.head?.sha);
+    // The newest review decides, as it does for the exit code below. An older
+    // review of this same head (a force push back to it) must not end the wait.
+    const done = mine.at(-1)?.commit_id === pull.head?.sha;
     if (done || Date.now() >= deadline) break;
     console.error(`waiting for argus on ${repo}#${number} (${mine.length} older review(s))…`);
     await new Promise((r) => setTimeout(r, POLL_SECONDS * 1000));
@@ -270,7 +285,7 @@ async function main(argv) {
   if (opts.json) {
     console.log(JSON.stringify({ repo, number, head_sha: pull.head?.sha, reviews }, null, 2));
   } else {
-    process.stdout.write(renderMarkdown({ repo, pull, reviews }));
+    process.stdout.write(renderMarkdown({ repo, pull, reviews, waited: opts.wait }));
   }
   return reviews.at(-1).current ? 0 : 3;
 }
