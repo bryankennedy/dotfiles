@@ -41,7 +41,11 @@ jobs:
   # the check green on a head nobody reviewed. A draft, an edit by the gate,
   # or any other event without a review fails in the "Decide" step instead.
   claude:
-    runs-on: docker
+    # The review runner only (INFRA-301): its own dind on its own bridge,
+    # where the fence logs every new connection and, in enforce mode, allows
+    # only the hosts on its allowlist. The Review step holds the Claude login
+    # and reads the PR, so its egress is leg C of the Rule of Two.
+    runs-on: review
     container:
       image: node:22-trixie@sha256:77d0c7953e80648137a237496c8edbcb3a14bedc5c5298b93a6d0dfa6c3e1271
     timeout-minutes: 15
