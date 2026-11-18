@@ -348,7 +348,12 @@
           "1password"
           "1password-cli"
           "agentsview"
-          "alfred"
+          # Alfred is NOT managed here. Alfred 6 is installed by hand from
+          # alfredapp.com as /Applications/Alfred 6.app, and it updates itself.
+          # Homebrew has no Alfred 6 cask yet: the "alfred" cask installs
+          # Alfred 5.app, and both apps use the bundle ID
+          # com.runningwithcrayons.Alfred. Re-adding that cask puts Alfred 5
+          # back beside Alfred 6. When an Alfred 6 cask ships, switch to it.
           # Hex dictation, from Anomaly's tap. Hex 3 moved from kitlangton/Hex
           # (cask kitlangton-hex, bundle com.kitlangton.hex2) to anomalyco/hex,
           # and the old app no longer updates. Both casks install
