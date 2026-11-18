@@ -7,7 +7,7 @@
 //   remote/install.sh (the fleet) pins bun to an exact release (BUN_VERSION) and zoxide
 //   to the commit sha of its installer script (finding 3).
 //
-//   nix-darwin/flake.nix (the Mac) pins bun itself (bunVersion) and its bun globals — claude-code, wrangler,
+//   nix-darwin/flake.nix (the Mac) pins bun itself (bunVersion) and its bun globals — wrangler and
 //   vite — to exact npm versions, and ghostty-font to a commit of its GitHub
 //   mirror.
 //
@@ -52,7 +52,7 @@ if (!zoxidePin) die(`could not find the zoxide installer-sha pin in remote/insta
 
 const flake = read("nix-darwin/flake.nix");
 const npmPin = (pkg) => flake.match(new RegExp(`install -g ${pkg.replace(/[/@.-]/g, "\\$&")}@([0-9]+\\.[0-9]+\\.[0-9]+)`))?.[1];
-const NPM_GLOBALS = ["@anthropic-ai/claude-code", "wrangler", "vite"];
+const NPM_GLOBALS = ["wrangler", "vite"];
 const npmPins = Object.fromEntries(NPM_GLOBALS.map((p) => [p, npmPin(p)]));
 for (const [p, v] of Object.entries(npmPins)) {
   if (!v) die(`could not find an exact-version pin for ${p} in nix-darwin/flake.nix — did the bun install -g line change shape, or lose its pin?`);

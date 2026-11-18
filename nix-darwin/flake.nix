@@ -116,10 +116,10 @@
       # `sudo scutil --set ComputerName|HostName|LocalHostName <name>`.
 
       # List packages installed in system profile.
-      # Note: claude-code is intentionally NOT installed via nix — it's
-      # installed globally via `bun install -g @anthropic-ai/claude-code`
-      # in the activation script below so we always get the latest release
-      # from npm rather than waiting for the nixpkgs version bump.
+      # Note: claude-code is intentionally NOT installed via nix or by
+      # activation. It is Claude Code's native install in ~/.local/bin, set
+      # up once by hand with `claude install`. Its own updater keeps it
+      # current, the same as on the VMs (docs/decisions/DOT-50.md).
       environment.systemPackages = [
         bun
         pkgs.gitleaks
@@ -548,13 +548,16 @@
           let cfg = {};
           try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch(_) {}
           cfg.preferredNotifChannel = 'terminal_bell';
-          // No telemetry, error reports or other optional network traffic.
-          // Other env entries stay. zsh/profile.zsh exports the same three.
+          // No telemetry and no error reports. Other env entries stay.
+          // zsh/profile.zsh exports the same two, and remote/install.sh sets
+          // them on the VMs. CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC is not
+          // set, because it also stops the updater of the native install.
+          // A switch after PR #150 wrote it, so the merge removes it.
           cfg.env = Object.assign(cfg.env || {}, {
             DISABLE_TELEMETRY: '1',
             DISABLE_ERROR_REPORTING: '1',
-            CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
           });
+          delete cfg.env.CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC;
           // Status line: the stowed claude/.claude/statusline.mjs, which shows
           // the context window use. remote/install.sh sets the same value;
           // tests/claude/statusline.test.js fails when the two differ.
@@ -582,8 +585,9 @@
           writeFileSync(file, JSON.stringify(cfg, null, 2) + '\n');
         "
         /usr/bin/sudo -Hu bk ${bun}/bin/bun ${./scripts/sync-claude-skills.mjs}
-        # npm globals via bun, not nix: claude-code, wrangler and vite ship
-        # faster than nixpkgs packages them. Each is pinned to an exact version
+        # npm globals via bun, not nix: wrangler and vite ship faster than
+        # nixpkgs packages them. Claude Code is not one of them: it is the
+        # native install, which updates itself (see environment.systemPackages). Each is pinned to an exact version
         # so a rebuild installs code that was chosen, not whatever npm served
         # that minute — the same posture as the bun pin in remote/install.sh.
         # Pinning trades auto-freshness for review, so the pin has to be
@@ -591,7 +595,6 @@
         # one falls behind. Bump here, deliberately. `|| echo … >&2`, not
         # `|| true`, so an offline or failed install shows in the switch log
         # instead of silently leaving the old version in place.
-        /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g @anthropic-ai/claude-code@2.1.309 || echo "postActivation: claude-code install failed (offline?)" >&2
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g wrangler@4.129.0 || echo "postActivation: wrangler install failed (offline?)" >&2
         /usr/bin/sudo -Hu bk env PATH="/Users/bk/.bun/bin:$PATH" ${bun}/bin/bun install -g vite@8.2.2 || echo "postActivation: vite install failed (offline?)" >&2
         # ghostty-font: live Ghostty font trials, A/B compare and Elo ranking.
