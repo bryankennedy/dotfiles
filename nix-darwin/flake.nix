@@ -548,6 +548,13 @@
           let cfg = {};
           try { cfg = JSON.parse(readFileSync(file, 'utf8')); } catch(_) {}
           cfg.preferredNotifChannel = 'terminal_bell';
+          // No telemetry, error reports or other optional network traffic.
+          // Other env entries stay. zsh/profile.zsh exports the same three.
+          cfg.env = Object.assign(cfg.env || {}, {
+            DISABLE_TELEMETRY: '1',
+            DISABLE_ERROR_REPORTING: '1',
+            CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+          });
           // Status line: the stowed claude/.claude/statusline.mjs, which shows
           // the context window use. remote/install.sh sets the same value;
           // tests/claude/statusline.test.js fails when the two differ.

@@ -58,6 +58,13 @@ export GIT_EDITOR="vim"
 # launchd doesn't source shell profiles.
 export AGENTSVIEW_TELEMETRY_ENABLED=0
 
+# Turn off Claude Code's telemetry, error reports and other optional network
+# traffic. nix-darwin/flake.nix postActivation also writes these to the env
+# key of ~/.claude/settings.json, which reaches a session that no shell started.
+export DISABLE_TELEMETRY=1
+export DISABLE_ERROR_REPORTING=1
+export CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC=1
+
 # Ansible's ssh on the Mac is bin/fido-ssh (INFRA-320): the same nix OpenSSH,
 # with a dialog while a FIDO key waits for a touch. Ansible hides ssh's own
 # "Confirm user presence" line, so without it a run that waits for a touch

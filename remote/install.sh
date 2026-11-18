@@ -383,6 +383,13 @@ if [ -n "$CLAUDE_JS_RUNTIME" ]; then
     cfg.enabledPlugins['frontend-design@dotfiles'] = true;
     // Concise output style fleet-wide, so remote agents match the local default.
     cfg.outputStyle = 'Concise';
+    // No telemetry, error reports or other optional network traffic. Other
+    // env entries stay. nix-darwin/flake.nix sets the same three on the Mac.
+    cfg.env = Object.assign(cfg.env || {}, {
+      DISABLE_TELEMETRY: '1',
+      DISABLE_ERROR_REPORTING: '1',
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1',
+    });
     // Status line: the statusline.mjs linked above, which shows the context
     // window use. nix-darwin/flake.nix sets the same value;
     // tests/claude/statusline.test.js fails when the two differ.
@@ -392,6 +399,7 @@ if [ -n "$CLAUDE_JS_RUNTIME" ]; then
   "
   green "  enabled frontend-design@dotfiles (pinned)"
   green "  set outputStyle=Concise"
+  green "  turned off telemetry and optional traffic"
   green "  set statusLine"
 else
   red "  skipped: no node/bun runtime found to update settings.json"
