@@ -95,17 +95,35 @@ than dropping it. Cut rambling, not information.
   a second condition or the evidence goes in "Details". Leave out "Details"
   when the first two lines are enough.
 
-Writing rules, for every field:
+Writing rules, for every field. Write in Simplified Technical English
+(ASD-STE100), the fleet standard for prose (`docs/house-standards.md`
+section 11 in `bkennedy/infrastructure`; this repository has no copy):
 
-- Short sentences, under 20 words, one idea each.
-- Plain words: "use", not "leverage"; "fails", not "exhibits failure modes".
-  Name a technical term only when it is the specific concept ("N+1 query").
+- One idea in one sentence, 20 words or fewer.
+- The active voice. Name the thing that acts: "the handler drops the token",
+  not "the token is dropped".
+- Simple tenses. Do not use an `-ing` word as a noun or as a tense: "to
+  retry", not "retrying". An `-ing` word inside a technical name is correct
+  ("load balancing").
+- Keep the articles. Use three words or fewer in a noun cluster.
+- One word for one thing. Do not change the word to vary the prose.
+- Plain words: "use", not "leverage"; "fails", not "exhibits failure modes";
+  "before", not "prior to"; "must", not "shall". A technical term is correct
+  when it is the specific concept ("N+1 query", "idempotent", "tailnet"). Any
+  term that names the subject is correct, however unusual.
 - Be concrete: real names, values and line numbers.
 - No hedging ("might potentially", "it may be worth considering"). If you are
   unsure, say so once: "Unverified: …".
 - No filler: no openers, no praise, no restating the diff, no closing
   summary, no offers to help. Do not explain what the code does unless that
   is the bug.
+- No slang, no idiom and no metaphor.
+- Put a condition before the action it governs: "Before the merge, pin the
+  digest."
+- Do not hide a second thought in an em dash or in parentheses. Write a second
+  sentence.
+- Copy code, identifiers, paths, commands and quoted log or error text exactly.
+  Never rewrite one to make it plainer.
 - Bold only the labels above; never bold words mid-sentence.
 
 Before you finish, check: does the summary alone say whether to merge? Does

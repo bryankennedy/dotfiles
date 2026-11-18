@@ -10,6 +10,13 @@ decisions in `docs/decisions/`. Fleet policy lives in infrastructure's
 [docs/house-standards.md](https://git.bck.dev/bkennedy/infrastructure/src/branch/main/docs/house-standards.md);
 it is linked here, not restated.
 
+Write prose in Simplified Technical English (ASD-STE100). The rule covers each
+pull request, commit message body, review comment, Progress note and doc. It
+does not touch code, quoted text, or copy written for other readers, such as
+website text. Section 11 of the same `docs/house-standards.md` holds the rules
+and the full list of exempt work.
+`_agent/rules/global.md` carries the same rules to each interactive session.
+
 ## Work in a worktree
 
 Stow links the main checkout into `$HOME`, so an edit there is live before review.
