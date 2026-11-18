@@ -131,21 +131,22 @@ When you need the owner to run commands and paste the output back to you, give t
 - The parentheses run the block in a subshell, so `set -x` stays off in the owner's own shell.
 - `2>&1` puts errors in the paste as well.
 
-**The copy step depends on where the block runs:**
+**The copy step is `| clip` on every machine.** `clip` is `bin/bin/clip` in the dotfiles repo. Stow links it to `~/bin/clip` on the Mac, and `remote/install.sh` links it there on each Linux host. It shows the text on screen and copies the text to the Mac clipboard:
 
-| Where the block runs | Copy step |
-|---|---|
-| The owner's Mac | `\| tee /dev/tty \| pbcopy` |
-| A Linux host, over SSH from the Mac | `\| c52` (OSC 52, see below) |
-| A Linux host where OSC 52 fails | `\| tee ~/cx.out`. Then the owner runs `ssh <host> 'cat ~/cx.out && rm ~/cx.out' \| pbcopy` on the Mac. |
+- On the Mac, it runs `pbcopy`.
+- Over SSH, it sends the text as an OSC 52 sequence, and the terminal on the Mac puts it on the clipboard. It then prints `clip: sent N bytes to the terminal`. That message cannot prove that the text reached the clipboard.
+- Inside tmux, OSC 52 gets through only when `set-clipboard` is `on`. The tmux default is `external`, which drops it. Then `clip` copies nothing and prints the command that turns it on for the running tmux server.
+- An empty input changes nothing, and `clip` exits 1.
 
-**The OSC 52 function for Linux hosts.** `pbcopy` exists only on macOS. On a Linux host, this function sends the text to the Mac clipboard through the SSH session, and it still shows the text on screen. The function lasts only for the current shell. If the owner opened a new shell, put this line before the block:
+OSC 52 works in the owner's terminal over SSH. It was confirmed on a Linux VM on 2026-11-14.
+
+**If `clip` is not on the host,** put this line before the block. It defines `clip` for the current shell only. It cannot check tmux, so do not use it inside tmux:
 
 ```
-c52() { tee /dev/stderr | base64 -w0 | { read -r d; printf '\e]52;c;%s\a' "$d" > /dev/tty; }; }
+command -v clip >/dev/null || clip() { d=$(tee -a /dev/stderr | base64 | tr -d '\n'); [ -n "$d" ] && printf '\e]52;c;%s\a' "$d" > /dev/tty; }
 ```
 
-OSC 52 works in the owner's terminal over SSH. It was confirmed on a Linux VM on 2026-11-14. Inside tmux, it works only when `set-clipboard` is on. `base64 -w0` is GNU syntax, so use `c52` on Linux only, never on the Mac. The function is not named `c`, because some of the owner's hosts map `c` to `clear`.
+**If OSC 52 fails,** end the block with `| tee ~/cx.out`. Then the owner runs `ssh <host> 'cat ~/cx.out && rm ~/cx.out' | pbcopy` on the Mac.
 
 **Rules:**
 

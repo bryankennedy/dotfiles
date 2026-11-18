@@ -201,6 +201,14 @@ if [ ! -f "$HOME/.bash_profile" ] || ! grep -q '.bashrc' "$HOME/.bash_profile" 2
   dim "  added .bashrc source to .bash_profile"
 fi
 
+# --- clip -----------------------------------------------------------------
+# The copy step at the end of each block that the owner runs and pastes back
+# (_agent/rules/global.md, section 9, DOT-48). remote/bashrc puts ~/bin on
+# PATH. Stow links the same file on the Mac.
+green "\nclip"
+mkdir -p "$HOME/bin"
+backup_and_link "$DOTFILES_DIR/bin/bin/clip" "$HOME/bin/clip"
+
 # --- Claude Code ----------------------------------------------------------
 # Symlink global rules and commands into ~/.claude/ so Claude Code picks
 # them up. Uses the same _agent/ source files as the macOS stow setup.

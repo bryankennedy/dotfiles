@@ -1,0 +1,79 @@
+#!/bin/sh
+# clip: show standard input on the screen and copy it to the Mac clipboard.
+#
+# Each block that the owner runs and pastes back ends with `| clip`, on the
+# Mac and on every Linux host (section 9 of _agent/rules/global.md, DOT-48).
+# Stow links this file to ~/bin/clip on the Mac. remote/install.sh links it
+# there on each Linux host.
+#
+# - On the Mac, outside SSH, it runs pbcopy.
+# - Over SSH, it sends the text to the terminal as an OSC 52 sequence. The
+#   terminal on the Mac (Ghostty, through herdr) puts it on the clipboard.
+#   Inside tmux, the sequence gets through only when set-clipboard is on,
+#   so clip stops with a message when it is not. tmux/.tmux.conf leaves the
+#   default, external, which drops an OSC 52 copy from any program in a pane.
+#   clip cannot see a multiplexer on the Mac side, so its message says what
+#   it sent to the terminal, not what reached the clipboard.
+#
+# The text always goes to standard error as well, so the owner sees it. tee
+# appends (-a), so a file there is not cut. A failure still shows the text
+# and exits 1. An empty input changes nothing and exits 1. CLIP_TTY replaces
+# /dev/tty for the tests (tests/bin/clip.test.js).
+#
+# POSIX sh, not Node: it must run on any host, before bun is installed.
+set -u
+
+tty="${CLIP_TTY:-/dev/tty}"
+
+# Show the text, then stop. Upstream commands do not get SIGPIPE.
+fail() {
+  cat >&2
+  printf 'clip: %s\n' "$1" >&2
+  exit 1
+}
+
+if command -v pbcopy >/dev/null 2>&1 && [ -z "${SSH_TTY:-}${SSH_CONNECTION:-}" ]; then
+  # The x keeps trailing newlines through the command substitution.
+  text=$(tee -a /dev/stderr; printf x)
+  text=${text%x}
+  if [ -z "$text" ]; then
+    printf 'clip: no input, so the clipboard did not change\n' >&2
+    exit 1
+  fi
+  printf '%s' "$text" | pbcopy || { printf 'clip: pbcopy failed\n' >&2; exit 1; }
+  printf 'clip: copied with pbcopy\n' >&2
+  exit 0
+fi
+
+# A subshell: dash exits on a failed redirect of a builtin.
+if ! ( : >"$tty" ) 2>/dev/null; then
+  fail "cannot write to $tty, so nothing was copied. End the block with '| tee ~/cx.out' instead."
+fi
+
+if [ -n "${TMUX:-}" ]; then
+  # set-clipboard is a server option.
+  mode=$(tmux show-options -sv set-clipboard 2>/dev/null) || mode=unknown
+  if [ "$mode" != on ]; then
+    fail "tmux set-clipboard is '$mode', so tmux drops the copy. Run 'tmux set -s set-clipboard on', then run the block again."
+  fi
+fi
+
+# base64 wraps long output on Linux. The sequence must be one line.
+data=$(tee -a /dev/stderr | base64 | tr -d '\n')
+if [ -z "$data" ]; then
+  printf 'clip: no input, so the clipboard did not change\n' >&2
+  exit 1
+fi
+
+# A subshell again, so a failed write gets a message under dash too.
+if ! ( printf '\033]52;c;%s\a' "$data" >"$tty" ) 2>/dev/null; then
+  printf 'clip: the write to %s failed, so nothing was copied. Run the block again and end it with '\''| tee ~/cx.out'\''.\n' "$tty" >&2
+  exit 1
+fi
+
+case "$data" in
+  *==) pad=2 ;;
+  *=) pad=1 ;;
+  *) pad=0 ;;
+esac
+printf 'clip: sent %s bytes to the terminal over OSC 52\n' "$(( ${#data} / 4 * 3 - pad ))" >&2
