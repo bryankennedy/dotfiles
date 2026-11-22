@@ -6,7 +6,7 @@ import { join } from "node:path";
 import { ROOT } from "../lib/repo.js";
 import {
   REVIEW_SCHEMA, MAX_INLINE, commentableLines, normalizePath, readResult,
-  buildReview, failureReview, renderPrompt, redact,
+  buildReview, failureReview, renderPrompt, redact, OWNER_REVIEW_LINE,
 } from "../../scripts/forgejo-review.mjs";
 
 const DIFF = [
@@ -119,9 +119,10 @@ describe("buildReview", () => {
     expect(p.body).toContain("`tofu/cloudflare/main.tf:11`");
   });
 
-  test("high blast radius leads the body, with its reasons", () => {
+  test("high blast radius comes after the owner line (INFRA-380), with its reasons", () => {
     const p = buildReview({ review: review({ blast_radius: "high", high_risk_reasons: ["OpenTofu: tofu/"] }), commentable, headSha: "a" });
-    expect(p.body.split("\n")[2]).toContain("High blast radius");
+    expect(p.body.split("\n")[2]).toBe(OWNER_REVIEW_LINE);
+    expect(p.body.split("\n")[4]).toContain("High blast radius");
     expect(p.body).toContain("> - OpenTofu: tofu/");
     expect(p.body).toContain("**TL;DR:** s\n\nNo findings.");
     expect(p.body).not.toContain("**Must fix**");

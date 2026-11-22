@@ -227,6 +227,14 @@ export const renderFinding = (f) => `**${headline(f.title)}** · ${f.severity}\n
 // anchored to a diff line shows its headline here and its body inline.
 export const MUST_FIX = ["critical", "high", "medium"];
 
+// The fixed lead line of a review with the verdict human (INFRA-380). The
+// model can write "safe to merge" in its TL;DR on a PR that goes to the
+// owner, so this line comes first and says the opposite. It is a constant:
+// no part of it comes from model text.
+export const OWNER_REVIEW_LINE =
+  "**⛔ Owner review required: verdict `human`, blast radius `high`.** This review is not an approval. " +
+  "This review found no must-fix defect, but the owner must sign off on this change before it merges.";
+
 const footer = (headSha, meta, timings) =>
   `<sub>Claude Code review of ${String(headSha ?? "").slice(0, 10)}` +
   timingFooter(timings, meta) +
@@ -247,7 +255,9 @@ export function buildReview({ review, commentable, headSha, meta = {}, timings =
     sorted.push(f);
   }
 
+  // The heading stays the first line: review-pipeline-metrics.mjs reads it.
   const out = ["### Claude review", ""];
+  if (verdictOf({ review }) === "human") out.push(OWNER_REVIEW_LINE, "");
   if (review.blast_radius === "high") {
     out.push("> **High blast radius: needs the owner's sign-off before merge.**");
     for (const reason of review.high_risk_reasons) out.push(`> - ${oneLine(reason)}`);

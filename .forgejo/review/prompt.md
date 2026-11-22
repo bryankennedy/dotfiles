@@ -72,10 +72,11 @@ than dropping it. Cut rambling, not information.
 
 - `summary` is the TL;DR: one line, under 25 words. Give the verdict and the
   single most important thing. Example: "Safe to merge after one fix: the
-  retry loop can run forever." If there are no findings, say it is safe to
-  merge in one line. If the PR is too big to review well, say that here. Do not
+  retry loop can run forever." If there are no findings, say so in one line.
+  When the blast radius is high, never write "safe to merge": the PR waits
+  for the owner. If the PR is too big to review well, say that here. Do not
   repeat the blast radius or owner sign-off here: for a high blast radius PR
-  the review prints a banner above the summary that says both.
+  the review prints an owner-review line and a banner above the summary.
 - Each `high_risk_reasons` entry is the changed path and the rule it hits,
   under 10 words: "`ansible/roles/forgejo/`: the CI runner". No explanation.
 - `title` is a 5-8 word headline that states the problem, not the topic.
