@@ -45,8 +45,20 @@ fetch() {
     echo "cached $(basename "$1") failed its digest check: discarding it and downloading fresh" >&2
     rm -f "$fetched"
   fi
-  curl -fsSL --retry 3 -o "$3" "$1"
-  echo "$2  $3" | sha256sum -c --quiet -
+  # The forge's mirror first, where the runner sets CI_DOWNLOAD_MIRROR (the
+  # review runner, INFRA-374). It is on the review bridge, so the fence lets
+  # it through, and it names each file by its digest. The same digest check
+  # decides, so the mirror is not trusted, only near.
+  if [ -n "${CI_DOWNLOAD_MIRROR:-}" ] && curl -fsS --max-time 120 -o "$3" "$CI_DOWNLOAD_MIRROR/$2" \
+      && echo "$2  $3" | sha256sum -c --quiet - >/dev/null 2>&1; then
+    echo "$(basename "$1"): fetched from the forge's mirror, digest verified"
+  else
+    if [ -n "${CI_DOWNLOAD_MIRROR:-}" ]; then
+      echo "$(basename "$1"): not on the forge's mirror; downloading it from the origin" >&2
+    fi
+    curl -fsSL --retry 3 -o "$3" "$1"
+    echo "$2  $3" | sha256sum -c --quiet -
+  fi
   mkdir -p "$DOWNLOAD_CACHE_DIR"
   cp "$3" "$fetched"
 }
