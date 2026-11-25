@@ -49,14 +49,19 @@ fetch() {
   # review runner, INFRA-374). It is on the review bridge, so the fence lets
   # it through, and it names each file by its digest. The same digest check
   # decides, so the mirror is not trusted, only near.
-  if [ -n "${CI_DOWNLOAD_MIRROR:-}" ] && curl -fsS --max-time 120 -o "$3" "$CI_DOWNLOAD_MIRROR/$2" \
+  #
+  # Each curl gives a connection 15 seconds (INFRA-388). Without that limit,
+  # a host that the review fence drops held one try for about 135 seconds,
+  # the kernel's SYN retries, and a blocked download held the review runner
+  # for about 9 minutes before the review failed.
+  if [ -n "${CI_DOWNLOAD_MIRROR:-}" ] && curl -fsS --connect-timeout 15 --max-time 120 -o "$3" "$CI_DOWNLOAD_MIRROR/$2" \
       && echo "$2  $3" | sha256sum -c --quiet - >/dev/null 2>&1; then
     echo "$(basename "$1"): fetched from the forge's mirror, digest verified"
   else
     if [ -n "${CI_DOWNLOAD_MIRROR:-}" ]; then
       echo "$(basename "$1"): not on the forge's mirror; downloading it from the origin" >&2
     fi
-    curl -fsSL --retry 3 -o "$3" "$1"
+    curl -fsSL --connect-timeout 15 --retry 3 -o "$3" "$1"
     echo "$2  $3" | sha256sum -c --quiet -
   fi
   mkdir -p "$DOWNLOAD_CACHE_DIR"

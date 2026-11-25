@@ -57,9 +57,9 @@ jobs:
       - name: Start the clock
         run: echo "start $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"
 
-      # Trusted half: the base branch. The prompt, the review criteria
-      # (CLAUDE.md) and the posting script all come from here, so a PR cannot
-      # rewrite the rules it is reviewed against.
+      # Trusted half: the base branch. The prompt, the review contract, the
+      # review criteria (AGENTS.md) and the posting script all come from here,
+      # so a PR cannot rewrite the rules it is reviewed against.
       - name: Check out the base branch
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
@@ -159,6 +159,11 @@ jobs:
       # marker all name one SHA. A head that a force push has removed fails
       # here, and the new head's own run reviews it. The binding file records
       # what was reviewed; the post step writes it into the marker.
+      #
+      # The prompt step puts each field that the PR's author wrote (the
+      # title, the author, the branch name, the description) in a fenced
+      # block at the end of the prompt, after the kit's review contract
+      # (INFRA-296, INFRA-366). No such field is prompt text.
       - name: Compute the diff and the prompt
         env:
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
@@ -227,6 +232,11 @@ jobs:
       # --restricted removes Bash, WebFetch and every code-running tool and
       # confines Read/Grep/Glob to this workspace. Always exits 0 so the post
       # step can report a failed run on the PR instead of failing silently.
+      #
+      # The prompt goes to claude on stdin, never in argv (INFRA-358). Linux
+      # limits one argument to 128 KiB, and a longer prompt stopped the step
+      # with E2BIG before claude started. argv holds only flags and the
+      # schema, which both come from the base branch.
       - name: Review
         env:
           CLAUDE_CODE_OAUTH_TOKEN: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
@@ -234,7 +244,7 @@ jobs:
           set +e
           env -i HOME="$HOME" PATH="$PATH" LANG=C.UTF-8 \
             CLAUDE_CODE_OAUTH_TOKEN="$CLAUDE_CODE_OAUTH_TOKEN" \
-            claude -p "$(cat .review/prompt.md)" \
+            claude -p \
               --restricted \
               --permission-mode dontAsk \
               --strict-mcp-config \
@@ -243,7 +253,7 @@ jobs:
               --max-turns 30 \
               --output-format json \
               --json-schema "$(bun scripts/forgejo-review.mjs schema)" \
-              < /dev/null > .review/result.json 2> .review/claude.stderr
+              < .review/prompt.md > .review/result.json 2> .review/claude.stderr
           echo "claude exited $?"
           echo "review $(date +%s)" >> "${RUNNER_TEMP:-/tmp}/argus-verdict-timings"
           exit 0
