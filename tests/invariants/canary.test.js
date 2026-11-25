@@ -57,9 +57,12 @@ describe("canary: the Forgejo CI rules reject the shapes they exist for", () => 
   });
 
   test("downloads that skip a literal digest", () => {
-    const fetchFn = 'fetch() {\n  curl -fsSL --retry 3 -o "$3" "$1"\n  echo "$2  $3" | sha256sum -c --quiet -\n}\n';
+    const fetchFn = 'fetch() {\n  curl -fsSL --connect-timeout 15 --retry 3 -o "$3" "$1"\n  echo "$2  $3" | sha256sum -c --quiet -\n}\n';
     const good = `X_SHA256=${"a".repeat(64)}\n${fetchFn}fetch "https://x/y.zip" \\\n  "$X_SHA256" "$tmp/y.zip"\n`;
     expect(unverifiedDownloads(good)).toEqual([]);
+    // INFRA-388: a download with no limit on the time to connect.
+    expect(unverifiedDownloads(good.replace(" --connect-timeout 15", "")).length).toBe(1);
+    expect(unverifiedDownloads(good.replace("--connect-timeout 15", "--connect-timeout 600")).length).toBe(1);
     expect(unverifiedDownloads(good.replace("a".repeat(64), "latest")).length).toBe(1);
     expect(unverifiedDownloads(good + "curl -fsSL https://get.example.sh | sh\n").length).toBe(2);
     expect(unverifiedDownloads(good + 'fetch "https://x/z.zip" "$X_VERSION" "$tmp/z.zip"\n').length).toBe(1);

@@ -55,13 +55,14 @@ for (const f of workflowFiles) {
 
     // docs/security-baseline.md accepts the runner cache for exact keys only
     // (INFRA-203, DOT-38): no prefix fallback, and a key that changes with
-    // the install script's pins.
+    // the install script's pins. The review caches also hold the repository
+    // name (INFRA-385).
     test("restores and saves caches by exact key only", () => {
       const loose = workflowSteps(parse(f))
         .filter(({ step }) => /(^|\/)cache(\/(restore|save))?@/.test(step.uses ?? ""))
         .filter(({ step }) =>
           step.with?.["restore-keys"] !== undefined ||
-          !/^[a-z0-9-]+-\$\{\{ hashFiles\('\.forgejo\/ci\/install-tools\.sh'\) \}\}$/.test(String(step.with?.key))
+          !/^[a-z0-9-]+-(\$\{\{ github\.repository \}\}-)?\$\{\{ hashFiles\('\.forgejo\/ci\/install-tools\.sh'\) \}\}$/.test(String(step.with?.key))
         )
         .map(({ job, step }) => `${job}: ${step.name}`);
       expect(loose).toEqual([]);
@@ -225,5 +226,22 @@ describe(".forgejo/CODEOWNERS", () => {
     ]) {
       expect(owned(p), `${p} should need owner sign-off`).toBe(true);
     }
+  });
+});
+
+// INFRA-385: the runner cache is shared by every repository on the forge. A
+// review cache key without the repository name lets one repository's save
+// replace another's cache. A restore and its save use the same key, or every
+// review misses. infrastructure holds the same check.
+describe(".forgejo/workflows/argus-verdict.yml cache keys", () => {
+  test("hold the repository name, and a restore and its save share one key", () => {
+    const review = workflowSteps(parse(join(WORKFLOWS, "argus-verdict.yml")))
+      .filter(({ step }) => /actions\/cache\/(restore|save)@/.test(String(step.uses ?? "")));
+    expect(review.length, "argus-verdict.yml: two restores and two saves").toBe(4);
+    for (const path of new Set(review.map(({ step }) => String(step.with?.path).trim()))) {
+      const keys = new Set(review.filter(({ step }) => String(step.with?.path).trim() === path).map(({ step }) => String(step.with?.key)));
+      expect(keys.size, `argus-verdict.yml: one key for ${path}`).toBe(1);
+    }
+    for (const { step } of review) expect(String(step.with?.key), step.name).toMatch(/^[a-z-]+-\$\{\{ github\.repository \}\}-\$\{\{ hashFiles\('\.forgejo\/ci\/install-tools\.sh'\) \}\}$/);
   });
 });

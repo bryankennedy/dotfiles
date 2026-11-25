@@ -108,7 +108,15 @@ export function unverifiedDownloads(body) {
   const logical = body.replace(/\\\n\s*/g, " ").split("\n").filter((x) => !/^\s*#/.test(x));
   for (const l of logical) {
     if (/\|\s*(ba)?sh\b/.test(l)) bad.push(`pipes a download into a shell: ${l.trim()}`);
-    if (/\b(curl|wget)\b/.test(l) && !/^\s*curl -fsSL --retry 3 -o "\$3" "\$1"\s*$/.test(l)) {
+    // The two curl calls fetch() may make: the origin, then its own digest
+    // check on the next line; and the forge's mirror (INFRA-374), with the
+    // digest check in the same condition, so a mirror file that fails it is
+    // never kept. Each one limits the time to connect (INFRA-388): without
+    // the limit, a host that the review fence drops holds the review runner
+    // for minutes.
+    const origin = /^\s*curl -fsSL --connect-timeout \d{1,2} --retry 3 -o "\$3" "\$1"\s*$/;
+    const mirror = /^\s*if \[ -n "\$\{CI_DOWNLOAD_MIRROR:-\}" \] && curl -fsS --connect-timeout \d{1,2} --max-time \d+ -o "\$3" "\$CI_DOWNLOAD_MIRROR\/\$2"\s+&& echo "\$2  \$3" \| sha256sum -c --quiet - >\/dev\/null 2>&1; then\s*$/;
+    if (/\b(curl|wget)\b/.test(l) && !origin.test(l) && !mirror.test(l)) {
       bad.push(`downloads outside fetch(): ${l.trim()}`);
     }
     if (/^\s*fetch\s/.test(l)) {
