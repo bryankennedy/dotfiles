@@ -57,6 +57,10 @@ new_cwd = "follow"
 # have its keys swallowed by the outer client. See docs/herdr-fleet.md.
 prefix = "ctrl+a"
 
+# Jump back to the pane that had focus last. Press it again to go back and
+# forth between the two panes.
+last_pane = "prefix+;"
+
 # Run lazygit in a temporary pane.
 [[keys.command]]
 key = "prefix+alt+g"
