@@ -24,7 +24,7 @@
 - `git fetch 2>&1 | cat` does the same with no terminal.
 
 **Limits.**
-- Only git goes through the wrapper. A plain `ssh` in a shell shows ssh's own line on stderr and no dialog.
+- Only git goes through the wrapper. A plain `ssh` in a shell shows ssh's own line on stderr and no dialog. INFRA-381 later added the dialog for an `ssh` typed in zsh.
 - A key that ssh-agent holds signs in the agent, so ssh opens no dialog.
 - The forge check matches `git.bck.dev` in lower case, as the remotes write it. An upper-case host or an alias from `~/.ssh/config` runs the plain nix OpenSSH, with no dialog.
 - `BatchMode` stops passphrase, PIN and host key prompts for the forge. A forge connection that needs one fails at once. To accept a new forge host key, run the plain nix OpenSSH once: `/run/current-system/sw/bin/ssh -T git@git.bck.dev`.

@@ -26,9 +26,19 @@ beforeAll(() => {
   const stub = join(dir, "ssh-stub");
   writeFileSync(
     stub,
-    '#!/bin/sh\nfor v in SSH_ASKPASS SSH_ASKPASS_REQUIRE SSH_ASKPASS_PROMPT FIDO_SSH_DEST WAYLAND_DISPLAY DISPLAY; do eval "printf \\"%s=%s\\\\n\\" $v \\"\\${$v-unset}\\""; done\nfor a in "$@"; do printf "ARG=%s\\n" "$a"; done\n',
+    // `ssh -G` prints the config that the test gives in STUB_G (INFRA-381).
+    '#!/bin/sh\n[ "$1" = -G ] && { printf "%s\\n" "$STUB_G"; exit 0; }\nfor v in SSH_ASKPASS SSH_ASKPASS_REQUIRE SSH_ASKPASS_PROMPT FIDO_SSH_DEST FIDO_SSH_MODE WAYLAND_DISPLAY DISPLAY; do eval "printf \\"%s=%s\\\\n\\" $v \\"\\${$v-unset}\\""; done\nfor a in "$@"; do printf "ARG=%s\\n" "$a"; done\n',
   );
   chmodSync(stub, 0o755);
+  // The wrapper runs ssh-keygen from the directory of its ssh. This one
+  // finds a host key only for the name in STUB_KNOWN, in the file given. It
+  // opens each key file with an empty passphrase except STUB_ENCRYPTED.
+  const keygen = join(dir, "ssh-keygen");
+  writeFileSync(
+    keygen,
+    '#!/bin/sh\n[ "$1" = -y ] && { [ "$5" != "$STUB_ENCRYPTED" ]; exit; }\n[ "$1" = -F ] && [ "$2" = "$STUB_KNOWN" ] && [ "$4" = "$STUB_KNOWN_FILE" ]\n',
+  );
+  chmodSync(keygen, 0o755);
   for (const w of wrappers) {
     const text = readFileSync(join(BIN, w), "utf8");
     writeFileSync(join(dir, w), text.replace(SSH_LINE, `ssh=${stub}`));
@@ -49,6 +59,7 @@ const run = (wrapper, args, extraEnv = {}) => {
     dest: val("FIDO_SSH_DEST"),
     wayland: val("WAYLAND_DISPLAY"),
     display: val("DISPLAY"),
+    mode: val("FIDO_SSH_MODE"),
     args: out.filter((l) => l.startsWith("ARG=")).map((l) => l.slice(4)),
   };
 };
@@ -146,6 +157,119 @@ describe("zsh/profile.zsh", () => {
     const text = readFileSync(join(ROOT, "zsh/profile.zsh"), "utf8");
     expect(text).toContain('-x "$HOME/bin/fido-ssh"');
     expect(text).toContain('export ANSIBLE_SSH_EXECUTABLE="$HOME/bin/fido-ssh"');
+  });
+});
+
+// INFRA-381: an ssh typed in an interactive zsh runs fido-ssh in shell mode.
+// The wrapper adds BatchMode and the notifier only when ssh needs no prompt
+// that BatchMode stops. Otherwise the arguments and environment stay as they
+// are.
+describe("bin/bin/fido-ssh in shell mode", () => {
+  // Made at collection time, because the case table below names these paths.
+  const keys = mkdtempSync(join(tmpdir(), "fido-keys-"));
+  writeFileSync(join(keys, "sk.pub"), "sk-ssh-ed25519@openssh.com AAAA test\n");
+  writeFileSync(join(keys, "plain.pub"), "ssh-ed25519 AAAA test\n");
+  writeFileSync(join(keys, "known_hosts"), "");
+  afterAll(() => rmSync(keys, { recursive: true, force: true }));
+
+  // The shape of `ssh -G` output for a host with one FIDO key.
+  const config = (over = {}) => {
+    const lines = {
+      hostname: "lab.example",
+      port: "22",
+      batchmode: "no",
+      proxycommand: "none",
+      identityfile: [join(keys, "sk")],
+      globalknownhostsfile: "/nonexistent/ssh_known_hosts",
+      userknownhostsfile: join(keys, "known_hosts"),
+      ...over,
+    };
+    return Object.entries(lines)
+      .flatMap(([k, v]) => (v === undefined ? [] : [v].flat().map((x) => `${k} ${x}`)))
+      .join("\n");
+  };
+  const shell = (args, { g = config(), known = "lab.example", knownFile, encrypted = "", env = {} } = {}) =>
+    run("fido-ssh", args, {
+      FIDO_SSH_MODE: "shell",
+      SSH_ASKPASS_PROMPT: "none",
+      STUB_G: g,
+      STUB_KNOWN: known,
+      STUB_KNOWN_FILE: knownFile ?? join(keys, "known_hosts"),
+      STUB_ENCRYPTED: encrypted,
+      ...env,
+    });
+
+  test("adds BatchMode and the notifier for a FIDO-only host with a known host key", () => {
+    const args = ["-t", "bk@lab", "uptime"];
+    const r = shell(args);
+    expect(r.args).toEqual(["-o", "BatchMode=yes", ...args]);
+    expect(r.askpass).toBe(join(dir, "fido-touch-notify"));
+    expect(r.require).toBe("force");
+    expect(r.prompt).toBe("unset");
+    expect(r.dest).toBe("bk@lab");
+    expect(r.mode).toBe("unset");
+    expect(r.wayland).toBe("unset");
+  });
+
+  test("looks up a host key on another port as [host]:port", () => {
+    expect(shell(["lab"], { g: config({ port: "2222" }), known: "[lab.example]:2222" }).args[1]).toBe("BatchMode=yes");
+  });
+
+  test("looks up the host key by HostKeyAlias when set", () => {
+    expect(shell(["lab"], { g: config({ hostkeyalias: "alias.example" }), known: "alias.example" }).args[1]).toBe("BatchMode=yes");
+  });
+
+  test("looks up a HostKeyAlias with no port, as ssh does", () => {
+    const g = config({ hostkeyalias: "alias.example", port: "2222" });
+    expect(shell(["lab"], { g, known: "alias.example" }).args[1]).toBe("BatchMode=yes");
+  });
+
+  test("does not pass the mode on when another askpass is set", () => {
+    const r = shell(["lab"], { env: { SSH_ASKPASS: "/opt/other-askpass" } });
+    expect(r.args).toEqual(["lab"]);
+    expect(r.askpass).toBe("/opt/other-askpass");
+    expect(r.mode).toBe("unset");
+  });
+
+  test("reads a user known_hosts file that starts with ~/", () => {
+    const g = config({ userknownhostsfile: "~/known_hosts" });
+    const r = spawnSync(join(dir, "fido-ssh"), ["lab"], {
+      env: { PATH: process.env.PATH, HOME: keys, FIDO_SSH_MODE: "shell", STUB_G: g, STUB_KNOWN: "lab.example", STUB_KNOWN_FILE: join(keys, "known_hosts") },
+      encoding: "utf8",
+    });
+    expect(r.stdout).toContain("ARG=BatchMode=yes");
+  });
+
+  for (const [why, args, opts] of [
+    ["a key that is not a FIDO key", ["lab"], { g: config({ identityfile: [join(keys, "sk"), join(keys, "plain")] }) }],
+    ["a key with no .pub file", ["lab"], { g: config({ identityfile: join(keys, "missing") }) }],
+    ["no identity file", ["lab"], { g: config({ identityfile: undefined }) }],
+    ["an unknown host key", ["lab"], { known: "other.example" }],
+    ["a jump host", ["-J", "jump", "lab"], { g: config({ proxyjump: "jump" }) }],
+    ["a proxy command", ["lab"], { g: config({ proxycommand: "nc %h %p" }) }],
+    ["BatchMode from the config", ["lab"], { g: config({ batchmode: "yes" }) }],
+    ["BatchMode on the command line", ["-o", "batchmode=no", "lab"], {}],
+    ["a key handle file with a passphrase", ["lab"], { encrypted: join(keys, "sk") }],
+    ["no host", ["-V"], {}],
+    // -v first, so the stub prints what it got and does not answer as -G.
+    ["a config query", ["-v", "-G", "lab"], {}],
+    ["a control command", ["-O", "exit", "lab"], {}],
+    ["-G in a flag cluster", ["-NG", "lab"], {}],
+  ]) {
+    test(`runs ssh with no change for ${why}`, () => {
+      const r = shell(args, opts);
+      expect(r.args).toEqual(args);
+      expect(r.askpass).toBe("unset");
+      expect(r.require).toBe("unset");
+      expect(r.dest).toBe("unset");
+      expect(r.mode).toBe("unset");
+      expect(r.wayland).toBe("unset");
+    });
+  }
+
+  test("zsh/aliases-macos.zsh sends ssh to fido-ssh in shell mode, only where the wrapper is linked", () => {
+    const text = readFileSync(join(ROOT, "zsh/aliases-macos.zsh"), "utf8");
+    expect(text).toContain('if [[ -x "$HOME/bin/fido-ssh" && -x /run/current-system/sw/bin/ssh ]]; then\n  ssh() { FIDO_SSH_MODE=shell "$HOME/bin/fido-ssh" "$@"; }\nfi');
   });
 });
 

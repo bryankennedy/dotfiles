@@ -24,6 +24,18 @@ compy() {
 }
 
 # -------------------------------------------------------------------
+# ssh with the FIDO touch dialog (INFRA-381)
+# -------------------------------------------------------------------
+
+# A login to a host that takes only a FIDO key gets the same sound and dialog
+# as a git push to the forge. fido-ssh decides per host, and runs ssh with no
+# change when the dialog is not safe to add. `command ssh` skips this.
+# fido-ssh runs the nix OpenSSH by its full path, so both must exist.
+if [[ -x "$HOME/bin/fido-ssh" && -x /run/current-system/sw/bin/ssh ]]; then
+  ssh() { FIDO_SSH_MODE=shell "$HOME/bin/fido-ssh" "$@"; }
+fi
+
+# -------------------------------------------------------------------
 # herdr — agent multiplexer (trial). Persistent remote agent workspaces.
 # -------------------------------------------------------------------
 

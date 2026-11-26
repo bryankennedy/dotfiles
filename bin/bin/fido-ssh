@@ -3,7 +3,14 @@
 # ANSIBLE_SSH_EXECUTABLE to it. It runs the nix OpenSSH and adds a dialog
 # each time a FIDO key waits for a touch, because Ansible hides ssh's own
 # "Confirm user presence" line. See docs/decisions/INFRA-320.md.
+# An interactive zsh on the Mac also sends ssh here, in shell mode
+# (INFRA-381, docs/decisions/INFRA-381.md).
 ssh=/run/current-system/sw/bin/ssh
+
+# Shell mode (INFRA-381) is for this process only. ssh and its children do
+# not get the variable.
+mode=${FIDO_SSH_MODE:-}
+unset FIDO_SSH_MODE
 
 # Another tool's askpass wins, such as Ansible's own password helper.
 if [ -n "${SSH_ASKPASS:-}" ]; then
@@ -36,6 +43,120 @@ for arg in "$@"; do
     *) dest=${arg#ssh://}; break ;;
   esac
 done
+
+# Shell mode (INFRA-381): the ssh function in zsh/aliases-macos.zsh sets
+# FIDO_SSH_MODE=shell. ssh writes the touch notice to a terminal, and runs
+# SSH_ASKPASS for it only with BatchMode (see forge-ssh). BatchMode also
+# stops the password, passphrase and host key prompts. So this mode adds it
+# only when ssh needs none of them: each key in the host's config is a FIDO
+# key with no passphrase, the host key is known, and no jump host or proxy
+# command is set. Otherwise ssh runs with no change. A call that only shows
+# or controls something (-G, -V, -Q, -O) also runs with no change.
+#
+# fido_only gets the same arguments as ssh. It returns 0 (true) when all of
+# the checks pass, and 1 (false) at the first check that fails.
+fido_only() {
+  # Step 1: look at the arguments only.
+  # - Any argument that holds "batchmode", in any case, means the owner
+  #   chose a BatchMode value, for example -o BatchMode=no. Keep it.
+  # - -G prints the config, -V prints the version, -Q lists the algorithms
+  #   and -O sends a command to a ControlMaster. None of them logs in, and
+  #   -G must print the config as it is. A flag can sit in a cluster, as in
+  #   -vG, so any option word with one of these capitals falls back. That
+  #   also catches some values, as in -oGSSAPIAuthentication=no. Such a
+  #   login only loses the dialog.
+  for a in "$@"; do
+    case $a in
+      *[Bb][Aa][Tt][Cc][Hh][Mm][Oo][Dd][Ee]*) return 1 ;;
+      -*[GVQO]*) return 1 ;;
+    esac
+  done
+
+  # Step 2: ask ssh for the config that it will use for this login.
+  # `ssh -G` reads ~/.ssh/config with these arguments, prints one
+  # "keyword value" line per option, and connects to nothing.
+  cfg=$("$ssh" -G "$@" 2>/dev/null) || return 1
+
+  # Step 3: read the config line by line. k is the keyword (always in lower
+  # case) and v is its value. A check that fails returns at once. The other
+  # lines keep the values that step 4 needs.
+  keys=0 name= port=22 alias= files=
+  while read -r k v; do
+    case $k in
+      # One line for each key that ssh will offer. With no IdentityFile in
+      # the config, ssh lists its default keys (id_rsa and others), and
+      # those are not FIDO keys.
+      identityfile)
+        # ssh prints the path as the config wrote it, so expand "~/".
+        case $v in "~/"*) v=$HOME/${v#"~/"} ;; esac
+        # The first word of the .pub file is the key type. A FIDO key has a
+        # type that starts with "sk-", such as sk-ssh-ed25519@openssh.com.
+        # No .pub file, or any other type, fails the check.
+        [ -r "$v.pub" ] || return 1
+        read -r type _ <"$v.pub" || return 1
+        case $type in sk-*) keys=$((keys + 1)) ;; *) return 1 ;; esac
+        # The key handle file must open with an empty passphrase, because
+        # BatchMode stops the passphrase prompt. `ssh-keygen -y` prints the
+        # public key from the private file. It reads the file only, and
+        # needs no touch.
+        "${ssh%/*}/ssh-keygen" -y -P '' -f "$v" >/dev/null 2>&1 || return 1
+        ;;
+      # BatchMode set to yes in ~/.ssh/config: keep the owner's setting.
+      batchmode) [ "$v" = no ] || return 1 ;;
+      # A jump host or a proxy command can ask its own questions.
+      proxyjump | proxycommand) [ "$v" = none ] || return 1 ;;
+      # Keep these for the host key lookup in step 4.
+      hostname) name=$v ;;
+      port) port=$v ;;
+      hostkeyalias) alias=$v ;;
+      # Each of these lines can name more than one file, with spaces
+      # between them. Collect all of them in one list.
+      userknownhostsfile | globalknownhostsfile) files="$files $v" ;;
+    esac
+  done <<EOF
+$cfg
+EOF
+
+  # At least one key, and all of them are FIDO keys.
+  [ "$keys" -gt 0 ] || return 1
+
+  # Step 4: the host key must be in a known_hosts file already. If it is
+  # not, ssh must ask "Are you sure you want to continue connecting?", and
+  # BatchMode would stop that question. Build the name that ssh looks up:
+  # - a HostKeyAlias, as it is, with no port;
+  # - else the HostName, on port 22;
+  # - else "[HostName]:port", the form known_hosts uses for another port.
+  if [ -n "$alias" ]; then
+    lookup=$alias
+  elif [ "$port" = 22 ]; then
+    lookup=$name
+  else
+    lookup="[$name]:$port"
+  fi
+  # `ssh-keygen -F name -f file` exits 0 when the file holds a key for the
+  # name, also when the file stores the names as hashes. A file that does
+  # not exist is skipped.
+  for f in $files; do
+    case $f in "~/"*) f=$HOME/${f#"~/"} ;; esac
+    [ -f "$f" ] && "${ssh%/*}/ssh-keygen" -F "$lookup" -f "$f" >/dev/null 2>&1 && return 0
+  done
+  return 1
+}
+
+# Shell mode: with a host on the command line and all checks true, run ssh
+# the way forge-ssh does (the comments there give the detail). Else run ssh
+# with the arguments and environment as they are.
+if [ "$mode" = shell ]; then
+  if [ -n "$dest" ] && fido_only "$@"; then
+    unset SSH_ASKPASS_PROMPT
+    FIDO_SSH_DEST=$dest
+    SSH_ASKPASS="$(dirname "$0")/fido-touch-notify"
+    SSH_ASKPASS_REQUIRE=force
+    export FIDO_SSH_DEST SSH_ASKPASS SSH_ASKPASS_REQUIRE
+    exec "$ssh" -o BatchMode=yes "$@"
+  fi
+  exec "$ssh" "$@"
+fi
 
 # With stderr not a terminal, ssh sends a touch notice to SSH_ASKPASS when
 # DISPLAY or WAYLAND_DISPLAY is set (notify_start in OpenSSH's readpass.c).
