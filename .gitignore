@@ -51,3 +51,7 @@ herdr/.config/herdr/*
 
 # Agent scratchpad — ephemeral task notes, never shared (INFRA-161)
 .agent/scratchpad.md
+
+# Wrangler — account cache that the Cloudflare CLI writes in any folder where
+# it runs. This repo is not a Workers project, so the folder is never tracked.
+.wrangler/
